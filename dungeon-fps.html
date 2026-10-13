@@ -214,5 +214,5 @@ document.addEventListener('mousemove',e=>{const o=S();if(locked()){P.a+=e.moveme
 function mouseUpdate(){if(paused||over||won)return;const o=S();
  if(fallback&&mX!=null){const off=(mX-W/2)/(W/2),m=Math.abs(off);if(m>0.15)P.a+=Math.sign(off)*Math.pow((m-0.15)/0.85,2)*o.sens*15*o.inv;}
  if(mouseDown&&(locked()||fallback))shoot();}
-c.focus();reset();(function f(){update();draw();requestAnimationFrame(f)})();
+let dungeonHi=0;try{dungeonHi=+localStorage.getItem("arcade-dungeon-best")||0}catch(e){}function rememberScore(){try{if(typeof score==="number"&&score>dungeonHi){dungeonHi=score;localStorage.setItem("arcade-dungeon-best",String(score))}}catch(e){}}c.focus();reset();(function f(){update();rememberScore();draw();requestAnimationFrame(f)})();
 </script></body></html>

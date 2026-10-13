@@ -6,12 +6,13 @@
 <meta name="theme-color" content="#0b0b14">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Arcade">
+<meta name="apple-mobile-web-app-title" content="Pixel Arcade">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon.svg">
 <link rel="apple-touch-icon" href="./icon.svg">
-<title>Game Select</title>
+<title>Pixel Arcade</title>
 <style>
+
 :root{color-scheme:dark;--bg:#0b0b14;--gold:#ffe14d;--ink:#f4f1ea}
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%}
@@ -99,6 +100,37 @@ h1 span{color:#ff6b6b}
 .mine i:nth-child(4){left:18%;top:58%;background:#d7efe0}.mine i:nth-child(5){left:40%;top:58%}.mine i:nth-child(6){left:62%;top:58%;background:#ffe14d}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
+
+.bg{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+.orb{position:absolute;border-radius:50%;filter:blur(28px);opacity:.5;animation:float 16s ease-in-out infinite}
+.orb.a{width:42vw;height:42vw;max-width:420px;max-height:420px;background:#2f6cff;left:-8vw;top:-10vh}
+.orb.b{width:36vw;height:36vw;max-width:360px;max-height:360px;background:#e8c070;right:-10vw;top:18vh;animation-delay:-5s}
+.orb.c{width:34vw;height:34vw;max-width:340px;max-height:340px;background:#ff5d73;left:28vw;bottom:-16vh;animation-delay:-9s}
+.stars{position:absolute;inset:-20%;background-image:radial-gradient(rgba(255,255,255,.7) 1px,transparent 1px);background-size:42px 42px;opacity:.28;animation:drift 36s linear infinite}
+@keyframes float{50%{transform:translate3d(24px,-36px,0) scale(1.06)}}
+@keyframes drift{to{background-position:42px 90px}}
+.head{position:relative;max-width:980px;margin:0 auto 18px}
+.head-row{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+#random{min-height:44px;padding:0 16px;border:0;border-radius:999px;background:#ff6b6b;color:#fff;font:700 14px/1 ui-monospace,monospace;cursor:pointer;touch-action:manipulation}
+#random:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.tools{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+#q{width:100%;min-height:48px;border-radius:14px;border:1px solid #3a3358;background:rgba(12,10,22,.82);color:#fff;padding:0 14px;font:16px/1 Segoe UI,system-ui,sans-serif}
+#q:focus-visible{outline:3px solid #ffe14d;outline-offset:2px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid #3a3358;background:#171426;color:#f4f1ea;font:700 13px/1 ui-monospace,monospace;cursor:pointer;touch-action:manipulation}
+.chip.on{background:#ffe14d;color:#0b0b14;border-color:#ffe14d}
+.chip:focus-visible{outline:3px solid #ffe14d;outline-offset:2px}
+.recent-wrap{position:relative;max-width:980px;margin:0 auto 18px}
+.recent-wrap h2{margin:0 0 10px;font:700 12px/1 ui-monospace,monospace;letter-spacing:.18em;text-transform:uppercase;color:#9fd3ff}
+.recent-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px}
+.recent{flex:0 0 auto;min-height:40px;display:inline-flex;align-items:center;text-decoration:none;color:#0b0b14;background:#ffe14d;border-radius:999px;padding:0 14px;font:700 13px/1 ui-monospace,monospace;touch-action:manipulation}
+.scoreline{margin:2px 0 0;font:700 12px/1 ui-monospace,monospace;color:#ffe14d}
+a.card[hidden]{display:none}
+#empty{position:relative;max-width:980px;margin:8px auto;color:#c8c4d8}
+@media (prefers-reduced-motion:reduce){
+ .orb,.stars,.coin,.flag:before{animation:none}
+}
+
 @media (min-width:700px){
  h1{font-size:56px}
  .grid{grid-template-columns:1fr 1fr;gap:18px}
@@ -111,54 +143,87 @@ h1 span{color:#ff6b6b}
 </style>
 </head>
 <body>
-<header>
-<p class="mark">Select</p>
+<div class="bg" aria-hidden="true"><div class="stars"></div><div class="orb a"></div><div class="orb b"></div><div class="orb c"></div></div>
+<header class="head">
+<p class="mark">Cabinet</p>
+<div class="head-row">
 <h1>Pixel <span>Arcade</span></h1>
-<p class="lede">Ten browser games. Tap a cabinet to play.</p>
+<button type="button" id="random">Random game</button>
+</div>
+<p class="lede">Ten browser games. Best scores stay on this device.</p>
+<div class="tools">
+<input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
+<div class="chips" role="group" aria-label="Categories">
+<button type="button" class="chip on" data-cat="All" aria-pressed="true">All</button>
+<button type="button" class="chip" data-cat="Action" aria-pressed="false">Action</button>
+<button type="button" class="chip" data-cat="Puzzle" aria-pressed="false">Puzzle</button>
+<button type="button" class="chip" data-cat="Arcade" aria-pressed="false">Arcade</button>
+<button type="button" class="chip" data-cat="Classic" aria-pressed="false">Classic</button>
+</div>
+</div>
 </header>
-<main class="grid">
-<a class="card" href="./pixel-hopper.html">
-<div class="thumb hopper" aria-hidden="true">
-<span class="cloud c1"></span>
-<span class="cloud c2"></span>
-<span class="hill far"></span>
-<span class="hill"></span>
-<span class="coin"></span>
-<span class="flag"></span>
-<span class="runner"></span>
-</div>
-<div class="meta">
-<p class="kicker">01 · Platformer</p>
-<h2>Pixel Hopper</h2>
-<p>Run and jump through three worlds. Collect coins, stomp enemies, and reach the flag.</p>
-<span class="play">Play</span>
-</div>
+<section class="recent-wrap" id="recent-wrap" hidden>
+<h2>Recently played</h2>
+<div class="recent-row" id="recent"></div>
+</section>
+<main class="grid" id="grid">
+<a class="card" href="./pixel-hopper.html" data-cat="Action" data-key="ph_best" data-name="Pixel Hopper">
+<div class="thumb hopper" aria-hidden="true"><span class="cloud c1"></span><span class="cloud c2"></span><span class="hill far"></span><span class="hill"></span><span class="coin"></span><span class="flag"></span><span class="runner"></span></div>
+<div class="meta"><p class="kicker">Action</p><h2>Pixel Hopper</h2><p>Run and jump through three worlds. Collect coins, stomp enemies, and reach the flag.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
-<a class="card" href="./dungeon-fps.html">
-<div class="thumb dungeon" aria-hidden="true">
-<span class="ceil"></span>
-<span class="wall l"></span>
-<span class="wall r"></span>
-<span class="floor"></span>
-<span class="door"></span>
-<span class="mob"></span>
-<span class="cross"></span>
-</div>
-<div class="meta">
-<p class="kicker">02 · First person</p>
-<h2>Dungeon FPS</h2>
-<p>Crawl a torchlit dungeon. Shoot the monsters, find three keys, and escape through the door.</p>
-<span class="play">Play</span>
-</div>
+<a class="card" href="./dungeon-fps.html" data-cat="Action" data-key="arcade-dungeon-best" data-name="Dungeon FPS">
+<div class="thumb dungeon" aria-hidden="true"><span class="ceil"></span><span class="wall l"></span><span class="wall r"></span><span class="floor"></span><span class="door"></span><span class="mob"></span><span class="cross"></span></div>
+<div class="meta"><p class="kicker">Action</p><h2>Dungeon FPS</h2><p>Crawl a torchlit dungeon. Shoot the monsters, find three keys, and escape through the door.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
-<a class="card" href="./snake.html"><div class="thumb snake" aria-hidden="true"><i></i><i></i><i></i><span class="pellet"></span></div><div class="meta"><p class="kicker">03 · Arcade</p><h2>Snake</h2><p>Steer the snake, eat the pellets, and don't bite your own tail.</p><span class="play">Play</span></div></a>
-<a class="card" href="./blocks.html"><div class="thumb crates" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div class="meta"><p class="kicker">04 · Puzzle</p><h2>Crate Drop</h2><p>Drop crates into the pit, pack full rows, and clear them out.</p><span class="play">Play</span></div></a>
-<a class="card" href="./breakout.html"><div class="thumb brk" aria-hidden="true"><i></i><i></i><i></i><b></b></div><div class="meta"><p class="kicker">05 · Arcade</p><h2>Brick Bounce</h2><p>Keep the ball in play and clear every brick.</p><span class="play">Play</span></div></a>
-<a class="card" href="./pong.html"><div class="thumb duel" aria-hidden="true"><i></i><i class="r"></i><b></b></div><div class="meta"><p class="kicker">06 · Versus</p><h2>Paddle Duel</h2><p>Slide your paddle and out-rally the machine.</p><span class="play">Play</span></div></a>
-<a class="card" href="./flappy.html"><div class="thumb pip" aria-hidden="true"><i class="l"></i><i class="r"></i><b></b></div><div class="meta"><p class="kicker">07 · Arcade</p><h2>Pip</h2><p>Tap to lift Pip through the gates. Miss a gap and it's over.</p><span class="play">Play</span></div></a>
-<a class="card" href="./2048.html"><div class="thumb merge" aria-hidden="true"><i>2</i><i>4</i><i>8</i></div><div class="meta"><p class="kicker">08 · Puzzle</p><h2>2048</h2><p>Slide and swipe tiles together until the numbers merge.</p><span class="play">Play</span></div></a>
-<a class="card" href="./invaders.html"><div class="thumb raid" aria-hidden="true"><i></i><i></i><i></i><b></b></div><div class="meta"><p class="kicker">09 · Shooter</p><h2>Void Raid</h2><p>Move, fire, and clear the formation before it lands.</p><span class="play">Play</span></div></a>
-<a class="card" href="./minesweeper.html"><div class="thumb mine" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="meta"><p class="kicker">10 · Puzzle</p><h2>Minefield</h2><p>Tap to reveal. Long-press, or use Flag, to mark a mine.</p><span class="play">Play</span></div></a>
+<a class="card" href="./snake.html" data-cat="Classic" data-key="arcade-snake-best" data-name="Snake">
+<div class="thumb snake" aria-hidden="true"><i></i><i></i><i></i><span class="pellet"></span></div>
+<div class="meta"><p class="kicker">Classic</p><h2>Snake</h2><p>Steer the snake, eat the pellets, and don't bite your own tail.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./blocks.html" data-cat="Puzzle" data-key="arcade-crates-best" data-name="Crate Drop">
+<div class="thumb crates" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+<div class="meta"><p class="kicker">Puzzle</p><h2>Crate Drop</h2><p>Drop crates into the pit, pack full rows, and clear them out.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./breakout.html" data-cat="Arcade" data-key="arcade-brick-best" data-name="Brick Bounce">
+<div class="thumb brk" aria-hidden="true"><i></i><i></i><i></i><b></b></div>
+<div class="meta"><p class="kicker">Arcade</p><h2>Brick Bounce</h2><p>Keep the ball in play and clear every brick.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./pong.html" data-cat="Classic" data-key="arcade-paddle-best" data-name="Paddle Duel">
+<div class="thumb duel" aria-hidden="true"><i></i><i class="r"></i><b></b></div>
+<div class="meta"><p class="kicker">Classic</p><h2>Paddle Duel</h2><p>Slide your paddle and out-rally the machine.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./flappy.html" data-cat="Arcade" data-key="arcade-pip-best" data-name="Pip">
+<div class="thumb pip" aria-hidden="true"><i class="l"></i><i class="r"></i><b></b></div>
+<div class="meta"><p class="kicker">Arcade</p><h2>Pip</h2><p>Tap to lift Pip through the gates. Miss a gap and it's over.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./2048.html" data-cat="Puzzle" data-key="arcade-2048-best" data-name="2048">
+<div class="thumb merge" aria-hidden="true"><i>2</i><i>4</i><i>8</i></div>
+<div class="meta"><p class="kicker">Puzzle</p><h2>2048</h2><p>Slide and swipe tiles together until the numbers merge.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./invaders.html" data-cat="Action" data-key="arcade-raid-best" data-name="Void Raid">
+<div class="thumb raid" aria-hidden="true"><i></i><i></i><i></i><b></b></div>
+<div class="meta"><p class="kicker">Action</p><h2>Void Raid</h2><p>Move, fire, and clear the formation before it lands.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./minesweeper.html" data-cat="Puzzle" data-key="arcade-mine-best" data-name="Minefield">
+<div class="thumb mine" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+<div class="meta"><p class="kicker">Puzzle</p><h2>Minefield</h2><p>Tap to reveal. Long-press, or use Flag, to mark a mine.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
 </main>
+<p id="empty" hidden>No games match that search.</p>
+<script>
+"use strict";
+const RECENT="arcade-recent";
+let cat="All";
+function readScore(key){try{const v=localStorage.getItem(key);if(v==null||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}catch(e){return null}}
+function readRecent(){try{const v=JSON.parse(localStorage.getItem(RECENT)||"[]");return Array.isArray(v)?v.filter(x=>typeof x==="string"):[]}catch(e){return []}}
+function remember(href){try{const next=[href,...readRecent().filter(x=>x!==href)].slice(0,8);localStorage.setItem(RECENT,JSON.stringify(next))}catch(e){}}
+function paintScores(){document.querySelectorAll("a.card").forEach(card=>{const n=readScore(card.dataset.key);const el=card.querySelector(".best");if(el)el.textContent=n==null?"-":String(n)})}
+function paintRecent(){const wrap=document.getElementById("recent-wrap"),row=document.getElementById("recent");const cards=[...document.querySelectorAll("a.card")];const shown=readRecent().map(href=>cards.find(c=>c.getAttribute("href")===href)).filter(Boolean);wrap.hidden=!shown.length;row.replaceChildren();for(const card of shown){const a=document.createElement("a");a.className="recent";a.href=card.getAttribute("href");a.textContent=card.dataset.name;a.addEventListener("click",()=>remember(a.getAttribute("href")));row.appendChild(a)}}
+function apply(){const q=document.getElementById("q").value.trim().toLowerCase();let visible=0;document.querySelectorAll("a.card").forEach(card=>{const blob=(card.dataset.name+" "+card.innerText).toLowerCase();const ok=(cat==="All"||card.dataset.cat===cat)&&(!q||blob.includes(q));card.hidden=!ok;if(ok)visible++});document.getElementById("empty").hidden=visible>0}
+document.querySelectorAll(".chip").forEach(btn=>btn.addEventListener("click",()=>{cat=btn.dataset.cat;document.querySelectorAll(".chip").forEach(b=>{const on=b===btn;b.classList.toggle("on",on);b.setAttribute("aria-pressed",on?"true":"false")});apply()}));
+document.getElementById("q").addEventListener("input",apply);
+document.querySelectorAll("a.card").forEach(a=>a.addEventListener("click",()=>remember(a.getAttribute("href"))));
+document.getElementById("random").addEventListener("click",()=>{const pool=[...document.querySelectorAll("a.card")].filter(c=>!c.hidden);const all=pool.length?pool:[...document.querySelectorAll("a.card")];const pick=all[Math.floor(Math.random()*all.length)];remember(pick.getAttribute("href"));location.href=pick.href});
+paintScores();paintRecent();
+</script>
 </body>
 </html>

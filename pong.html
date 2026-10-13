@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Paddle Duel</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0b0b14;color:#f4f1ea;font-family:Segoe UI,system-ui,sans-serif}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:54px 12px 12px;user-select:none;touch-action:manipulation}
+a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:20;box-sizing:border-box;display:inline-flex;align-items:center;min-height:40px;padding:0 10px;border-radius:999px;background:rgba(8,8,16,.72);color:#ffe14d;border:1px solid rgba(255,225,77,.5);font:700 12px/1 ui-monospace,monospace;text-decoration:none;touch-action:manipulation}
+canvas{background:#10141c;border-radius:12px;max-width:96vw;max-height:calc(100dvh - 168px);width:auto;height:auto;touch-action:none}
+.hud{font:700 13px/1.4 ui-monospace,monospace;color:#c8c4d8;text-align:center}
+.bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+button{min-height:44px;min-width:64px;padding:0 12px;border-radius:10px;border:1px solid #3a3358;background:#171426;color:#ffe14d;font:700 16px/1 ui-monospace,monospace;touch-action:manipulation}
+</style>
+</head>
+<body data-state="ready">
+<a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a>
+<p class="hud">Paddle Duel · You <span id="score">0</span> · Machine <span id="cpu">0</span> · Best <span id="best">0</span><br>You are on the left · Up/Down or drag · P pause · R restart</p>
+<canvas id="c" width="480" height="320"></canvas>
+<div class="bar">
+<button type="button" data-act="up" aria-label="Up">↑</button>
+<button type="button" data-act="down" aria-label="Down">↓</button>
+<button type="button" data-act="pause">Pause</button>
+<button type="button" data-act="restart">Restart</button>
+</div>
+<script>
+"use strict";
+const W=480,H=320,cv=document.getElementById("c"),ctx=cv.getContext("2d");
+const keys={up:false,down:false};
+let py=130,cy=130,ball,score=0,cpu=0,best=0,state="ready",paused=false;
+function loadBest(){try{return +localStorage.getItem("arcade-paddle-best")||0}catch(e){return 0}}
+function saveBest(){try{if(score>best){best=score;localStorage.setItem("arcade-paddle-best",String(best))}}catch(e){}}
+best=loadBest();
+function beep(f,d){try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!beep.ac)beep.ac=new AC();const a=beep.ac;if(a.state==="suspended")a.resume();const o=a.createOscillator(),g=a.createGain();o.type="square";o.frequency.value=f;g.gain.value=.04;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+d)}catch(e){}}
+function sync(){document.body.dataset.state=state;document.getElementById("score").textContent=score;document.getElementById("cpu").textContent=cpu;document.getElementById("best").textContent=best}
+function serve(dir){ball={x:W/2,y:H/2,vx:dir*4.2,vy:(Math.random()*3-1.5)||1.6}}
+function start(){if(state==="play")return;score=0;cpu=0;py=130;cy=130;paused=false;state="play";serve(Math.random()<.5?-1:1);sync();beep(480,.05)}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function update(){if(keys.up)py-=6;if(keys.down)py+=6;py=clamp(py,0,H-64);const target=ball.y-32;cy+=Math.sign(target-cy)*Math.min(3.4,Math.abs(target-cy));cy=clamp(cy,0,H-64);ball.x+=ball.vx;ball.y+=ball.vy;if(ball.y<8||ball.y>H-8)ball.vy*=-1;if(ball.vx<0&&ball.x<36&&ball.y>py&&ball.y<py+64){ball.vx=Math.abs(ball.vx)+.15;ball.vy+=(ball.y-(py+32))/12;beep(500,.03)}if(ball.vx>0&&ball.x>W-36&&ball.y>cy&&ball.y<cy+64){ball.vx=-(Math.abs(ball.vx)+.1);ball.vy+=(ball.y-(cy+32))/14;beep(340,.03)}if(ball.x<0){cpu++;beep(140,.08);if(cpu>=7){state="over";saveBest()}else serve(1)}if(ball.x>W){score++;saveBest();beep(760,.05);serve(-1)}sync()}
+function draw(){ctx.fillStyle="#10141c";ctx.fillRect(0,0,W,H);ctx.strokeStyle="#243";ctx.setLineDash([6,8]);ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(W/2,H);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle="#7ad0ff";ctx.fillRect(18,py,12,64);ctx.fillStyle="#e07098";ctx.fillRect(W-30,cy,12,64);if(ball){ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(ball.x,ball.y,7,0,7);ctx.fill()}ctx.fillStyle="#fff";ctx.font="bold 18px sans-serif";ctx.textAlign="center";if(state==="ready")ctx.fillText("Enter or tap to serve",W/2,H/2);if(paused&&state==="play")ctx.fillText("Paused",W/2,H/2);if(state==="over")ctx.fillText(score>cpu?"You won the rally":"Machine takes it",W/2,H/2)}
+function act(n){if(n==="pause"){if(state==="play")paused=!paused;return}if(n==="restart"){state="ready";start();return}if(state!=="play")start();if(n==="up")keys.up=true;if(n==="down")keys.down=true}
+addEventListener("keydown",e=>{const k=e.key;if(["ArrowUp","ArrowDown"," "].includes(k))e.preventDefault();if(k==="ArrowUp"||k==="w"||k==="W"){keys.up=true;if(state!=="play")start()}else if(k==="ArrowDown"||k==="s"||k==="S"){keys.down=true;if(state!=="play")start()}else if(k==="Enter"||k===" ")start();else if(k==="p"||k==="P"||k==="Escape"){if(state==="play")paused=!paused}else if(k==="r"||k==="R"){state="ready";start()}});
+addEventListener("keyup",e=>{const k=e.key;if(k==="ArrowUp"||k==="w"||k==="W")keys.up=false;if(k==="ArrowDown"||k==="s"||k==="S")keys.down=false});
+document.querySelectorAll("button").forEach(b=>{b.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();act(b.dataset.act)});b.addEventListener("pointerup",()=>{keys.up=false;keys.down=false});b.addEventListener("pointerleave",()=>{keys.up=false;keys.down=false})});
+function place(clientY){if(state!=="play")start();const r=cv.getBoundingClientRect();py=clamp((clientY-r.top)/r.height*H-32,0,H-64)}
+cv.addEventListener("pointerdown",e=>place(e.clientY));
+cv.addEventListener("pointermove",e=>{if(e.buttons||e.pointerType==="touch")place(e.clientY)});
+cv.addEventListener("touchstart",e=>{e.preventDefault();if(e.touches&&e.touches[0])place(e.touches[0].clientY);else if(state!=="play")start()},{passive:false});
+cv.addEventListener("touchmove",e=>{e.preventDefault();if(e.touches[0])place(e.touches[0].clientY)},{passive:false});
+serve(1);sync();
+function loop(){requestAnimationFrame(loop);if(state==="play"&&!paused)update();draw()}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

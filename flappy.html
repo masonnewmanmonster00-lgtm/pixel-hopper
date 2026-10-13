@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Pip</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0b0b14;color:#f4f1ea;font-family:Segoe UI,system-ui,sans-serif}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:54px 12px 12px;user-select:none;touch-action:manipulation}
+a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:20;box-sizing:border-box;display:inline-flex;align-items:center;min-height:40px;padding:0 10px;border-radius:999px;background:rgba(8,8,16,.72);color:#ffe14d;border:1px solid rgba(255,225,77,.5);font:700 12px/1 ui-monospace,monospace;text-decoration:none;touch-action:manipulation}
+canvas{background:#87d4f5;border-radius:12px;max-width:96vw;max-height:calc(100dvh - 168px);width:auto;height:auto;touch-action:none}
+.hud{font:700 13px/1.4 ui-monospace,monospace;color:#c8c4d8;text-align:center}
+.bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+button{min-height:48px;min-width:88px;padding:0 14px;border-radius:10px;border:1px solid #3a3358;background:#171426;color:#ffe14d;font:700 16px/1 ui-monospace,monospace;touch-action:manipulation}
+</style>
+</head>
+<body data-state="ready">
+<a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a>
+<p class="hud">Pip · Score <span id="score">0</span> · Best <span id="best">0</span><br>Space, click, or Flap · P pause · R restart</p>
+<canvas id="c" width="360" height="520"></canvas>
+<div class="bar">
+<button type="button" id="flap">Flap</button>
+<button type="button" id="pause">Pause</button>
+<button type="button" id="restart">Restart</button>
+</div>
+<script>
+"use strict";
+const W=360,H=520,cv=document.getElementById("c"),ctx=cv.getContext("2d");
+let y=H/2,vy=0,pipes=[],score=0,best=0,state="ready",paused=false;
+function loadBest(){try{return +localStorage.getItem("arcade-pip-best")||0}catch(e){return 0}}
+function saveBest(){try{if(score>best){best=score;localStorage.setItem("arcade-pip-best",String(best))}}catch(e){}}
+best=loadBest();
+function beep(f,d){try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!beep.ac)beep.ac=new AC();const a=beep.ac;if(a.state==="suspended")a.resume();const o=a.createOscillator(),g=a.createGain();o.type="square";o.frequency.value=f;g.gain.value=.04;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+d)}catch(e){}}
+function sync(){document.body.dataset.state=state;document.getElementById("score").textContent=score;document.getElementById("best").textContent=best}
+function makePipe(x){const gap=148,top=36+Math.random()*(H-gap-90);return {x,top,gap,scored:false}}
+function reset(){y=H/2;vy=0;score=0;pipes=[makePipe(W+40),makePipe(W+220),makePipe(W+400)];sync()}
+function start(){if(state==="play")return;state="play";paused=false;reset();beep(500,.05)}
+function flap(){if(state!=="play")start();if(state!=="play"||paused)return;vy=-6.4;beep(640,.04)}
+function update(){vy=Math.min(vy+.32,8);y+=vy;for(const p of pipes){p.x-=2.5;if(!p.scored&&p.x+46<78){p.scored=true;score++;saveBest();beep(820,.04)}}if(pipes[0].x<-60){pipes.shift();pipes.push(makePipe(pipes[pipes.length-1].x+180))}const hit=y<16||y>H-16||pipes.some(p=>78+18>p.x&&78-18<p.x+46&&(y-16<p.top||y+16>p.top+p.gap));if(hit){state="over";saveBest();beep(130,.16)}sync()}
+function draw(){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,"#6ec8f0");g.addColorStop(1,"#d8f3ff");ctx.fillStyle=g;ctx.fillRect(0,0,W,H);ctx.fillStyle="#8fd18a";ctx.fillRect(0,H-28,W,28);for(const p of pipes){ctx.fillStyle="#2f8f55";ctx.fillRect(p.x,0,46,p.top);ctx.fillRect(p.x,p.top+p.gap,46,H-(p.top+p.gap));ctx.fillStyle="#46c06a";ctx.fillRect(p.x-4,p.top-14,54,14);ctx.fillRect(p.x-4,p.top+p.gap,54,14)}ctx.save();ctx.translate(78,y);ctx.rotate(Math.max(-.5,Math.min(.6,vy/10)));ctx.fillStyle="#3d7cff";ctx.beginPath();ctx.arc(0,0,16,0,7);ctx.fill();ctx.fillStyle="#ffcfa0";ctx.beginPath();ctx.arc(6,-2,7,0,7);ctx.fill();ctx.fillStyle="#e07040";ctx.beginPath();ctx.moveTo(12,-2);ctx.lineTo(24,2);ctx.lineTo(12,6);ctx.fill();ctx.fillStyle="#111";ctx.fillRect(8,-6,3,3);ctx.restore();ctx.fillStyle="#143";ctx.font="bold 20px sans-serif";ctx.textAlign="center";if(state==="ready")ctx.fillText("Tap to lift Pip",W/2,H/2-40);if(paused&&state==="play")ctx.fillText("Paused",W/2,80);if(state==="over")ctx.fillText("Pip dipped · tap to retry",W/2,80)}
+addEventListener("keydown",e=>{if(e.key===" "||e.key==="ArrowUp")e.preventDefault();if(e.key===" "||e.key==="ArrowUp"||e.key==="Enter"||e.key==="w"||e.key==="W")flap();else if(e.key==="p"||e.key==="P"||e.key==="Escape"){if(state==="play")paused=!paused}else if(e.key==="r"||e.key==="R"){state="ready";start()}});
+document.getElementById("flap").addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();flap()});
+document.getElementById("pause").addEventListener("pointerdown",e=>{e.preventDefault();if(state==="play")paused=!paused});
+document.getElementById("restart").addEventListener("pointerdown",e=>{e.preventDefault();state="ready";start()});
+cv.addEventListener("pointerdown",e=>{if(e.pointerType!=="touch")flap()});
+cv.addEventListener("touchstart",e=>{e.preventDefault();flap()},{passive:false});
+function loop(){requestAnimationFrame(loop);if(state==="play"&&!paused)update();draw()}
+reset();requestAnimationFrame(loop);
+</script>
+</body>
+</html>

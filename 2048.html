@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>2048</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0b0b14;color:#f4f1ea;font-family:Segoe UI,system-ui,sans-serif}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:54px 12px 12px;user-select:none;touch-action:manipulation}
+a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:20;box-sizing:border-box;display:inline-flex;align-items:center;min-height:40px;padding:0 10px;border-radius:999px;background:rgba(8,8,16,.72);color:#ffe14d;border:1px solid rgba(255,225,77,.5);font:700 12px/1 ui-monospace,monospace;text-decoration:none;touch-action:manipulation}
+canvas{background:#1c1730;border-radius:12px;max-width:96vw;max-height:calc(100dvh - 168px);width:auto;height:auto;touch-action:none}
+.hud{font:700 13px/1.4 ui-monospace,monospace;color:#c8c4d8;text-align:center}
+.bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:min(360px,100%)}
+button{min-height:44px;min-width:44px;padding:0 12px;border-radius:10px;border:1px solid #3a3358;background:#171426;color:#ffe14d;font:700 16px/1 ui-monospace,monospace;touch-action:manipulation}
+</style>
+</head>
+<body data-state="ready">
+<a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a>
+<p class="hud">2048 · Score <span id="score">0</span> · Best <span id="best">0</span><br>Swipe or arrows · P pause · R restart</p>
+<canvas id="c" width="360" height="360"></canvas>
+<div class="bar">
+<button type="button" data-dir="up" aria-label="Up">↑</button>
+<button type="button" data-dir="left" aria-label="Left">←</button>
+<button type="button" data-dir="down" aria-label="Down">↓</button>
+<button type="button" data-dir="right" aria-label="Right">→</button>
+<button type="button" id="pause">Pause</button>
+<button type="button" id="restart">Restart</button>
+</div>
+<script>
+"use strict";
+const cv=document.getElementById("c"),ctx=cv.getContext("2d"),N=4,S=80,P=12;
+let board,score=0,best=0,state="ready",paused=false,sx=0,sy=0,touching=false;
+function loadBest(){try{return +localStorage.getItem("arcade-2048-best")||0}catch(e){return 0}}
+function saveBest(){try{if(score>best){best=score;localStorage.setItem("arcade-2048-best",String(best))}}catch(e){}}
+best=loadBest();
+function beep(f,d){try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!beep.ac)beep.ac=new AC();const a=beep.ac;if(a.state==="suspended")a.resume();const o=a.createOscillator(),g=a.createGain();o.type="square";o.frequency.value=f;g.gain.value=.04;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+d)}catch(e){}}
+function sync(){document.body.dataset.state=state;document.getElementById("score").textContent=score;document.getElementById("best").textContent=best}
+function empties(){const e=[];for(let y=0;y<N;y++)for(let x=0;x<N;x++)if(!board[y][x])e.push([x,y]);return e}
+function spawn(){const e=empties();if(!e.length)return;const [x,y]=e[Math.random()*e.length|0];board[y][x]=Math.random()<.9?2:4}
+function slide(row){const a=row.filter(Boolean),out=[];let gained=0;for(let i=0;i<a.length;i++){if(i+1<a.length&&a[i]===a[i+1]){out.push(a[i]*2);gained+=a[i]*2;i++}else out.push(a[i])}while(out.length<N)out.push(0);return {out,gained}}
+function canMove(){if(empties().length)return true;for(let y=0;y<N;y++)for(let x=0;x<N;x++){if(x<3&&board[y][x]===board[y][x+1])return true;if(y<3&&board[y][x]===board[y+1][x])return true}return false}
+function move(dir){if(state!=="play")start();if(state!=="play"||paused)return;const before=JSON.stringify(board);let gained=0;if(dir==="left"||dir==="right"){for(let y=0;y<N;y++){let row=board[y].slice();if(dir==="right")row.reverse();const s=slide(row);gained+=s.gained;if(dir==="right")s.out.reverse();board[y]=s.out}}else{for(let x=0;x<N;x++){let col=[];for(let y=0;y<N;y++)col.push(board[y][x]);if(dir==="down")col.reverse();const s=slide(col);gained+=s.gained;if(dir==="down")s.out.reverse();for(let y=0;y<N;y++)board[y][x]=s.out[y]}}if(JSON.stringify(board)===before)return;score+=gained;saveBest();beep(540,.03);spawn();if(!canMove()){state="over";saveBest()}sync()}
+function start(){if(state==="play")return;board=Array.from({length:N},()=>Array(N).fill(0));score=0;paused=false;state="play";spawn();spawn();sync();beep(480,.05)}
+function draw(){ctx.fillStyle="#1c1730";ctx.fillRect(0,0,cv.width,cv.height);for(let y=0;y<N;y++)for(let x=0;x<N;x++){const v=board?board[y][x]:0,px=P+x*(S+8),py=P+y*(S+8);ctx.fillStyle=v?`hsl(${(Math.log2(v)*36)%360} 62% 46%)`:"#2a2444";ctx.fillRect(px,py,S,S);if(v){ctx.fillStyle="#fff";ctx.font="bold "+(v>512?22:28)+"px sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(v,px+S/2,py+S/2)}}ctx.textBaseline="alphabetic";ctx.fillStyle="#fff";ctx.font="bold 18px sans-serif";if(state==="ready")ctx.fillText("Swipe to start",cv.width/2,cv.height/2);if(paused&&state==="play")ctx.fillText("Paused",cv.width/2,cv.height/2);if(state==="over")ctx.fillText("No moves",cv.width/2,cv.height/2)}
+addEventListener("keydown",e=>{const k=e.key;if(k.startsWith("Arrow")||k===" ")e.preventDefault();if(k==="ArrowUp"||k==="w"||k==="W")move("up");else if(k==="ArrowDown"||k==="s"||k==="S")move("down");else if(k==="ArrowLeft"||k==="a"||k==="A")move("left");else if(k==="ArrowRight"||k==="d"||k==="D")move("right");else if(k==="Enter"||k===" ")start();else if(k==="p"||k==="P"||k==="Escape"){if(state==="play")paused=!paused}else if(k==="r"||k==="R"){state="ready";start()}});
+document.querySelectorAll("[data-dir]").forEach(b=>b.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();move(b.dataset.dir)}));
+document.getElementById("pause").addEventListener("pointerdown",e=>{e.preventDefault();if(state==="play")paused=!paused});
+document.getElementById("restart").addEventListener("pointerdown",e=>{e.preventDefault();state="ready";start()});
+cv.addEventListener("touchstart",e=>{e.preventDefault();const t=e.changedTouches&&e.changedTouches[0];if(!t){if(state!=="play")start();return}sx=t.clientX;sy=t.clientY;touching=true;if(state!=="play")start()},{passive:false});
+cv.addEventListener("touchend",e=>{if(!touching)return;touching=false;const t=e.changedTouches&&e.changedTouches[0];if(!t)return;const dx=t.clientX-sx,dy=t.clientY-sy;if(Math.hypot(dx,dy)<24)return;if(Math.abs(dx)>Math.abs(dy))move(dx>0?"right":"left");else move(dy>0?"down":"up")},{passive:false});
+cv.addEventListener("pointerdown",e=>{if(e.pointerType==="touch"&&state!=="play")start()});
+sync();
+function loop(){requestAnimationFrame(loop);draw()}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

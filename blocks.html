@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Crate Drop</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0b0b14;color:#f4f1ea;font-family:Segoe UI,system-ui,sans-serif}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:54px 12px 12px;user-select:none;touch-action:manipulation}
+a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:20;box-sizing:border-box;display:inline-flex;align-items:center;min-height:40px;padding:0 10px;border-radius:999px;background:rgba(8,8,16,.72);color:#ffe14d;border:1px solid rgba(255,225,77,.5);font:700 12px/1 ui-monospace,monospace;text-decoration:none;touch-action:manipulation}
+canvas{background:#1a140f;border-radius:12px;max-width:96vw;max-height:calc(100dvh - 168px);width:auto;height:auto;touch-action:none}
+.hud{font:700 13px/1.4 ui-monospace,monospace;color:#c8c4d8;text-align:center}
+.bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:min(460px,100%)}
+button{min-height:44px;min-width:44px;padding:0 12px;border-radius:10px;border:1px solid #5a3a22;background:#24180f;color:#e8c070;font:700 16px/1 ui-monospace,monospace;touch-action:manipulation}
+</style>
+</head>
+<body data-state="ready">
+<a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a>
+<p class="hud">Crate Drop · Score <span id="score">0</span> · Best <span id="best">0</span><br>Arrows move · Up rotate · Space drop · P pause · R restart</p>
+<canvas id="c" width="240" height="480"></canvas>
+<div class="bar">
+<button type="button" data-act="left" aria-label="Left">←</button>
+<button type="button" data-act="right" aria-label="Right">→</button>
+<button type="button" data-act="rot" aria-label="Rotate">Turn</button>
+<button type="button" data-act="drop" aria-label="Drop">Drop</button>
+<button type="button" data-act="pause">Pause</button>
+<button type="button" data-act="restart">Restart</button>
+</div>
+<script>
+"use strict";
+const W=10,H=20,CELL=24,cv=document.getElementById("c"),ctx=cv.getContext("2d");
+const COLORS=["#e07a3d","#3ec8c0","#e6c15a","#b07ae0","#7ad07a","#e07098","#6aa0e8"];
+const SHAPES=[
+[[1,1,1,1]],
+[[1,1],[1,1]],
+[[0,1,0],[1,1,1]],
+[[1,0,0],[1,1,1]],
+[[0,0,1],[1,1,1]],
+[[0,1,1],[1,1,0]],
+[[1,1,0],[0,1,1]]
+];
+let grid,piece,score=0,best=0,state="ready",paused=false,acc=0,prev=0;
+function loadBest(){try{return +localStorage.getItem("arcade-crates-best")||0}catch(e){return 0}}
+function saveBest(){try{if(score>best){best=score;localStorage.setItem("arcade-crates-best",String(best))}}catch(e){}}
+best=loadBest();
+function beep(f,d){try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!beep.ac)beep.ac=new AC();const a=beep.ac;if(a.state==="suspended")a.resume();const o=a.createOscillator(),g=a.createGain();o.type="square";o.frequency.value=f;g.gain.value=.04;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+d)}catch(e){}}
+function sync(){document.body.dataset.state=state;document.getElementById("score").textContent=score;document.getElementById("best").textContent=best}
+function empty(){grid=Array.from({length:H},()=>Array(W).fill(0))}
+function rotate(m){const h=m.length,w=m[0].length,n=[];for(let x=0;x<w;x++){n[x]=[];for(let y=h-1;y>=0;y--)n[x].push(m[y][x])}return n}
+function cells(m,ox,oy){const out=[];for(let y=0;y<m.length;y++)for(let x=0;x<m[y].length;x++)if(m[y][x])out.push([ox+x,oy+y]);return out}
+function fits(m,ox,oy){return cells(m,ox,oy).every(([x,y])=>x>=0&&x<W&&y<H&&(y<0||!grid[y][x]))}
+function spawn(){const i=Math.random()*SHAPES.length|0;piece={m:SHAPES[i].map(r=>r.slice()),x:3,y:0,c:i};if(!fits(piece.m,piece.x,piece.y)){state="over";piece=null;saveBest();beep(110,.2)}}
+function lock(){for(const [x,y] of cells(piece.m,piece.x,piece.y)){if(y<0){state="over";piece=null;saveBest();return}grid[y][x]=piece.c+1}let n=0;for(let y=H-1;y>=0;y--)if(grid[y].every(Boolean)){grid.splice(y,1);grid.unshift(Array(W).fill(0));n++;y++}if(n){score+=[0,100,300,500,800][n];saveBest();beep(720,.06)}if(state==="play")spawn()}
+function tick(){if(!piece)return;if(fits(piece.m,piece.x,piece.y+1))piece.y++;else lock()}
+function move(dx){if(state!=="play")start();if(state!=="play"||paused||!piece)return;if(fits(piece.m,piece.x+dx,piece.y))piece.x+=dx}
+function turn(){if(state!=="play")start();if(state!=="play"||paused||!piece)return;const n=rotate(piece.m);for(const k of [0,-1,1,-2,2])if(fits(n,piece.x+k,piece.y)){piece.m=n;piece.x+=k;beep(400,.03);return}}
+function hard(){if(state!=="play")start();if(state!=="play"||paused||!piece)return;let d=0;while(fits(piece.m,piece.x,piece.y+1)){piece.y++;d++}score+=d*2;saveBest();lock();beep(220,.04)}
+function start(){if(state==="play")return;state="play";paused=false;score=0;empty();spawn();sync();beep(480,.05)}
+function crate(x,y,c){ctx.fillStyle=COLORS[c];ctx.fillRect(x+1,y+1,CELL-2,CELL-2);ctx.fillStyle="rgba(255,255,255,.28)";ctx.fillRect(x+3,y+3,CELL-10,4)}
+function draw(){ctx.fillStyle="#1a140f";ctx.fillRect(0,0,cv.width,cv.height);if(grid)for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(grid[y][x])crate(x*CELL,y*CELL,grid[y][x]-1);if(piece)for(const [x,y] of cells(piece.m,piece.x,piece.y))if(y>=0)crate(x*CELL,y*CELL,piece.c);ctx.fillStyle="#fff";ctx.font="bold 16px sans-serif";ctx.textAlign="center";if(state==="ready")ctx.fillText("Enter or tap",cv.width/2,cv.height/2);if(state==="over")ctx.fillText("Pit full",cv.width/2,cv.height/2);if(paused&&state==="play")ctx.fillText("Paused",cv.width/2,cv.height/2)}
+function act(name){if(name==="pause"){if(state==="play")paused=!paused;return}if(name==="restart"){state="ready";start();return}if(name==="left")move(-1);if(name==="right")move(1);if(name==="rot")turn();if(name==="drop")hard()}
+addEventListener("keydown",e=>{const k=e.key;if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(k))e.preventDefault();if(k==="ArrowLeft"||k==="a"||k==="A")move(-1);else if(k==="ArrowRight"||k==="d"||k==="D")move(1);else if(k==="ArrowUp"||k==="w"||k==="W")turn();else if(k==="ArrowDown"||k==="s"||k==="S"){if(state==="play"&&!paused&&piece&&fits(piece.m,piece.x,piece.y+1))piece.y++;else if(state!=="play")start()}else if(k===" ")hard();else if(k==="Enter")start();else if(k==="p"||k==="P"||k==="Escape"){if(state==="play")paused=!paused}else if(k==="r"||k==="R"){state="ready";start()}});
+document.querySelectorAll("button").forEach(b=>{const go=e=>{e.preventDefault();e.stopPropagation();act(b.dataset.act)};b.addEventListener("pointerdown",go)});
+cv.addEventListener("touchstart",e=>{e.preventDefault();if(state!=="play")start()},{passive:false});
+cv.addEventListener("pointerdown",e=>{if(e.pointerType==="touch"&&state!=="play")start()});
+function loop(t){requestAnimationFrame(loop);if(!prev)prev=t;const dt=t-prev;prev=t;if(state==="play"&&!paused){acc+=dt;const step=Math.max(160,480-score);while(acc>step){tick();acc-=step}}draw()}
+empty();sync();requestAnimationFrame(loop);
+</script>
+</body>
+</html>

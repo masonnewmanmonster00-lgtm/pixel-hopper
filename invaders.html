@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Void Raid</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0b0b14;color:#f4f1ea;font-family:Segoe UI,system-ui,sans-serif}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:54px 12px 12px;user-select:none;touch-action:manipulation}
+a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:20;box-sizing:border-box;display:inline-flex;align-items:center;min-height:40px;padding:0 10px;border-radius:999px;background:rgba(8,8,16,.72);color:#ffe14d;border:1px solid rgba(255,225,77,.5);font:700 12px/1 ui-monospace,monospace;text-decoration:none;touch-action:manipulation}
+canvas{background:#070814;border-radius:12px;max-width:96vw;max-height:calc(100dvh - 168px);width:auto;height:auto;touch-action:none}
+.hud{font:700 13px/1.4 ui-monospace,monospace;color:#c8c4d8;text-align:center}
+.bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+button{min-height:44px;min-width:64px;padding:0 12px;border-radius:10px;border:1px solid #3a3358;background:#171426;color:#ffe14d;font:700 16px/1 ui-monospace,monospace;touch-action:manipulation}
+</style>
+</head>
+<body data-state="ready">
+<a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a>
+<p class="hud">Void Raid · Score <span id="score">0</span> · Best <span id="best">0</span> · Lives <span id="lives">3</span><br>Arrows move · Space fires · P pause · R restart</p>
+<canvas id="c" width="480" height="360"></canvas>
+<div class="bar">
+<button type="button" data-act="left" aria-label="Left">←</button>
+<button type="button" data-act="right" aria-label="Right">→</button>
+<button type="button" data-act="fire" aria-label="Fire">Fire</button>
+<button type="button" data-act="pause">Pause</button>
+<button type="button" data-act="restart">Restart</button>
+</div>
+<script>
+"use strict";
+const W=480,H=360,cv=document.getElementById("c"),ctx=cv.getContext("2d");
+const keys={left:false,right:false,fire:false};
+let px,enemies,bullets,ebullets,dir,score,lives,best=0,state="ready",paused=false,tick=0,won=false,cool=0;
+function loadBest(){try{return +localStorage.getItem("arcade-raid-best")||0}catch(e){return 0}}
+function saveBest(){try{if(score>best){best=score;localStorage.setItem("arcade-raid-best",String(best))}}catch(e){}}
+best=loadBest();
+function beep(f,d){try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!beep.ac)beep.ac=new AC();const a=beep.ac;if(a.state==="suspended")a.resume();const o=a.createOscillator(),g=a.createGain();o.type="square";o.frequency.value=f;g.gain.value=.04;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+d)}catch(e){}}
+function sync(){document.body.dataset.state=state;document.getElementById("score").textContent=score;document.getElementById("best").textContent=best;document.getElementById("lives").textContent=lives}
+function reset(){px=W/2;score=0;lives=3;won=false;bullets=[];ebullets=[];dir=1;tick=0;cool=0;enemies=[];for(let r=0;r<4;r++)for(let c=0;c<8;c++)enemies.push({x:36+c*50,y:36+r*32,alive:true,row:r});sync()}
+function start(){if(state==="play")return;state="play";paused=false;reset();beep(480,.05)}
+function shoot(){if(cool>0)return;cool=12;bullets.push({x:px,y:H-42});beep(880,.03)}
+function update(){tick++;if(cool>0)cool--;if(keys.left)px-=4.5;if(keys.right)px+=4.5;px=Math.max(18,Math.min(W-18,px));if(keys.fire)shoot();bullets.forEach(b=>b.y-=8);bullets=bullets.filter(b=>b.y>0);if(tick%28===0){let edge=false;for(const e of enemies)if(e.alive&&(e.x<12||e.x>W-36))edge=true;if(edge){dir*=-1;enemies.forEach(e=>{if(e.alive)e.y+=14})}else enemies.forEach(e=>{if(e.alive)e.x+=dir*10})}for(const b of bullets)for(const e of enemies)if(e.alive&&Math.abs(b.x-(e.x+14))<16&&Math.abs(b.y-(e.y+10))<16){e.alive=false;b.y=-20;score+=25;saveBest();beep(620,.03)}if(tick%46===0){const alive=enemies.filter(e=>e.alive);if(alive.length){const e=alive[Math.random()*alive.length|0];ebullets.push({x:e.x+14,y:e.y+20})}}ebullets.forEach(b=>b.y+=4.2);ebullets=ebullets.filter(b=>b.y<H);if(ebullets.some(b=>Math.abs(b.x-px)<16&&b.y>H-40)){lives--;ebullets=[];beep(140,.1);if(lives<=0){state="over";saveBest()}}if(enemies.some(e=>e.alive&&e.y>H-56)){state="over";saveBest()}if(enemies.every(e=>!e.alive)){score+=200;saveBest();won=true;state="over";beep(900,.12)}sync()}
+function draw(){ctx.fillStyle="#070814";ctx.fillRect(0,0,W,H);for(let i=0;i<30;i++){ctx.fillStyle="#fff";ctx.fillRect((i*97)%W,(i*53+tick)%H,1,1)}if(enemies)for(const e of enemies)if(e.alive){ctx.fillStyle=["#7ad07a","#7ad0ff","#e0a0ff","#ffe14d"][e.row];ctx.fillRect(e.x,e.y,28,16);ctx.fillRect(e.x+6,e.y+16,4,6);ctx.fillRect(e.x+18,e.y+16,4,6);ctx.fillStyle="#111";ctx.fillRect(e.x+6,e.y+5,4,4);ctx.fillRect(e.x+18,e.y+5,4,4)}ctx.fillStyle="#ffe14d";if(bullets)bullets.forEach(b=>ctx.fillRect(b.x-2,b.y,4,10));ctx.fillStyle="#ff6b6b";if(ebullets)ebullets.forEach(b=>ctx.fillRect(b.x-2,b.y,4,8));ctx.fillStyle="#9fd3ff";ctx.beginPath();ctx.moveTo(px,H-46);ctx.lineTo(px-16,H-22);ctx.lineTo(px+16,H-22);ctx.fill();ctx.fillStyle="#fff";ctx.font="bold 18px sans-serif";ctx.textAlign="center";if(state==="ready")ctx.fillText("Enter or tap to launch",W/2,H/2);if(paused&&state==="play")ctx.fillText("Paused",W/2,H/2);if(state==="over")ctx.fillText(won?"Formation cleared":"Ship lost",W/2,H/2)}
+function act(n){if(n==="pause"){if(state==="play")paused=!paused;return}if(n==="restart"){state="ready";start();return}if(state!=="play")start();if(n==="left")keys.left=true;if(n==="right")keys.right=true;if(n==="fire"){keys.fire=true;shoot()}}
+addEventListener("keydown",e=>{const k=e.key;if(["ArrowLeft","ArrowRight"," "].includes(k))e.preventDefault();if(k==="ArrowLeft"||k==="a"||k==="A"){keys.left=true;if(state!=="play")start()}else if(k==="ArrowRight"||k==="d"||k==="D"){keys.right=true;if(state!=="play")start()}else if(k===" "){keys.fire=true;if(state!=="play")start();else shoot()}else if(k==="Enter")start();else if(k==="p"||k==="P"||k==="Escape"){if(state==="play")paused=!paused}else if(k==="r"||k==="R"){state="ready";start()}});
+addEventListener("keyup",e=>{const k=e.key;if(k==="ArrowLeft"||k==="a"||k==="A")keys.left=false;if(k==="ArrowRight"||k==="d"||k==="D")keys.right=false;if(k===" ")keys.fire=false});
+document.querySelectorAll("button").forEach(b=>{b.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();act(b.dataset.act)});b.addEventListener("pointerup",()=>{if(b.dataset.act==="left")keys.left=false;if(b.dataset.act==="right")keys.right=false;if(b.dataset.act==="fire")keys.fire=false});b.addEventListener("pointerleave",()=>{if(b.dataset.act==="left")keys.left=false;if(b.dataset.act==="right")keys.right=false;if(b.dataset.act==="fire")keys.fire=false})});
+cv.addEventListener("touchstart",e=>{e.preventDefault();if(state!=="play")start()},{passive:false});
+cv.addEventListener("pointerdown",e=>{if(e.pointerType==="touch"&&state!=="play")start()});
+function loop(){requestAnimationFrame(loop);if(state==="play"&&!paused)update();draw()}
+reset();requestAnimationFrame(loop);
+</script>
+</body>
+</html>

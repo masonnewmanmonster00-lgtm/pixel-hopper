@@ -26,8 +26,8 @@ header{position:relative;max-width:920px;margin:8px auto 22px}
 h1{margin:0;font:800 42px/0.95 ui-monospace,monospace;letter-spacing:.04em;text-transform:uppercase}
 h1 span{color:#ff6b6b}
 .lede{margin:10px 0 0;max-width:36rem;color:#c8c4d8;font-size:16px}
-.grid{position:relative;max-width:980px;margin:0 auto;display:grid;grid-template-columns:1fr;gap:14px}
-.card{display:flex;flex-direction:column;min-height:0;text-decoration:none;color:inherit;background:linear-gradient(180deg,#171426,#0e0c18);border:2px solid #3a3358;border-radius:18px;overflow:hidden;box-shadow:0 8px 0 #05040a;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.grid{position:relative;z-index:1;max-width:980px;margin:0 auto;display:grid;grid-template-columns:1fr;gap:14px}
+.card{display:flex;flex-direction:column;min-height:220px;text-decoration:none;color:inherit;background:linear-gradient(180deg,#171426,#0e0c18);border:2px solid #3a3358;border-radius:18px;overflow:hidden;box-shadow:0 8px 0 #05040a;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .card:hover,.card:focus-visible{border-color:var(--gold);transform:translateY(-3px)}
 .card:active{transform:translateY(2px);box-shadow:0 3px 0 #05040a}
 .card:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
@@ -102,10 +102,18 @@ h1 span{color:#ff6b6b}
 .skyj b{position:absolute;left:42%;bottom:24%;width:16px;height:26px;background:#e33;border-radius:3px}
 .skyj i{position:absolute;right:18%;bottom:30%;width:4px;height:36px;background:#ddd}
 .skyj i:after{content:"";position:absolute;left:4px;top:0;border-style:solid;border-width:6px 12px 6px 0;border-color:transparent #f33 transparent transparent}
+.gems{background:#1a0b2e}.gems i{position:absolute;width:22px;height:22px;top:42%}
+.gems i:nth-child(1){left:22%;background:#f44;border-radius:50%}
+.gems i:nth-child(2){left:40%;background:#4d4;transform:rotate(45deg)}
+.gems i:nth-child(3){left:58%;background:#4af;clip-path:polygon(50% 0,100% 100%,0 100%)}
+.td{background:#163816}.td i{position:absolute;background:#a8834f}
+.td i:nth-child(1){left:0;right:0;top:46%;height:16px}
+.td i:nth-child(2){left:62%;top:46%;bottom:0;width:16px}
+.td b{position:absolute;left:28%;top:28%;width:22px;height:22px;border-radius:50%;background:#4af;box-shadow:8px 0 0 #4af}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
-.bg{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+.bg{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
 .orb{position:absolute;border-radius:50%;filter:blur(28px);opacity:.5;animation:float 16s ease-in-out infinite}
 .orb.a{width:42vw;height:42vw;max-width:420px;max-height:420px;background:#2f6cff;left:-8vw;top:-10vh}
 .orb.b{width:36vw;height:36vw;max-width:360px;max-height:360px;background:#e8c070;right:-10vw;top:18vh;animation-delay:-5s}
@@ -113,7 +121,7 @@ h1 span{color:#ff6b6b}
 .stars{position:absolute;inset:-20%;background-image:radial-gradient(rgba(255,255,255,.7) 1px,transparent 1px);background-size:42px 42px;opacity:.28;animation:drift 36s linear infinite}
 @keyframes float{50%{transform:translate3d(24px,-36px,0) scale(1.06)}}
 @keyframes drift{to{background-position:42px 90px}}
-.head{position:relative;max-width:980px;margin:0 auto 18px}
+.head{position:relative;z-index:2;max-width:980px;margin:0 auto 18px}
 .head-row{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
 #random{min-height:44px;padding:0 16px;border:0;border-radius:999px;background:#ff6b6b;color:#fff;font:700 14px/1 ui-monospace,monospace;cursor:pointer;touch-action:manipulation}
 #random:focus-visible{outline:3px solid #fff;outline-offset:3px}
@@ -124,17 +132,27 @@ h1 span{color:#ff6b6b}
 .chip{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid #3a3358;background:#171426;color:#f4f1ea;font:700 13px/1 ui-monospace,monospace;cursor:pointer;touch-action:manipulation}
 .chip.on{background:#ffe14d;color:#0b0b14;border-color:#ffe14d}
 .chip:focus-visible{outline:3px solid #ffe14d;outline-offset:2px}
-.recent-wrap{position:relative;max-width:980px;margin:0 auto 18px}
+.recent-wrap{position:relative;z-index:1;max-width:980px;margin:0 auto 18px}
 .recent-wrap h2{margin:0 0 10px;font:700 12px/1 ui-monospace,monospace;letter-spacing:.18em;text-transform:uppercase;color:#9fd3ff}
 .recent-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px}
 .recent{flex:0 0 auto;min-height:40px;display:inline-flex;align-items:center;text-decoration:none;color:#0b0b14;background:#ffe14d;border-radius:999px;padding:0 14px;font:700 13px/1 ui-monospace,monospace;touch-action:manipulation}
 .scoreline{margin:2px 0 0;font:700 12px/1 ui-monospace,monospace;color:#ffe14d}
 a.card[hidden]{display:none}
-#empty{position:relative;max-width:980px;margin:8px auto;color:#c8c4d8}
+#empty{position:relative;z-index:1;max-width:980px;margin:8px auto;color:#c8c4d8}
 @media (prefers-reduced-motion:reduce){
  .orb,.stars,.coin,.flag:before{animation:none}
 }
 
+@media (max-height:520px){
+ body{padding-top:10px;padding-bottom:14px}
+ h1{font-size:28px}
+ .lede{margin-top:4px;font-size:13px}
+ .tools{margin-top:8px}
+ .head{margin-bottom:8px}
+ .thumb{height:64px}
+ .card h2{font-size:20px}
+ .meta{padding:10px 12px 12px}
+}
 @media (min-width:700px){
  h1{font-size:56px}
  .grid{grid-template-columns:1fr 1fr;gap:18px}
@@ -154,7 +172,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Eleven browser games. Best scores stay on this device.</p>
+<p class="lede">Thirteen browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -163,6 +181,7 @@ a.card[hidden]{display:none}
 <button type="button" class="chip" data-cat="Puzzle" aria-pressed="false">Puzzle</button>
 <button type="button" class="chip" data-cat="Arcade" aria-pressed="false">Arcade</button>
 <button type="button" class="chip" data-cat="Classic" aria-pressed="false">Classic</button>
+<button type="button" class="chip" data-cat="Strategy" aria-pressed="false">Strategy</button>
 </div>
 </div>
 </header>
@@ -207,9 +226,17 @@ a.card[hidden]{display:none}
 <div class="thumb merge" aria-hidden="true"><i>2</i><i>4</i><i>8</i></div>
 <div class="meta"><p class="kicker">Puzzle</p><h2>2048</h2><p>Slide and swipe tiles together until the numbers merge.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
+<a class="card" href="./tower-defense.html" data-cat="Strategy" data-key="arcade-tower-best" data-name="Tower Defense">
+<div class="thumb td" aria-hidden="true"><i></i><i></i><b></b></div>
+<div class="meta"><p class="kicker">Strategy</p><h2>Tower Defense</h2><p>Build towers on the grass and stop each wave before it reaches the base.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
 <a class="card" href="./invaders.html" data-cat="Action" data-key="arcade-raid-best" data-name="Void Raid">
 <div class="thumb raid" aria-hidden="true"><i></i><i></i><i></i><b></b></div>
 <div class="meta"><p class="kicker">Action</p><h2>Void Raid</h2><p>Move, fire, and clear the formation before it lands.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./gem-crush.html" data-cat="Puzzle" data-key="arcade-gem-best" data-name="Gem Crush">
+<div class="thumb gems" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="meta"><p class="kicker">Puzzle</p><h2>Gem Crush</h2><p>Swap neighboring gems to line up three or more before your moves run out.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 <a class="card" href="./minesweeper.html" data-cat="Puzzle" data-key="arcade-mine-best" data-name="Minefield">
 <div class="thumb mine" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
@@ -228,10 +255,14 @@ function paintScores(){document.querySelectorAll("a.card").forEach(card=>{const 
 function paintRecent(){const wrap=document.getElementById("recent-wrap"),row=document.getElementById("recent");const cards=[...document.querySelectorAll("a.card")];const shown=readRecent().map(href=>cards.find(c=>c.getAttribute("href")===href)).filter(Boolean);wrap.hidden=!shown.length;row.replaceChildren();for(const card of shown){const a=document.createElement("a");a.className="recent";a.href=card.getAttribute("href");a.textContent=card.dataset.name;a.addEventListener("click",()=>remember(a.getAttribute("href")));row.appendChild(a)}}
 function apply(){const q=document.getElementById("q").value.trim().toLowerCase();let visible=0;document.querySelectorAll("a.card").forEach(card=>{const blob=(card.dataset.name+" "+card.innerText).toLowerCase();const ok=(cat==="All"||card.dataset.cat===cat)&&(!q||blob.includes(q));card.hidden=!ok;if(ok)visible++});document.getElementById("empty").hidden=visible>0}
 document.querySelectorAll(".chip").forEach(btn=>btn.addEventListener("click",()=>{cat=btn.dataset.cat;document.querySelectorAll(".chip").forEach(b=>{const on=b===btn;b.classList.toggle("on",on);b.setAttribute("aria-pressed",on?"true":"false")});apply()}));
-document.getElementById("q").addEventListener("input",apply);
+let typed=false;
+document.getElementById("q").addEventListener("keydown",()=>{typed=true});
+document.getElementById("q").addEventListener("input",e=>{if(!e.isTrusted||!typed){e.target.value="";apply();return}apply()});
 document.querySelectorAll("a.card").forEach(a=>a.addEventListener("click",()=>remember(a.getAttribute("href"))));
-document.getElementById("random").addEventListener("click",()=>{const pool=[...document.querySelectorAll("a.card")].filter(c=>!c.hidden);const all=pool.length?pool:[...document.querySelectorAll("a.card")];const pick=all[Math.floor(Math.random()*all.length)];remember(pick.getAttribute("href"));location.href=pick.href});
-paintScores();paintRecent();
+document.getElementById("random").addEventListener("click",()=>{const pool=[...document.querySelectorAll("a.card")].filter(c=>!c.hidden);const all=pool.length?pool:[...document.querySelectorAll("a.card")];if(!all.length)return;const pick=all[Math.floor(Math.random()*all.length)];remember(pick.getAttribute("href"));location.href=pick.href});
+function resetView(){const q=document.getElementById("q");q.value="";typed=false;cat="All";document.querySelectorAll(".chip").forEach(b=>{const on=b.dataset.cat==="All";b.classList.toggle("on",on);b.setAttribute("aria-pressed",on?"true":"false")});document.querySelectorAll("a.card").forEach(card=>{card.hidden=false});document.getElementById("empty").hidden=true}
+addEventListener("pageshow",resetView);
+resetView();paintScores();paintRecent();
 </script>
 </body>
 </html>

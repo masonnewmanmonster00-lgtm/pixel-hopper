@@ -3,23 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg">
+<link rel="apple-touch-icon" href="./icon.svg">
 <title>Minefield</title>
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:#0b0b14;color:#f4f1ea;font-family:Segoe UI,system-ui,sans-serif}
-body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:54px 12px 12px;user-select:none;touch-action:manipulation}
-a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:20;box-sizing:border-box;display:inline-flex;align-items:center;min-height:40px;padding:0 10px;border-radius:999px;background:rgba(8,8,16,.72);color:#ffe14d;border:1px solid rgba(255,225,77,.5);font:700 12px/1 ui-monospace,monospace;text-decoration:none;touch-action:manipulation}
-canvas{background:#16301c;border-radius:12px;max-width:96vw;max-height:calc(100dvh - 180px);width:auto;height:auto;touch-action:none}
-.hud{font:700 13px/1.4 ui-monospace,monospace;color:#c8c4d8;text-align:center}
-.bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-button{min-height:44px;min-width:44px;padding:0 12px;border-radius:10px;border:1px solid #3a3358;background:#171426;color:#ffe14d;font:700 14px/1 ui-monospace,monospace;touch-action:manipulation}
+html,body{margin:0;height:100%;background:#0b0b14;color:#f4f1ea;font-family:"Segoe UI",system-ui,sans-serif;overflow:hidden}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:44px 8px 8px;user-select:none;touch-action:manipulation}
+a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:30;box-sizing:border-box;display:inline-flex;align-items:center;min-height:40px;padding:0 12px;border-radius:999px;background:rgba(8,8,16,.82);color:#ffe14d;border:1px solid rgba(255,225,77,.55);font:700 12px/1 ui-monospace,monospace;letter-spacing:.04em;text-decoration:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+a.back:focus-visible{outline:2px solid #ffe14d;outline-offset:2px}
+.hud{margin:0;font:700 12px/1.25 ui-monospace,monospace;color:#c8c4d8;text-align:center;flex:0 0 auto}
+.stage{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{border-radius:12px;max-width:100%;max-height:100%;width:auto;height:auto;touch-action:none}
+.bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:min(560px,100%);flex:0 0 auto}
+button{min-height:40px;min-width:44px;padding:0 12px;border-radius:10px;border:1px solid #3a3358;background:#171426;color:#ffe14d;font:700 15px/1 ui-monospace,monospace;touch-action:manipulation}
 button.on{background:#ffe14d;color:#0b0b14}
+#c{background:#16301c}
 </style>
 </head>
 <body data-state="ready">
 <a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a>
 <p class="hud">Minefield · Score <span id="score">0</span> · Best <span id="best">0</span><br>Tap to reveal · long-press or Flag · arrows + Space · P pause · R restart</p>
-<canvas id="c" width="324" height="324"></canvas>
+<div class="stage"><canvas id="c" width="324" height="324"></canvas></div>
 <div class="bar">
 <button type="button" id="flag">Flag</button>
 <button type="button" id="pause">Pause</button>
@@ -49,7 +55,7 @@ addEventListener("keydown",e=>{const k=e.key;if(["ArrowUp","ArrowDown","ArrowLef
 document.getElementById("flag").addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();if(state!=="play")start();flagMode=!flagMode;sync()});
 document.getElementById("pause").addEventListener("pointerdown",e=>{e.preventDefault();if(state==="play")paused=!paused});
 document.getElementById("restart").addEventListener("pointerdown",e=>{e.preventDefault();state="ready";start()});
-cv.addEventListener("pointerdown",e=>{if(e.pointerType==="mouse"&&state!=="play"){start();return}if(state!=="play")return;down=cellAt(e);held=false;clearTimeout(hold);hold=setTimeout(()=>{held=true;if(down)toggleFlag(down.x,down.y)},450)});
+cv.addEventListener("pointerdown",e=>{if(state!=="play")start();if(state!=="play"||paused)return;down=cellAt(e);held=false;clearTimeout(hold);hold=setTimeout(()=>{held=true;if(down)toggleFlag(down.x,down.y)},450)});
 cv.addEventListener("pointerup",e=>{clearTimeout(hold);if(state!=="play"||!down||held){held=false;return}const cell=cellAt(e)||down;if(flagMode||e.button===2)toggleFlag(cell.x,cell.y);else reveal(cell.x,cell.y);down=null});
 cv.addEventListener("pointerleave",()=>clearTimeout(hold));
 cv.addEventListener("contextmenu",e=>e.preventDefault());

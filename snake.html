@@ -3,22 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg">
+<link rel="apple-touch-icon" href="./icon.svg">
 <title>Snake</title>
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:#0b0b14;color:#f4f1ea;font-family:Segoe UI,system-ui,sans-serif}
-body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:54px 12px 12px;user-select:none;touch-action:manipulation}
-a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:20;box-sizing:border-box;display:inline-flex;align-items:center;min-height:40px;padding:0 10px;border-radius:999px;background:rgba(8,8,16,.72);color:#ffe14d;border:1px solid rgba(255,225,77,.5);font:700 12px/1 ui-monospace,monospace;text-decoration:none;touch-action:manipulation}
-canvas{background:#10141c;border-radius:12px;max-width:96vw;max-height:calc(100dvh - 168px);width:auto;height:auto;touch-action:none}
-.hud{font:700 13px/1.4 ui-monospace,monospace;color:#c8c4d8;text-align:center}
-.bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:min(420px,100%)}
-button{min-height:44px;min-width:44px;padding:0 12px;border-radius:10px;border:1px solid #3a3358;background:#171426;color:#ffe14d;font:700 16px/1 ui-monospace,monospace;touch-action:manipulation}
+html,body{margin:0;height:100%;background:#0b0b14;color:#f4f1ea;font-family:"Segoe UI",system-ui,sans-serif;overflow:hidden}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:44px 8px 8px;user-select:none;touch-action:manipulation}
+a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:30;box-sizing:border-box;display:inline-flex;align-items:center;min-height:40px;padding:0 12px;border-radius:999px;background:rgba(8,8,16,.82);color:#ffe14d;border:1px solid rgba(255,225,77,.55);font:700 12px/1 ui-monospace,monospace;letter-spacing:.04em;text-decoration:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+a.back:focus-visible{outline:2px solid #ffe14d;outline-offset:2px}
+.hud{margin:0;font:700 12px/1.25 ui-monospace,monospace;color:#c8c4d8;text-align:center;flex:0 0 auto}
+.stage{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{border-radius:12px;max-width:100%;max-height:100%;width:auto;height:auto;touch-action:none}
+.bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:min(560px,100%);flex:0 0 auto}
+button{min-height:40px;min-width:44px;padding:0 12px;border-radius:10px;border:1px solid #3a3358;background:#171426;color:#ffe14d;font:700 15px/1 ui-monospace,monospace;touch-action:manipulation}
+button.on{background:#ffe14d;color:#0b0b14}
+#c{background:#10141c}
 </style>
 </head>
 <body data-state="ready">
 <a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a>
 <p class="hud">Score <span id="score">0</span> · Best <span id="best">0</span><br>Arrows or buttons · P pause · R restart</p>
-<canvas id="c" width="360" height="360"></canvas>
+<div class="stage"><canvas id="c" width="360" height="360"></canvas></div>
 <div class="bar">
 <button type="button" data-act="up" aria-label="Up">↑</button>
 <button type="button" data-act="left" aria-label="Left">←</button>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg">
+<link rel="apple-touch-icon" href="./icon.svg">
+<title>Gem Crush</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0b0b14;color:#f4f1ea;font-family:"Segoe UI",system-ui,sans-serif;overflow:hidden}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:44px 8px 8px;user-select:none;touch-action:manipulation}
+a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:30;box-sizing:border-box;display:inline-flex;align-items:center;min-height:40px;padding:0 12px;border-radius:999px;background:rgba(8,8,16,.82);color:#ffe14d;border:1px solid rgba(255,225,77,.55);font:700 12px/1 ui-monospace,monospace;letter-spacing:.04em;text-decoration:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+a.back:focus-visible{outline:2px solid #ffe14d;outline-offset:2px}
+.hud{margin:0;font:700 12px/1.25 ui-monospace,monospace;color:#c8c4d8;text-align:center;flex:0 0 auto}
+.stage{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{background:#1a0b2e;border-radius:12px;max-width:100%;max-height:100%;width:auto;height:auto;touch-action:none}
+.bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:min(560px,100%);flex:0 0 auto}
+button{min-height:40px;min-width:44px;padding:0 12px;border-radius:10px;border:1px solid #3a3358;background:#171426;color:#ffe14d;font:700 15px/1 ui-monospace,monospace;touch-action:manipulation}
+</style>
+</head>
+<body>
+<a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a>
+<p class="hud">Gem Crush · swap neighbours · match 3 · P pause · R restart</p>
+<div class="stage"><canvas id="c" width="480" height="540"></canvas></div>
+<div class="bar">
+<button type="button" id="pause">Pause</button>
+<button type="button" id="restart">Restart</button>
+</div>
+<script>
+"use strict";
+const c=document.getElementById('c'),x=c.getContext('2d'),N=8,S=60,OY=60,K=6;
+const col=['#f44','#fa0','#ff4','#4d4','#4af','#c5f'];
+let g,sel,score,moves,target,level,busy=false,parts=[],msg='',paused=false,gemHi=0;
+try{gemHi=+localStorage.getItem("arcade-gem-best")||0}catch(e){}
+function beep(f,d){try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!beep.ac)beep.ac=new AC();const a=beep.ac;if(a.state==="suspended")a.resume();const o=a.createOscillator(),g=a.createGain();o.type="square";o.frequency.value=f;g.gain.value=.04;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+d)}catch(e){}}
+function rnd(){return Math.floor(Math.random()*K)}
+function newBoard(){g=[];for(let i=0;i<N;i++){g[i]=[];for(let j=0;j<N;j++){let v;do{v=rnd()}while((i>1&&g[i-1][j].v==v&&g[i-2][j].v==v)||(j>1&&g[i][j-1].v==v&&g[i][j-2].v==v));g[i][j]={v,oy:-(N-j)*S};}}if(!hasMove())newBoard();}
+function start(l){level=l;score=0;moves=20;target=1000+l*500;sel=null;paused=false;newBoard();msg='';const p=document.getElementById("pause");if(p)p.textContent="Pause"}
+function find(){const m=new Set();for(let j=0;j<N;j++)for(let i=0;i<N-2;i++){const v=g[i][j].v;if(v>=0&&g[i+1][j].v==v&&g[i+2][j].v==v)for(let k=0;k<3;k++)m.add(i+k+','+j);}
+for(let i=0;i<N;i++)for(let j=0;j<N-2;j++){const v=g[i][j].v;if(v>=0&&g[i][j+1].v==v&&g[i][j+2].v==v)for(let k=0;k<3;k++)m.add(i+','+(j+k));}return m;}
+function swap(a,b){const t=g[a.i][a.j];g[a.i][a.j]=g[b.i][b.j];g[b.i][b.j]=t;}
+function hasMove(){for(let i=0;i<N;i++)for(let j=0;j<N;j++)for(const[di,dj]of[[1,0],[0,1]]){const a={i,j},b={i:i+di,j:j+dj};if(b.i>=N||b.j>=N)continue;swap(a,b);const ok=find().size>0;swap(a,b);if(ok)return true;}return false;}
+function wait(ms){return new Promise(r=>setTimeout(r,ms))}
+async function waitPause(){while(paused) await wait(40)}
+async function resolve(){let combo=1;for(;;){await waitPause();const m=find();if(!m.size)break;
+for(const k of m){const[i,j]=k.split(',').map(Number);for(let n=0;n<6;n++)parts.push({x:i*S+30,y:OY+j*S+30,vx:(Math.random()-.5)*8,vy:(Math.random()-.5)*8,l:30,c:col[g[i][j].v]});g[i][j].v=-1;}
+score+=m.size*10*combo;beep(520+combo*40,.04);if(combo>1)msg='Combo x'+combo+'!';combo++;await wait(200);await waitPause();
+for(let i=0;i<N;i++){let w=N-1;for(let j=N-1;j>=0;j--)if(g[i][j].v>=0){if(w!=j){g[i][w]={v:g[i][j].v,oy:(j-w)*S};}w--;}for(let j=w;j>=0;j--)g[i][j]={v:rnd(),oy:-(w+1)*S};}
+await wait(300);}if(!hasMove()){msg='Shuffling!';newBoard();}}
+async function tryMove(a,b){if(paused)return;busy=true;swap(a,b);if(find().size){moves--;await resolve();}else{await wait(150);await waitPause();swap(a,b);}busy=false;setTimeout(()=>msg='',1200);}
+c.addEventListener('pointerdown',e=>{if(busy||paused)return;const r=c.getBoundingClientRect(),px=(e.clientX-r.left)*c.width/r.width,py=(e.clientY-r.top)*c.height/r.height;
+if(moves<=0||score>=target){if(score>=target)start(level+1);else start(1);return;}
+const i=Math.floor(px/S),j=Math.floor((py-OY)/S);if(i<0||j<0||i>=N||j>=N)return;
+if(sel&&Math.abs(sel.i-i)+Math.abs(sel.j-j)==1){const a=sel;sel=null;tryMove(a,{i,j});}else sel={i,j};});
+function gem(cx,cy,v){x.save();x.translate(cx,cy);x.fillStyle=col[v];x.shadowColor=col[v];x.shadowBlur=10;x.beginPath();
+const sides=[3,4,5,6,8,4][v],r=22;for(let k=0;k<sides;k++){const a=k/sides*Math.PI*2-Math.PI/2+(v==5?Math.PI/4:0);x.lineTo(Math.cos(a)*r,Math.sin(a)*r);}x.closePath();x.fill();
+x.shadowBlur=0;x.fillStyle='#fff6';x.beginPath();x.arc(-6,-7,6,0,7);x.fill();x.restore();}
+function rememberScore(){try{if(typeof score==="number"&&score>gemHi){gemHi=score;localStorage.setItem("arcade-gem-best",String(score))}}catch(e){}}
+function draw(){rememberScore();x.fillStyle='#1a0b2e';x.fillRect(0,0,480,540);
+x.fillStyle='#fff';x.font='18px sans-serif';x.textAlign='left';x.fillText('Level '+level+'   Score '+score+'/'+target,10,25);x.textAlign='right';x.fillText('Moves '+moves,470,25);
+x.fillStyle='#333';x.fillRect(10,35,460,10);x.fillStyle='#f6c';x.fillRect(10,35,460*Math.min(1,score/target),10);
+for(let i=0;i<N;i++)for(let j=0;j<N;j++){x.fillStyle=(i+j)%2?'#2a1a44':'#331f52';x.fillRect(i*S,OY+j*S,S,S);const t=g[i][j];if(!paused&&t.oy){t.oy*=0.8;if(Math.abs(t.oy)<1)t.oy=0;}if(t.v>=0)gem(i*S+30,OY+j*S+30+t.oy,t.v);}
+if(sel){x.strokeStyle='#fff';x.lineWidth=3;x.strokeRect(sel.i*S+3,OY+sel.j*S+3,S-6,S-6);}
+if(!paused)parts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.l--});
+parts.forEach(p=>{x.globalAlpha=Math.max(0,p.l/30);x.fillStyle=p.c;x.fillRect(p.x,p.y,4,4)});x.globalAlpha=1;if(!paused)parts=parts.filter(p=>p.l>0);
+if(msg){x.fillStyle='#ff4';x.font='bold 32px sans-serif';x.textAlign='center';x.fillText(msg,240,300);}
+if(paused){x.fillStyle='rgba(0,0,0,.55)';x.fillRect(0,0,480,540);x.fillStyle='#ffe14d';x.font='bold 36px sans-serif';x.textAlign='center';x.fillText('Paused',240,270);}
+else if(!busy&&(score>=target||moves<=0)){x.fillStyle='rgba(0,0,0,.7)';x.fillRect(0,0,480,540);x.textAlign='center';const w=score>=target;x.fillStyle=w?'#4d4':'#f44';x.font='40px sans-serif';x.fillText(w?'LEVEL CLEAR!':'OUT OF MOVES',240,270);x.fillStyle='#fff';x.font='18px sans-serif';x.fillText(w?'Tap for the next level':'Tap to try again',240,305);}
+requestAnimationFrame(draw);}
+document.getElementById("pause").addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();paused=!paused;e.currentTarget.textContent=paused?"Resume":"Pause"});
+document.getElementById("restart").addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();if(busy)return;start(1)});
+addEventListener("keydown",e=>{if(e.key==="p"||e.key==="P"||e.key==="Escape"){paused=!paused;document.getElementById("pause").textContent=paused?"Resume":"Pause"}else if(e.key==="r"||e.key==="R"){if(!busy)start(1)}});
+start(1);draw();
+</script>
+</body>
+</html>

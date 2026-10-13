@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg">
+<link rel="apple-touch-icon" href="./icon.svg">
+<title>Tower Defense</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0b0b14;color:#f4f1ea;font-family:"Segoe UI",system-ui,sans-serif;overflow:hidden}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:44px 8px 8px;user-select:none;touch-action:manipulation}
+a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:30;box-sizing:border-box;display:inline-flex;align-items:center;min-height:40px;padding:0 12px;border-radius:999px;background:rgba(8,8,16,.82);color:#ffe14d;border:1px solid rgba(255,225,77,.55);font:700 12px/1 ui-monospace,monospace;letter-spacing:.04em;text-decoration:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+a.back:focus-visible{outline:2px solid #ffe14d;outline-offset:2px}
+.hud{margin:0;font:700 12px/1.25 ui-monospace,monospace;color:#c8c4d8;text-align:center;flex:0 0 auto}
+.stage{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{background:#163816;border-radius:12px;max-width:100%;max-height:100%;width:auto;height:auto;touch-action:none}
+.bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:min(720px,100%);flex:0 0 auto}
+button{min-height:40px;min-width:44px;padding:0 12px;border-radius:10px;border:1px solid #3a3358;background:#171426;color:#ffe14d;font:700 15px/1 ui-monospace,monospace;touch-action:manipulation}
+button.on{background:#ffe14d;color:#0b0b14}
+</style>
+</head>
+<body>
+<a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a>
+<p class="hud">Tower Defense · build on the grass · stop each wave</p>
+<div class="stage"><canvas id="c" width="640" height="440"></canvas></div>
+<div id="ui" class="bar"></div>
+<script>
+"use strict";
+const c=document.getElementById('c'),x=c.getContext('2d'),T=40,CW=16,CH=11;
+const path=[[0,2],[5,2],[5,7],[2,7],[2,9],[10,9],[10,3],[13,3],[13,8],[15,8]];
+const TY={gun:{n:'Gun',cost:50,r:110,rate:20,dmg:4,col:'#4af'},cannon:{n:'Cannon',cost:100,r:95,rate:55,dmg:14,splash:45,col:'#fa4'},frost:{n:'Frost',cost:80,r:90,rate:35,dmg:1,slow:0.5,col:'#aef'},laser:{n:'Laser',cost:175,r:150,rate:6,dmg:3,col:'#f4f'}};
+let pts=[],road=new Set(),towers,enemies,shots,gold,lives,wave,spawnQ,pick='gun',over,t,flash=[],paused=false,towerHi=0;
+try{towerHi=+localStorage.getItem("arcade-tower-best")||0}catch(e){}
+path.forEach(([a,b],k)=>{pts.push({x:a*T+20,y:b*T+20});if(k){const[p,q]=path[k-1];for(let i=Math.min(p,a);i<=Math.max(p,a);i++)for(let j=Math.min(q,b);j<=Math.max(q,b);j++)road.add(i+','+j);}});
+function beep(f,d){try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!beep.ac)beep.ac=new AC();const a=beep.ac;if(a.state==="suspended")a.resume();const o=a.createOscillator(),g=a.createGain();o.type="square";o.frequency.value=f;g.gain.value=.04;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+d)}catch(e){}}
+function reset(){towers=[];enemies=[];shots=[];gold=150;lives=20;wave=0;spawnQ=[];over=false;paused=false;t=0;}
+function arm(b,fn){b.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();fn()});}
+function ui(){const bar=document.getElementById('ui');bar.innerHTML='';for(const[k,v] of Object.entries(TY)){const b=document.createElement('button');b.type='button';b.className=pick==k?'on':'';b.textContent=v.n+' $'+v.cost;arm(b,()=>{pick=k;ui()});bar.appendChild(b)}
+const n=document.createElement('button');n.type='button';n.textContent='Next wave';arm(n,()=>{if(!paused&&!over)nextWave()});bar.appendChild(n);
+const p=document.createElement('button');p.type='button';p.textContent=paused?'Resume':'Pause';arm(p,()=>{if(over)return;paused=!paused;ui()});bar.appendChild(p);
+const r=document.createElement('button');r.type='button';r.textContent='Restart';arm(r,()=>{reset();ui()});bar.appendChild(r);}
+function nextWave(){if(over||paused||spawnQ.length)return;wave++;beep(440,.06);const n=6+wave*2;for(let i=0;i<n;i++){const boss=wave%5==0&&i==n-1,fast=wave>2&&i%4==3;spawnQ.push({at:t+i*(fast?20:35),hp:boss?60*wave:(fast?6:10)*(1+wave*0.35),sp:boss?0.6:fast?1.8:1,boss,fast});}}
+function update(){if(over||paused)return;t++;
+while(spawnQ.length&&spawnQ[0].at<=t){const s=spawnQ.shift();enemies.push({x:pts[0].x,y:pts[0].y,seg:1,hp:s.hp,max:s.hp,sp:s.sp,slow:0,boss:s.boss,fast:s.fast,rew:s.boss?50:s.fast?6:5});}
+for(const e of enemies){const sp=e.sp*(e.slow>0?0.5:1);if(e.slow>0)e.slow--;const tg=pts[e.seg];const dx=tg.x-e.x,dy=tg.y-e.y,d=Math.hypot(dx,dy);
+if(d<sp){e.x=tg.x;e.y=tg.y;e.seg++;if(e.seg>=pts.length){e.done=1;lives-=e.boss?5:1;}}else{e.x+=dx/d*sp;e.y+=dy/d*sp;}}
+enemies=enemies.filter(e=>!e.done);if(lives<=0){lives=0;over=true;beep(140,.2);}
+for(const w of towers){const ty=TY[w.k];if(--w.cd>0)continue;let best=null;for(const e of enemies){if(Math.hypot(e.x-w.x,e.y-w.y)<ty.r*(1+0.15*(w.lv-1))&&(!best||e.seg>best.seg))best=e;}
+if(best){w.cd=ty.rate;w.a=Math.atan2(best.y-w.y,best.x-w.x);const dmg=ty.dmg*(1+0.6*(w.lv-1));
+if(w.k=='laser'){best.hp-=dmg;flash.push({x1:w.x,y1:w.y,x2:best.x,y2:best.y,l:5,c:ty.col});}else shots.push({x:w.x,y:w.y,tg:best,k:w.k,dmg});}}
+for(const s of shots){const dx=s.tg.x-s.x,dy=s.tg.y-s.y,d=Math.hypot(dx,dy);if(d<8||s.tg.hp<=0){s.dead=1;const ty=TY[s.k];
+if(ty.splash){for(const e of enemies)if(Math.hypot(e.x-s.tg.x,e.y-s.tg.y)<ty.splash)e.hp-=s.dmg;flash.push({boom:1,x:s.tg.x,y:s.tg.y,l:12});}else s.tg.hp-=s.dmg;if(ty.slow)s.tg.slow=90;}else{s.x+=dx/d*7;s.y+=dy/d*7;}}
+shots=shots.filter(s=>!s.dead);enemies=enemies.filter(e=>{if(e.hp<=0){gold+=e.rew;return false}return true});}
+function rememberScore(){try{if(typeof wave==="number"&&wave>towerHi){towerHi=wave;localStorage.setItem("arcade-tower-best",String(wave))}}catch(e){}}
+function draw(){rememberScore();for(let i=0;i<CW;i++)for(let j=0;j<CH;j++){x.fillStyle=road.has(i+','+j)?'#a8834f':((i+j)%2?'#2d5a2d':'#336633');x.fillRect(i*T,j*T,T,T);}
+x.fillStyle='#f44';x.fillRect(15*T,8*T,T,T);x.fillStyle='#fff';x.font='10px sans-serif';x.textAlign='center';x.fillText('BASE',15*T+20,8*T+24);
+for(const w of towers){const ty=TY[w.k];x.fillStyle='#555';x.beginPath();x.arc(w.x,w.y,15,0,7);x.fill();x.save();x.translate(w.x,w.y);x.rotate(w.a||0);x.fillStyle=ty.col;x.fillRect(0,-4,18,8);x.beginPath();x.arc(0,0,10,0,7);x.fill();x.restore();
+x.fillStyle='#ff4';for(let k=1;k<w.lv;k++)x.fillRect(w.x-12+k*6,w.y+12,4,4);}
+for(const e of enemies){const r=e.boss?14:e.fast?7:10;x.fillStyle=e.slow>0?'#8cf':e.boss?'#a2f':e.fast?'#fd3':'#e33';x.beginPath();x.arc(e.x,e.y,r,0,7);x.fill();
+x.fillStyle='#000';x.fillRect(e.x-12,e.y-r-8,24,4);x.fillStyle='#4f4';x.fillRect(e.x-12,e.y-r-8,24*e.hp/e.max,4);}
+for(const s of shots){x.fillStyle=TY[s.k].col;x.beginPath();x.arc(s.x,s.y,s.k=='cannon'?5:3,0,7);x.fill();}
+flash.forEach(f=>{f.l--;if(f.boom){x.fillStyle='rgba(255,160,40,'+(f.l/12)+')';x.beginPath();x.arc(f.x,f.y,45*(1-f.l/12)+5,0,7);x.fill();}else{x.strokeStyle=f.c;x.lineWidth=3;x.beginPath();x.moveTo(f.x1,f.y1);x.lineTo(f.x2,f.y2);x.stroke();}});flash=flash.filter(f=>f.l>0);
+x.fillStyle='rgba(0,0,0,.5)';x.fillRect(0,0,640,26);x.fillStyle='#fff';x.font='16px sans-serif';x.textAlign='left';x.fillText('Gold $'+gold+'   Lives '+lives+'   Wave '+wave,8,19);
+x.textAlign='right';x.fillText(spawnQ.length||enemies.length?'Wave in progress':'Press Next wave',632,19);
+if(paused&&!over){x.fillStyle='rgba(0,0,0,.55)';x.fillRect(0,0,640,440);x.textAlign='center';x.fillStyle='#ffe14d';x.font='40px sans-serif';x.fillText('Paused',320,220);}
+if(over){x.fillStyle='rgba(0,0,0,.7)';x.fillRect(0,0,640,440);x.textAlign='center';x.fillStyle='#f44';x.font='40px sans-serif';x.fillText('BASE DESTROYED',320,210);x.fillStyle='#fff';x.font='18px sans-serif';x.fillText('You survived '+(wave-1)+' waves. Click to play again',320,245);}}
+c.addEventListener('pointerdown',e=>{if(over){reset();ui();return;}if(paused)return;const r=c.getBoundingClientRect(),px=(e.clientX-r.left)*640/r.width,py=(e.clientY-r.top)*440/r.height,i=Math.floor(px/T),j=Math.floor(py/T);
+const ex=towers.find(w=>w.i==i&&w.j==j);if(ex){const cost=Math.floor(TY[ex.k].cost*0.8*ex.lv);if(ex.lv<4&&gold>=cost){gold-=cost;ex.lv++;beep(660,.04);}return;}
+if(road.has(i+','+j)||j<1||i<0||i>=CW||j>=CH)return;const ty=TY[pick];if(gold<ty.cost)return;gold-=ty.cost;towers.push({i,j,x:i*T+20,y:j*T+20,k:pick,cd:0,lv:1});beep(520,.04);});
+reset();ui();(function f(){update();draw();requestAnimationFrame(f)})();
+</script>
+</body>
+</html>

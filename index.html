@@ -98,6 +98,10 @@ h1 span{color:#ff6b6b}
 .mine{background:#16301c}.mine i{position:absolute;width:18%;height:28%;background:#2f6a3e}
 .mine i:nth-child(1){left:18%;top:28%}.mine i:nth-child(2){left:40%;top:28%;background:#d7efe0}.mine i:nth-child(3){left:62%;top:28%}
 .mine i:nth-child(4){left:18%;top:58%;background:#d7efe0}.mine i:nth-child(5){left:40%;top:58%}.mine i:nth-child(6){left:62%;top:58%;background:#ffe14d}
+.skyj{background:linear-gradient(#46c 0 62%,#fa8 62% 78%,#4c4 78%)}
+.skyj b{position:absolute;left:42%;bottom:24%;width:16px;height:26px;background:#e33;border-radius:3px}
+.skyj i{position:absolute;right:18%;bottom:30%;width:4px;height:36px;background:#ddd}
+.skyj i:after{content:"";position:absolute;left:4px;top:0;border-style:solid;border-width:6px 12px 6px 0;border-color:transparent #f33 transparent transparent}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -150,7 +154,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Ten browser games. Best scores stay on this device.</p>
+<p class="lede">Eleven browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -170,6 +174,10 @@ a.card[hidden]{display:none}
 <a class="card" href="./pixel-hopper.html" data-cat="Action" data-key="ph_best" data-name="Pixel Hopper">
 <div class="thumb hopper" aria-hidden="true"><span class="cloud c1"></span><span class="cloud c2"></span><span class="hill far"></span><span class="hill"></span><span class="coin"></span><span class="flag"></span><span class="runner"></span></div>
 <div class="meta"><p class="kicker">Action</p><h2>Pixel Hopper</h2><p>Run and jump through three worlds. Collect coins, stomp enemies, and reach the flag.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./sky-jumper.html" data-cat="Action" data-key="arcade-sky-best" data-name="Sky Jumper">
+<div class="thumb skyj" aria-hidden="true"><b></b><i></i></div>
+<div class="meta"><p class="kicker">Action</p><h2>Sky Jumper</h2><p>Run and jump across the sky platforms. Grab coins, stomp slimes, and reach the flag.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 <a class="card" href="./dungeon-fps.html" data-cat="Action" data-key="arcade-dungeon-best" data-name="Dungeon FPS">
 <div class="thumb dungeon" aria-hidden="true"><span class="ceil"></span><span class="wall l"></span><span class="wall r"></span><span class="floor"></span><span class="door"></span><span class="mob"></span><span class="cross"></span></div>

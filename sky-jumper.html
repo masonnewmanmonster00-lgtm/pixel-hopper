@@ -1,0 +1,51 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon.svg"><link rel="apple-touch-icon" href="./icon.svg"><title>Sky Jumper</title>
+<style>body{margin:0;background:#102;color:#eee;font-family:sans-serif;text-align:center}canvas{border:2px solid #fd0;box-shadow:0 0 20px #fd06}a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:20;box-sizing:border-box;display:inline-flex;align-items:center;min-height:40px;padding:0 10px;border-radius:999px;background:rgba(16,0,32,.78);color:#fd0;border:1px solid rgba(255,221,0,.55);font:700 12px/1 sans-serif;text-decoration:none;touch-action:manipulation}a.back:focus-visible{outline:2px solid #fd0;outline-offset:2px}h1{padding-left:72px;padding-right:72px}canvas{max-width:96vw;height:auto}</style></head>
+<body><a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a><h1 style="color:#fd0">Sky Jumper</h1><canvas id="c" width="640" height="400"></canvas>
+<p>Arrows or A/D to move, Up/W/Space to jump. Collect coins, stomp slimes, reach the flag. Enter to restart.</p>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d'),W=640,H=400,T=32,keys={};
+const L=[
+"                                                                      ",
+"                                                                      ",
+"                                   o o o                              ",
+"                  o o             #######          o                  ",
+"                 #####                            ###          o o   F",
+"         o                  e          o o                   #####  #",
+"        ###        e      #####      #######   e      ###           ##",
+"   o                    ##                   #####                 ###",
+"  ###     e  ##                  e                    e           ####",
+"####################  ######################  ########################",
+"####################  ######################  ########################"];
+let p,coins,ens,score,lives,cam,over,won,flag,t=0,skyHi=0;try{skyHi=+localStorage.getItem("arcade-sky-best")||0}catch(e){}
+function load(){coins=[];ens=[];L.forEach((r,j)=>[...r].forEach((ch,i)=>{if(ch=='o')coins.push({x:i*T+16,y:j*T+16});if(ch=='e')ens.push({x:i*T,y:j*T+8,vx:-1,dead:0});if(ch=='F')flag={x:i*T,y:j*T};}));}
+function solid(i,j){const r=L[j];return r&&r[i]=='#';}
+function reset(){score=0;lives=3;over=won=false;load();spawn();}
+function spawn(){p={x:64,y:200,vx:0,vy:0,w:22,h:28,g:false,inv:60};cam=0;}
+function col(o){for(let j=Math.floor(o.y/T);j<=Math.floor((o.y+o.h-1)/T);j++)for(let i=Math.floor(o.x/T);i<=Math.floor((o.x+o.w-1)/T);i++)if(solid(i,j))return{i,j};return null;}
+function move(o){o.x+=o.vx;let h=col(o);if(h){o.x=o.vx>0?h.i*T-o.w:(h.i+1)*T;o.hitX=1;o.vx=o.vx;}else o.hitX=0;
+o.y+=o.vy;o.g=false;h=col(o);if(h){if(o.vy>0){o.y=h.j*T-o.h;o.g=true;}else o.y=(h.j+1)*T;o.vy=0;}}
+function hurt(){if(p.inv>0)return;if(--lives<=0)over=true;else spawn();}
+function update(){t++;if(over||won)return;const l=keys.arrowleft||keys.a,r=keys.arrowright||keys.d;
+p.vx=l?-4:r?4:p.vx*0.7;if((keys.arrowup||keys.w||keys[' '])&&p.g)p.vy=-11.5;p.vy=Math.min(p.vy+0.55,12);move(p);if(p.inv>0)p.inv--;
+if(p.x<0)p.x=0;if(p.y>H+50)hurt();
+coins=coins.filter(k=>{if(Math.abs(k.x-p.x-11)<18&&Math.abs(k.y-p.y-14)<20){score+=10;return false}return true});
+for(const e of ens){if(e.dead){e.dead++;continue;}e.w=26;e.h=24;e.vy=(e.vy||0)+0.55;move(e);if(e.hitX)e.vx*=-1;
+const fi=Math.floor((e.x+(e.vx>0?e.w:0))/T),fj=Math.floor((e.y+e.h+2)/T);if(e.g&&!solid(fi,fj))e.vx*=-1;
+if(p.x<e.x+e.w&&p.x+p.w>e.x&&p.y<e.y+e.h&&p.y+p.h>e.y){if(p.vy>0&&p.y+p.h-e.y<14){e.dead=1;p.vy=-8;score+=50;}else hurt();}}
+ens=ens.filter(e=>e.dead<30);
+if(p.x>flag.x-10&&p.y<flag.y+T*2){won=true;score+=500;}
+cam=Math.max(0,Math.min(L[0].length*T-W,p.x-W/3));}
+function draw(){const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#46c');g.addColorStop(1,'#fa8');x.fillStyle=g;x.fillRect(0,0,W,H);
+x.fillStyle='#fff8';for(let i=0;i<8;i++){const cx=((i*230-cam*0.3)%(W+200)+W+200)%(W+200)-100;x.beginPath();x.arc(cx,60+i%3*30,22,0,7);x.arc(cx+25,55+i%3*30,28,0,7);x.arc(cx+52,62+i%3*30,20,0,7);x.fill();}
+x.save();x.translate(-cam|0,0);
+L.forEach((r,j)=>[...r].forEach((ch,i)=>{if(ch!='#')return;const X=i*T,Y=j*T;if(X<cam-T||X>cam+W)return;x.fillStyle='#853';x.fillRect(X,Y,T,T);if(!solid(i,j-1)){x.fillStyle='#4c4';x.fillRect(X,Y,T,8);}x.strokeStyle='#0003';x.strokeRect(X,Y,T,T);}));
+coins.forEach(k=>{const s=Math.abs(Math.sin(t*0.08+k.x));x.fillStyle='#fd0';x.beginPath();x.ellipse(k.x,k.y,8*s+1,9,0,0,7);x.fill();});
+ens.forEach(e=>{x.fillStyle=e.dead?'#a5a':'#c3c';const h=e.dead?8:e.h;x.beginPath();x.ellipse(e.x+13,e.y+e.h-h/2,14,h/2,0,0,7);x.fill();if(!e.dead){x.fillStyle='#fff';x.fillRect(e.x+6,e.y+6,5,6);x.fillRect(e.x+15,e.y+6,5,6);}});
+x.fillStyle='#ddd';x.fillRect(flag.x+14,flag.y-T,4,T*2);x.fillStyle='#f33';x.beginPath();x.moveTo(flag.x+18,flag.y-T);x.lineTo(flag.x+40,flag.y-T+10);x.lineTo(flag.x+18,flag.y-T+20);x.fill();
+if(!(p.inv%8>4)){x.fillStyle='#e33';x.fillRect(p.x,p.y,p.w,p.h);x.fillStyle='#fdb';x.fillRect(p.x+4,p.y+4,14,10);x.fillStyle='#000';x.fillRect(p.x+(p.vx<0?6:12),p.y+7,3,3);x.fillStyle='#24c';x.fillRect(p.x,p.y+18,p.w,10);}
+x.restore();x.fillStyle='#fff';x.font='18px sans-serif';x.textAlign='left';x.fillText(`Score: ${score}   Lives: ${lives}`,10,26);
+if(over||won){x.fillStyle='rgba(0,0,0,.6)';x.fillRect(0,0,W,H);x.textAlign='center';x.fillStyle=won?'#fd0':'#f44';x.font='40px sans-serif';x.fillText(won?'YOU WIN!':'GAME OVER',W/2,H/2);x.font='18px sans-serif';x.fillStyle='#fff';x.fillText(`Score ${score}. Press Enter to play again`,W/2,H/2+35);}}
+document.addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=1;if(k==' '||k.startsWith('arrow'))e.preventDefault();if(k=='enter'&&(over||won))reset();});
+document.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=0);
+function rememberScore(){try{if(typeof score==="number"&&score>skyHi){skyHi=score;localStorage.setItem("arcade-sky-best",String(score))}}catch(e){}}reset();(function f(){update();rememberScore();draw();requestAnimationFrame(f)})();
+</script></body></html>

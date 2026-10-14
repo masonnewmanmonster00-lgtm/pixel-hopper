@@ -379,6 +379,9 @@ h1 span{color:#ff6b6b}
 .bla{background:#2a241c}
 .bla i{position:absolute;left:30%;top:38%;width:28px;height:28px;border-radius:50%;background:#222;box-shadow:inset -6px -4px 0 #111}
 .bla b{position:absolute;left:52%;top:22%;width:8px;height:18px;border-radius:3px;background:#ffb020;transform:rotate(25deg);box-shadow:0 -6px 0 #ff4d2e}
+.fmg{background:#f7b58a}
+.fmg i{position:absolute;left:22%;top:30%;width:22px;height:22px;border-radius:50%;background:#e3263b;box-shadow:26px 16px 0 #ffa53a,12px 34px 0 #3fbf4f}
+.fmg b{position:absolute;left:54%;top:24%;width:26px;height:26px;border-radius:50%;background:#ff4f6d}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -441,7 +444,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Eighty-nine browser games. Best scores stay on this device.</p>
+<p class="lede">Ninety browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -822,6 +825,10 @@ a.card[hidden]{display:none}
 <a class="card" href="./blastarena.html" data-cat="Action" data-key="arcade-blast-best" data-name="Blast Arena">
 <div class="thumb bla" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Action</p><h2>Blast Arena</h2><p>Drop bombs and clear the campaign. Best is your score.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./fruitmerge.html" data-cat="Casual" data-key="arcade-merge-best" data-name="Fruit Merge">
+<div class="thumb fmg" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Casual</p><h2>Fruit Merge</h2><p>Drop fruit and merge matches. Best is your top score.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

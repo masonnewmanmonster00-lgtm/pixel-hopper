@@ -147,6 +147,19 @@ h1 span{color:#ff6b6b}
 .beat i:nth-child(2){left:38%;height:50px;background:#28e7ff}
 .beat i:nth-child(3){left:54%;height:26px;background:#7dff3a}
 .beat i:nth-child(4){left:70%;height:42px;background:#ffb21f}
+.stack{background:#0b1240}
+.stack i{position:absolute;border-radius:3px}
+.stack i:nth-child(1){left:28%;bottom:22%;width:54px;height:14px;background:#22d3ee}
+.stack i:nth-child(2){left:36%;bottom:38%;width:28px;height:14px;background:#facc15}
+.stack i:nth-child(3){left:42%;bottom:54%;width:14px;height:28px;background:#a855f7}
+.c4{background:#1638a8}
+.c4 i{position:absolute;top:38%;width:22px;height:22px;border-radius:50%}
+.c4 i:nth-child(1){left:28%;background:#e81e2e}
+.c4 i:nth-child(2){left:46%;background:#f5c400}
+.c4 i:nth-child(3){left:64%;background:#e81e2e}
+.mole{background:linear-gradient(#6ec6ff 0 28%,#4f9a35 28%)}
+.mole i{position:absolute;left:38%;bottom:18%;width:36px;height:28px;border-radius:18px 18px 8px 8px;background:#8b5a2b}
+.mole b{position:absolute;left:46%;bottom:38%;width:10px;height:10px;border-radius:50%;background:#111}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -209,7 +222,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Twenty-three browser games. Best scores stay on this device.</p>
+<p class="lede">Twenty-six browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -322,13 +335,25 @@ a.card[hidden]{display:none}
 <div class="thumb beat" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 <div class="meta"><p class="kicker">Music</p><h2>Neon Beat</h2><p>Hit the four lanes on the beat. Three songs, three difficulties.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
+<a class="card" href="./block-stack.html" data-cat="Puzzle" data-key="arcade-stack-best" data-name="Block Stack">
+<div class="thumb stack" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="meta"><p class="kicker">Puzzle</p><h2>Block Stack</h2><p>Stack the falling blocks and clear lines before the well fills.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./connect-four.html" data-cat="Board" data-key="arcade-c4-best" data-name="Connect Four">
+<div class="thumb c4" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="meta"><p class="kicker">Board</p><h2>Connect Four</h2><p>Drop discs and connect four. Wins against the CPU are saved.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./whack-a-mole.html" data-cat="Arcade" data-key="arcade-mole-best" data-name="Whack-a-Mole">
+<div class="thumb mole" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Arcade</p><h2>Whack-a-Mole</h2><p>Whack the moles before they hide. Gold pays more. Bombs cost time.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
 </main>
 <p id="empty" hidden>No games match that search.</p>
 <script>
 "use strict";
 const RECENT="arcade-recent";
 let cat="All";
-function readScore(key){try{const v=localStorage.getItem(key);if(v==null||v==="")return null;const n=Number(v);if(Number.isFinite(n))return n;const o=JSON.parse(v);if(!o||typeof o!=="object")return null;let m=null;for(const rec of Object.values(o)){const s=rec&&typeof rec==="object"?Number(rec.score):Number(rec);if(Number.isFinite(s)&&(m==null||s>m))m=s}return m}catch(e){return null}}
+function readScore(key){try{const v=localStorage.getItem(key);if(v==null||v==="")return null;const n=Number(v);if(Number.isFinite(n))return n;const o=JSON.parse(v);if(!o||typeof o!=="object"||Array.isArray(o))return null;if(Number.isFinite(Number(o.w))&&("l" in o))return Number(o.w);let m=null;for(const rec of Object.values(o)){const s=rec&&typeof rec==="object"?Number(rec.score):Number(rec);if(Number.isFinite(s)&&(m==null||s>m))m=s}return m}catch(e){return null}}
 function readRecent(){try{const v=JSON.parse(localStorage.getItem(RECENT)||"[]");return Array.isArray(v)?v.filter(x=>typeof x==="string"):[]}catch(e){return []}}
 function remember(href){try{const next=[href,...readRecent().filter(x=>x!==href)].slice(0,8);localStorage.setItem(RECENT,JSON.stringify(next))}catch(e){}}
 function paintScores(){document.querySelectorAll("a.card").forEach(card=>{const n=readScore(card.dataset.key);const el=card.querySelector(".best");if(el)el.textContent=n==null?"-":String(n)})}

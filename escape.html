@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b14">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg">
+<link rel="apple-touch-icon" href="./icon.svg">
+<title>Locked In – Escape Room</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#0d0b10;color:#eee;font-family:Georgia,'Times New Roman',serif;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+a.back{position:fixed;z-index:95;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));color:#fff;background:#16162a;border:1px solid #2a2a44;border-radius:8px;padding:8px 12px;text-decoration:none;font:600 14px/1.2 system-ui,sans-serif;min-height:40px;display:inline-flex;align-items:center;box-sizing:border-box}
+#top{position:fixed;left:0;right:0;top:0;min-height:52px;height:auto;display:flex;align-items:center;justify-content:space-between;padding:6px 8px 6px 112px;background:linear-gradient(#1d1822,#141017);border-bottom:1px solid #3a2f40;z-index:20}
+#mid{font:600 15px system-ui,sans-serif;color:#e9d8a6;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;padding:0 6px}
+#tools{display:flex;gap:6px}
+.tb{background:#2a2230;color:#e9d8a6;border:1px solid #4a3d52;border-radius:8px;font:600 14px system-ui,sans-serif;padding:8px 12px;cursor:pointer;white-space:nowrap;min-height:40px;min-width:44px}
+.tb:active{transform:scale(.95)}
+#game{position:fixed;left:0;right:0;top:56px;bottom:0;display:none;flex-direction:column;align-items:center}@media (orientation:portrait){#game{justify-content:center;padding-bottom:40px}}
+#cv{display:block;margin-top:4px;border-radius:6px;box-shadow:0 0 30px #000;cursor:pointer;touch-action:none}
+#msg{min-height:34px;width:100%;max-width:1000px;padding:6px 10px;font-size:15px;color:#f2e6c9;text-align:center;line-height:1.3}
+#inv{display:flex;gap:6px;padding:4px;flex-wrap:wrap;justify-content:center;max-width:100%}
+.slot{width:54px;height:54px;border-radius:10px;background:#211a26;border:2px solid #4a3d52;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.slot.sel{border-color:#ffd166;box-shadow:0 0 10px #ffd16688}
+.slot canvas{width:44px;height:44px}
+#title{position:fixed;inset:56px 0 0 0;display:flex;flex-direction:column;align-items:center;justify-content:safe center;text-align:center;padding:16px 12px 12px;z-index:5}
+#tbg{position:fixed;inset:0;z-index:0}
+#title h1{font-size:clamp(40px,11vw,92px);margin:0;letter-spacing:4px;color:#ffd166;text-shadow:0 0 18px #ff9f1c88,0 4px 0 #6b3e00;position:relative}
+#title p{color:#cfc3dd;max-width:520px;position:relative;font-size:16px}
+.big{font:700 20px system-ui,sans-serif;padding:12px 30px;border-radius:14px;border:none;background:linear-gradient(#ffd166,#f4a300);color:#2b1700;cursor:pointer;margin:6px;box-shadow:0 5px 0 #8a5a00;position:relative;min-height:44px}
+.big:active{transform:translateY(3px);box-shadow:0 2px 0 #8a5a00}
+#best{position:relative;color:#bda9d6;font:14px system-ui,sans-serif;margin-top:10px;white-space:pre-line}
+.modal{position:fixed;inset:0;background:#000a;display:none;align-items:safe center;justify-content:center;z-index:30;padding:56px 12px 12px}
+.box{background:linear-gradient(#2b2333,#1b1520);border:2px solid #6b5878;border-radius:16px;padding:16px;max-width:94vw;max-height:calc(100vh - 72px);overflow:auto;text-align:center;box-shadow:0 10px 40px #000}
+.box h2{margin:0 0 10px;color:#ffd166;font-size:20px}
+.keys{display:grid;grid-template-columns:repeat(3,62px);gap:8px;justify-content:center}
+.keys button,.wheel button{font:700 22px system-ui,sans-serif;height:54px;min-height:40px;min-width:44px;border-radius:10px;border:none;background:#463a52;color:#fff;cursor:pointer}
+.keys button:active,.wheel button:active{background:#6b5a7d}
+.disp{font:700 30px monospace;letter-spacing:10px;background:#0a1a0a;color:#6f6;padding:8px;border-radius:8px;margin-bottom:10px;min-height:52px}
+.wheels{display:flex;gap:8px;justify-content:center;margin:8px 0}
+.wheel{display:flex;flex-direction:column;gap:4px;width:58px}
+.wheel button{height:40px;font-size:18px}
+.wv{font:700 32px monospace;background:#e8dcc0;color:#222;border-radius:8px;padding:6px 0}
+.lgrid{display:grid;grid-template-columns:repeat(3,70px);gap:10px;justify-content:center;margin:10px}
+.lt{height:70px;min-width:44px;min-height:44px;border-radius:12px;border:3px solid #222;background:#2a2a2a;cursor:pointer}
+.lt.on{background:radial-gradient(#fff6a0,#f5c400);box-shadow:0 0 18px #ffd000}
+.close{margin-top:12px}
+#win .box p{font-size:17px}
+@media (max-height:520px){
+.modal{padding:56px 8px 8px}
+.box{padding:8px}
+.box h2{font-size:16px;margin:0 0 4px}
+.keys{gap:4px}
+.keys button{height:40px;font-size:18px}
+.disp{font-size:22px;min-height:36px;padding:4px;margin-bottom:6px;letter-spacing:6px}
+.wheel button{height:40px}
+.wv{font-size:22px;padding:2px 0}
+.lgrid{grid-template-columns:repeat(3,48px);gap:6px;margin:6px}
+.lt{height:48px}
+.big{padding:8px 18px;font-size:16px;min-height:40px}
+.close{margin-top:6px}
+#title h1{font-size:32px}
+#title p{font-size:14px;margin:4px 0}
+}
+body.overlay #top,body.overlay #game,body.overlay #title{display:none !important}
+</style></head><body>
+<canvas id="tbg"></canvas>
+<a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a>
+<div id="top"><div id="mid">Locked In</div><div id="tools"><button class="tb" id="hintB" style="display:none">💡 Hint</button><button class="tb" id="muteB">🔊</button></div></div>
+<div id="title"><h1>LOCKED IN</h1><p>Three rooms. One way out of each. Search everything, combine what you find, crack the locks — and beat the clock.</p>
+<button class="big" id="startB">▶ Start</button><div id="best"></div></div>
+<div id="game"><canvas id="cv"></canvas><div id="msg">Click around the room to search.</div><div id="inv"></div></div>
+<div class="modal" id="mod"><div class="box" id="mbox"></div></div>
+<div class="modal" id="win"><div class="box"><h2>🔓 You escaped!</h2><p id="wtxt"></p><button class="big" id="againB">Play again</button></div></div>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+// ---------- audio ----------
+let AC=null,muted=LS.get('lockedin_mute',false);
+function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(AC&&AC.state==='suspended'){const p=AC.resume();if(p&&p.catch)p.catch(()=>{})}return AC}
+function tone(f,d,type,vol,slide,delay){if(muted)return;const a=ac();if(!a)return;const t=a.currentTime+(delay||0);const o=a.createOscillator(),g=a.createGain();o.type=type||'sine';o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(slide,t+d);g.gain.setValueAtTime(vol||.15,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+d+.02)}
+function noise(d,vol){if(muted)return;const a=ac();if(!a)return;const b=a.createBuffer(1,a.sampleRate*d,a.sampleRate),c=b.getChannelData(0);for(let i=0;i<c.length;i++)c[i]=(Math.random()*2-1)*(1-i/c.length);const s=a.createBufferSource(),g=a.createGain();s.buffer=b;g.gain.value=vol||.2;s.connect(g);g.connect(a.destination);s.start()}
+const S={click:()=>tone(700,.05,'square',.06),pick:()=>{tone(660,.08,'triangle',.15);tone(990,.12,'triangle',.15,0,.07)},bad:()=>tone(160,.25,'sawtooth',.1,90),good:()=>{[523,659,784,1046].forEach((f,i)=>tone(f,.18,'triangle',.14,0,i*.08))},door:()=>{noise(.5,.25);tone(90,.6,'sine',.2,50)},key:()=>tone(1200,.04,'square',.05),swit:()=>{noise(.06,.3);tone(300,.05,'square',.08)},combine:()=>{tone(400,.1,'sine',.15,800);tone(800,.15,'triangle',.12,0,.1)},hint:()=>tone(880,.3,'sine',.1,1320)};
+function setMute(m){muted=m;LS.set('lockedin_mute',m);$('muteB').textContent=m?'🔇':'🔊'}
+$('muteB').onclick=()=>{setMute(!muted);if(!muted)S.click()};setMute(muted);
+// ---------- items ----------
+const ITEMS={
+ key:{n:'Small brass key',d:(g)=>{g.fillStyle='#d4a017';g.beginPath();g.arc(12,22,7,0,7);g.fill();g.fillRect(17,20,20,5);g.fillRect(30,25,3,6);g.fillRect(35,25,3,5);g.fillStyle='#211a26';g.beginPath();g.arc(12,22,3,0,7);g.fill()}},
+ flash:{n:'Flashlight (no batteries)',d:(g)=>{g.fillStyle='#555';g.fillRect(6,17,24,10);g.fillStyle='#777';g.beginPath();g.moveTo(30,14);g.lineTo(40,10);g.lineTo(40,34);g.lineTo(30,30);g.fill();g.fillStyle='#333';g.fillRect(14,15,4,3)}},
+ batt:{n:'Batteries',d:(g)=>{for(let i=0;i<2;i++){g.fillStyle='#2b6';g.fillRect(8+i*14,10,10,26);g.fillStyle='#ccc';g.fillRect(10+i*14,7,6,4);g.fillStyle='#111';g.fillRect(8+i*14,26,10,10)}}},
+ uv:{n:'UV flashlight',d:(g)=>{g.fillStyle='#4b2b7a';g.fillRect(6,17,24,10);g.fillStyle='#9d6bff';g.beginPath();g.moveTo(30,14);g.lineTo(40,10);g.lineTo(40,34);g.lineTo(30,30);g.fill();g.fillStyle='#d9b3ff';g.fillRect(39,12,3,20)}},
+ screw:{n:'Screwdriver',d:(g)=>{g.save();g.translate(22,22);g.rotate(-.7);g.fillStyle='#d33';g.fillRect(-16,-5,14,10);g.fillStyle='#bbb';g.fillRect(-2,-2,18,4);g.restore()}},
+ cardA:{n:'Keycard (left half)',d:(g)=>{g.fillStyle='#2a7de1';g.fillRect(8,12,16,22);g.fillStyle='#fff';g.fillRect(11,16,8,3);g.strokeStyle='#fff';g.setLineDash([2,2]);g.beginPath();g.moveTo(24,12);g.lineTo(24,34);g.stroke();g.setLineDash([])}},
+ cardB:{n:'Keycard (right half)',d:(g)=>{g.fillStyle='#2a7de1';g.fillRect(20,12,16,22);g.fillStyle='#ffd166';g.fillRect(26,26,7,5);g.strokeStyle='#fff';g.setLineDash([2,2]);g.beginPath();g.moveTo(20,12);g.lineTo(20,34);g.stroke();g.setLineDash([])}},
+ card:{n:'Repaired keycard',d:(g)=>{g.fillStyle='#2a7de1';g.fillRect(6,12,32,22);g.fillStyle='#fff';g.fillRect(9,16,10,3);g.fillStyle='#ffd166';g.fillRect(28,26,7,5);g.fillStyle='#ccc';g.fillRect(6,20,32,2)}},
+ fuse:{n:'Glass fuse',d:(g)=>{g.fillStyle='#bbb';g.fillRect(6,17,7,10);g.fillRect(31,17,7,10);g.fillStyle='#bde3ff99';g.fillRect(13,18,18,8);g.strokeStyle='#c60';g.beginPath();g.moveTo(13,22);g.lineTo(31,22);g.stroke()}},
+ mag:{n:'Magnifying glass',d:(g)=>{g.strokeStyle='#caa';g.lineWidth=4;g.beginPath();g.arc(18,18,10,0,7);g.stroke();g.fillStyle='#9cf6';g.fill();g.lineWidth=6;g.strokeStyle='#6b3e1f';g.beginPath();g.moveTo(26,26);g.lineTo(38,38);g.stroke();g.lineWidth=1}}
+};
+const COMBOS=[['flash','batt','uv','You slot the batteries in. It glows violet — a UV light!'],['cardA','cardB','card','You press the two halves together. The magnetic strip lines up!']];
+// ---------- state ----------
+let st,running=false,lastT=0;
+function newState(){return{room:0,f:{},inv:[],sel:null,t:0,rt:[0,0,0],hints:0}}
+const W=1000,H=600;
+const cv=$('cv'),g=cv.getContext('2d');let scale=1;
+function layout(){const topH=Math.ceil($('top').getBoundingClientRect().height)||56;$('game').style.top=topH+'px';$('title').style.top=topH+'px';const iw=innerWidth,ih=innerHeight-topH-34-70-10;let w=Math.min(iw-8,1000,ih*W/H);w=Math.max(200,w);const h=w*H/W;scale=w/W;const dpr=Math.min(devicePixelRatio||1,2);cv.style.width=w+'px';cv.style.height=h+'px';cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);g.setTransform(cv.width/W,0,0,cv.height/H,0,0);sizeTbg()}
+addEventListener('resize',layout);
+function say(t){$('msg').textContent=t}
+function has(i){return st.inv.includes(i)}
+function give(i,m){if(!has(i)){st.inv.push(i);S.pick();renderInv();say(m||('You got: '+ITEMS[i].n))}}
+function take(i){st.inv=st.inv.filter(x=>x!==i);if(st.sel===i)st.sel=null;renderInv()}
+function renderInv(){const el=$('inv');el.innerHTML='';const n=Math.max(6,st.inv.length);for(let k=0;k<n;k++){const it=st.inv[k];const d=document.createElement('div');d.className='slot'+(it&&st.sel===it?' sel':'');if(it){d.id='inv_'+it;d.title=ITEMS[it].n;const c=document.createElement('canvas');c.width=44;c.height=44;ITEMS[it].d(c.getContext('2d'));d.appendChild(c);d.onclick=()=>invClick(it)}el.appendChild(d)}}
+function invClick(it){S.click();if(st.sel&&st.sel!==it){const c=COMBOS.find(c=>(c[0]===st.sel&&c[1]===it)||(c[1]===st.sel&&c[0]===it));if(c){take(c[0]);take(c[1]);st.inv.push(c[2]);st.sel=null;S.combine();renderInv();say(c[3]);return}S.bad();say("Those don't go together.");st.sel=null;renderInv();return}st.sel=st.sel===it?null:it;renderInv();say(st.sel?('Selected: '+ITEMS[it].n+'. Click something to use it, or another item to combine.'):'Deselected.')}
+// ---------- drawing helpers ----------
+function rr(x,y,w,h,r,fill,stroke){g.beginPath();g.roundRect?g.roundRect(x,y,w,h,r):g.rect(x,y,w,h);if(fill){g.fillStyle=fill;g.fill()}if(stroke){g.strokeStyle=stroke;g.stroke()}}
+function lin(x0,y0,x1,y1,stops){const l=g.createLinearGradient(x0,y0,x1,y1);stops.forEach((s,i)=>l.addColorStop(i/(stops.length-1),s));return l}
+function txt(t,x,y,size,col,font,align){g.font=(font||'bold ')+size+'px '+(font&&font.includes('mono')?'monospace':'Georgia');g.fillStyle=col;g.textAlign=align||'center';g.textBaseline='middle';g.fillText(t,x,y)}
+function roomShell(wallA,wallB,floorA,floorB){g.fillStyle=lin(0,0,0,430,[wallA,wallB]);g.fillRect(0,0,W,430);for(let x=0;x<W;x+=50){g.fillStyle='rgba(0,0,0,.05)';g.fillRect(x,0,25,430)}g.fillStyle=lin(0,430,0,600,[floorA,floorB]);g.fillRect(0,430,W,170);g.strokeStyle='rgba(0,0,0,.25)';for(let i=0;i<12;i++){g.beginPath();g.moveTo(i*100-100,600);g.lineTo(i*90-40,430);g.stroke()}g.fillStyle='#2b1d12';g.fillRect(0,422,W,12)}
+function door(x,y,open,col){g.fillStyle='#1a120c';g.fillRect(x-8,y-8,176,338);if(open){g.fillStyle=lin(x,y,x+160,y,['#000','#2a2420']);g.fillRect(x,y,160,330);g.fillStyle='#fff3';g.fillRect(x+10,y+10,140,310);txt('EXIT →',x+80,y+160,24,'#ffd166')}else{g.fillStyle=lin(x,y,x+160,y,[col||'#6b4226','#4a2c18']);g.fillRect(x,y,160,330);g.strokeStyle='#0004';g.lineWidth=3;g.strokeRect(x+18,y+20,124,130);g.strokeRect(x+18,y+175,124,135);g.lineWidth=1;g.fillStyle='#d4a017';g.beginPath();g.arc(x+140,y+170,7,0,7);g.fill()}}
+// ---------- rooms ----------
+function hsAt(list,x,y){for(let i=list.length-1;i>=0;i--){const h=list[i];if((!h.vis||h.vis())&&x>=h.x&&x<=h.x+h.w&&y>=h.y&&y<=h.y+h.h)return h}return null}
+function need(sel,item,ok,elseMsg){if(st.sel===item){st.sel=null;ok();renderInv();return true}if(st.sel){S.bad();say("That doesn't work here.");st.sel=null;renderInv();return true}say(elseMsg);return false}
+const RD=[
+{name:'The Study',
+ draw(){const f=st.f;roomShell('#5a3d2e','#3b281e','#6e4a2c','#3d2816');
+  // painting
+  g.fillStyle='#8a6a1a';g.fillRect(230,70,210,160);g.fillStyle=lin(0,82,0,218,['#f6a04d','#4a6fa5']);g.fillRect(242,82,186,136);g.fillStyle='#2b4a6b';g.fillRect(242,180,186,38);g.fillStyle='#eee';g.fillRect(326,120,18,62);g.fillStyle='#c33';g.fillRect(326,130,18,8);g.fillRect(326,150,18,8);g.fillStyle='#ffe066';g.fillRect(324,110,22,12);g.fillStyle='#9d6bff';g.beginPath();g.arc(420,222,4,0,7);g.fill();
+  if(f.uvSeen){g.fillStyle='#000b';g.fillRect(242,82,186,136);g.shadowColor='#c08bff';g.shadowBlur=18;txt('3  8  1  5',335,150,40,'#d9b3ff');g.shadowBlur=0}
+  // bookshelf
+  g.fillStyle='#4a2c18';g.fillRect(30,250,170,175);const cols=['#7a4','#36a','#a83','#555','#8a3a8a','#2a7','#3a6','#a63'];for(let s=0;s<3;s++){g.fillStyle='#2b1a0e';g.fillRect(38,258+s*56,154,48);for(let b=0;b<9;b++){const red=s===1&&b===5;g.fillStyle=red?(f.gotBatt?'#7a1515':'#e02020'):cols[(b+s*3)%8];g.fillRect(42+b*16,262+s*56+(b%3),13,44-(b%3))}}
+  // desk
+  g.fillStyle='#5b3a1e';g.fillRect(460,300,290,26);g.fillStyle='#4a2e18';g.fillRect(470,326,20,100);g.fillRect(720,326,20,100);g.fillRect(590,326,140,70);g.fillStyle=f.drawerOpen?'#1a0f08':'#6b4528';g.fillRect(600,336,120,50);g.fillStyle='#d4a017';g.fillRect(652,340,16,6);if(!f.drawerOpen){g.fillStyle='#111';g.fillRect(658,360,4,9)}
+  if(f.drawerOpen&&!f.gotFlash){g.fillStyle='#666';g.fillRect(625,354,50,14);g.fillStyle='#888';g.fillRect(675,350,14,22)}
+  g.fillStyle='#ffe06618';g.beginPath();g.moveTo(500,240);g.lineTo(560,240);g.lineTo(600,300);g.lineTo(460,300);g.fill();g.fillStyle='#2b6';g.beginPath();g.moveTo(500,240);g.lineTo(560,240);g.lineTo(545,205);g.lineTo(515,205);g.fill();g.fillStyle='#444';g.fillRect(526,240,8,60);
+  // clock
+  g.fillStyle='#e8dcc0';g.beginPath();g.arc(620,110,38,0,7);g.fill();g.strokeStyle='#5b3a1e';g.lineWidth=5;g.stroke();g.lineWidth=3;g.strokeStyle='#222';const a=st.t/10;g.beginPath();g.moveTo(620,110);g.lineTo(620+Math.sin(a)*28,110-Math.cos(a)*28);g.moveTo(620,110);g.lineTo(638,118);g.stroke();g.lineWidth=1;
+  // rug
+  if(!f.rug){g.fillStyle='#7a1f2b';g.beginPath();g.ellipse(430,510,170,50,0,0,7);g.fill();g.strokeStyle='#e0b04a';g.lineWidth=4;g.beginPath();g.ellipse(430,510,150,40,0,0,7);g.stroke();g.lineWidth=1}else{g.fillStyle='#7a1f2b';g.beginPath();g.ellipse(580,540,120,34,.1,0,7);g.fill();if(!f.gotKey){g.save();g.translate(380,488);g.scale(1.3,1.3);ITEMS.key.d(g);g.restore()}}
+  door(800,92,f.doorOpen);rr(764,220,26,40,4,'#222','#888');for(let i=0;i<6;i++){g.fillStyle=f.doorOpen?'#6f6':'#999';g.fillRect(768+(i%2)*10,226+Math.floor(i/2)*10,7,7)}
+ },
+ hs:[
+  {id:'rug',x:260,y:460,w:340,h:100,vis:()=>!st.f.rug,click(){st.f.rug=1;S.swit();say('You pull the rug aside... something glints on the floorboards.')}},
+  {id:'key',x:370,y:480,w:70,h:50,vis:()=>st.f.rug&&!st.f.gotKey,click(){st.f.gotKey=1;give('key','A small brass key was hidden under the rug!')}},
+  {id:'shelf',x:30,y:250,w:170,h:175,click(){say('Dusty books on rows of shelves. One red spine sticks out a little.')}},
+  {id:'book',x:118,y:316,w:20,h:48,click(){if(st.f.gotBatt){say('The hollow red book is empty now.');return}st.f.gotBatt=1;give('batt','The red book is hollow! Inside: a pair of batteries.')}},
+  {id:'drawer',x:600,y:336,w:120,h:50,click(){const f=st.f;if(f.drawerOpen){if(!f.gotFlash){f.gotFlash=1;give('flash','A flashlight — but its battery slot is empty.')}else say('The drawer is empty.');return}need(st.sel,'key',()=>{f.drawerOpen=1;take('key');S.door();say('The key turns. The drawer slides open — there is a flashlight inside.')},'The desk drawer is locked. It has a small keyhole.')}},
+  {id:'painting',x:230,y:70,w:210,h:160,click(){if(st.f.uvSeen){say('Glowing numbers on the painting: 3 8 1 5.');return}need(st.sel,'uv',()=>{st.f.uvSeen=1;S.good();say('Under the UV light, glowing numbers appear on the painting: 3 8 1 5!')},'A lighthouse at sunset. A tiny violet dot is painted in the corner of the frame...')}},
+  {id:'clock',x:582,y:72,w:76,h:76,click(){say('The clock ticks along with your escape timer. Tick... tock...')}},
+  {id:'lamp',x:500,y:205,w:60,h:95,click(){say('A green desk lamp. Cozy, but not helpful.')}},
+  {id:'keypad',x:760,y:216,w:34,h:48,vis:()=>!st.f.doorOpen,click(){openKeypad('Door keypad','3815',()=>{st.f.doorOpen=1;S.door();say('Click! The study door swings open.')})}},
+  {id:'door',x:800,y:92,w:160,h:330,click(){if(st.f.doorOpen)nextRoom();else say('The door is locked by a 4-digit keypad beside it.')}}
+ ],
+ hints:[[()=>!st.f.rug,'That rug looks like it could hide something. Try moving it.'],[()=>!st.f.gotKey,'Pick up what was under the rug.'],[()=>!st.f.drawerOpen,'Select the brass key in your inventory, then click the desk drawer.'],[()=>!st.f.gotFlash,'Take what is inside the drawer.'],[()=>!st.f.gotBatt,'One book on the shelf stands out. The red one.'],[()=>!has('uv')&&!st.f.uvSeen,'Combine the flashlight with the batteries: select one, then click the other.'],[()=>!st.f.uvSeen,'The painting has a violet (UV) dot. Shine the UV flashlight on the painting.'],[()=>!st.f.doorOpen,'Enter the glowing numbers on the keypad next to the door.'],[()=>true,'Click the open door to leave.']]
+},
+{name:'The Lab',
+ draw(){const f=st.f;roomShell('#2f4f57','#1d3338','#8e9a9c','#5c6668');
+  // tiles on floor
+  g.strokeStyle='#0002';for(let x=0;x<W;x+=60){g.beginPath();g.moveTo(x,430);g.lineTo(x,600);g.stroke()}
+  // chalkboard
+  g.fillStyle='#7a5230';g.fillRect(30,50,380,190);g.fillStyle='#1f3b2a';g.fillRect(42,62,356,166);txt('Q H R Q',220,110,46,'#f1f1e6','bold ');g.font='italic 17px Georgia';g.fillStyle='#e8e8d0';g.textAlign='center';g.fillText('"Caesar steps back once',220,165);g.fillText('for every flask on the shelf."',220,190);g.fillStyle='#ddd';g.fillRect(300,226,30,6);
+  // shelf + flasks
+  g.fillStyle='#5b3a1e';g.fillRect(440,170,170,10);[[465,'#e33'],[520,'#3c3'],[575,'#39f']].forEach(([x,c])=>{g.fillStyle=c;g.beginPath();g.moveTo(x-16,170);g.lineTo(x+16,170);g.lineTo(x+5,135);g.lineTo(x-5,135);g.fill();g.fillStyle='#cfe8ff88';g.fillRect(x-5,115,10,22)});
+  // vent
+  g.fillStyle=f.ventOpen?'#0c0c0c':'#9aa';g.fillRect(650,40,110,60);if(!f.ventOpen){g.fillStyle='#677';for(let i=0;i<5;i++)g.fillRect(656,46+i*11,98,5);g.fillStyle='#444';[[654,44],[752,44],[654,92],[752,92]].forEach(p=>{g.beginPath();g.arc(p[0]+2,p[1]+2,3,0,7);g.fill()})}else if(!f.gotB){g.save();g.translate(682,48);ITEMS.cardB.d(g);g.restore()}
+  // lab coat
+  g.fillStyle='#555';g.fillRect(490,198,10,10);g.fillStyle='#f2f2f2';g.beginPath();g.moveTo(495,205);g.lineTo(540,230);g.lineTo(550,400);g.lineTo(440,400);g.lineTo(450,230);g.fill();g.strokeStyle='#bbb';g.beginPath();g.moveTo(495,210);g.lineTo(495,400);g.stroke();g.fillStyle='#ddd';g.fillRect(505,300,30,26);
+  // fuse box
+  rr(650,180,90,110,6,'#7d8a8c','#333');g.fillStyle=f.fused?'#ffd166':'#222';g.fillRect(675,200,40,22);g.fillStyle=f.fused?'#6f6':'#a22';g.beginPath();g.arc(695,260,8,0,7);g.fill();txt('⚡',695,240,16,'#ff0','');
+  // cabinet
+  rr(40,260,180,165,6,'#b0b8ba','#555');g.strokeStyle='#666';g.beginPath();g.moveTo(130,262);g.lineTo(130,423);g.stroke();if(f.cabOpen){g.fillStyle='#222';g.fillRect(46,266,168,153);if(!f.gotA){g.save();g.translate(108,320);ITEMS.cardA.d(g);g.restore()}}else{rr(112,320,36,44,6,'#c49a2a','#6b4f12');g.fillStyle='#333';g.font='bold 11px monospace';g.textAlign='center';g.fillText('ABCD',130,345)}
+  // trash
+  g.fillStyle='#4b5d5f';g.beginPath();g.moveTo(262,350);g.lineTo(322,350);g.lineTo(316,428);g.lineTo(268,428);g.fill();g.fillStyle='#ffffffaa';g.beginPath();g.arc(282,350,9,0,7);g.arc(300,346,8,0,7);g.fill();
+  // door
+  door(800,92,f.doorOpen,'#5a6a72');rr(762,220,30,46,4,'#222','#888');g.fillStyle=f.fused?(f.doorOpen?'#6f6':'#fc3'):'#300';g.fillRect(768,228,18,8);g.fillStyle='#555';g.fillRect(768,246,18,3);
+ },
+ hs:[
+  {id:'board',x:30,y:50,w:380,h:190,click(){say('The chalkboard reads "QHRQ". Underneath: "Caesar steps back once for every flask on the shelf."')}},
+  {id:'flasks',x:440,y:110,w:170,h:70,click(){say('Three flasks: red, green and blue. Exactly three.')}},
+  {id:'cabinet',x:40,y:260,w:180,h:165,click(){const f=st.f;if(f.cabOpen){if(!f.gotA){f.gotA=1;give('cardA','Half of a torn keycard!')}else say('The cabinet is empty.');return}openLetters('Cabinet letter lock',4,'NEON',()=>{f.cabOpen=1;S.door();say('The padlock pops open! There is something inside the cabinet.')})}},
+  {id:'trash',x:255,y:335,w:75,h:95,click(){if(st.f.gotScrew){say('Just crumpled paper now.');return}st.f.gotScrew=1;give('screw','You dig through the trash and find a screwdriver!')}},
+  {id:'coat',x:440,y:200,w:110,h:200,click(){if(st.f.gotFuse){say('The lab coat pockets are empty.');return}st.f.gotFuse=1;give('fuse','In the lab coat pocket: a glass fuse!')}},
+  {id:'vent',x:650,y:40,w:110,h:60,click(){const f=st.f;if(f.ventOpen){if(!f.gotB){f.gotB=1;give('cardB','Inside the vent: the other half of a keycard!')}else say('An empty air duct.');return}need(st.sel,'screw',()=>{f.ventOpen=1;S.swit();say('You unscrew the vent cover. Something is taped inside.')},'An air vent held shut by four screws.')}},
+  {id:'fusebox',x:650,y:180,w:90,h:110,click(){if(st.f.fused){say('The fuse box hums. Power is on.');return}need(st.sel,'fuse',()=>{st.f.fused=1;take('fuse');S.good();say('You insert the fuse. The door\'s card reader lights up!')},'A fuse box. The fuse slot is empty and the red light is on.')}},
+  {id:'reader',x:758,y:214,w:38,h:58,vis:()=>!st.f.doorOpen,click(){const f=st.f;if(!f.fused){say('The card reader is dead. No power.');S.bad();return}need(st.sel,'card',()=>{f.doorOpen=1;take('card');S.door();say('Beep! Access granted. The lab door slides open.')},'The card reader blinks, waiting for a keycard.')}},
+  {id:'door',x:800,y:92,w:160,h:330,click(){if(st.f.doorOpen)nextRoom();else say('A heavy door with a keycard reader beside it.')}}
+ ],
+ hints:[[()=>!st.f.gotScrew,'Rummage through the trash bin.'],[()=>!st.f.ventOpen,'Use the screwdriver on the air vent up on the wall.'],[()=>!st.f.gotB,'Take what is inside the vent.'],[()=>!st.f.cabOpen,'The chalkboard is a Caesar cipher. Count the flasks (3) and shift each letter back 3: Q→N, H→E, R→O. Try that word on the cabinet lock.'],[()=>!st.f.gotA,'Take what is in the cabinet.'],[()=>!has('card')&&!st.f.doorOpen,'Combine the two keycard halves.'],[()=>!st.f.gotFuse,'Check the pockets of the lab coat.'],[()=>!st.f.fused,'Put the fuse in the fuse box.'],[()=>!st.f.doorOpen,'Use the keycard on the reader next to the door.'],[()=>true,'Click the open door.']]
+},
+{name:'The Vault',
+ draw(){const f=st.f;roomShell('#3d3550','#241f30','#3b3b46','#22222a');
+  // breaker
+  rr(50,170,80,120,6,'#555','#222');g.fillStyle='#888';g.fillRect(84,190,12,80);g.fillStyle=f.lights?'#3c3':'#c33';g.fillRect(74,f.lights?190:250,32,22);
+  // map
+  g.fillStyle='#6b4f2a';g.fillRect(290,60,280,180);g.fillStyle='#e9dcb5';g.fillRect(300,70,260,160);g.fillStyle='#8fb48a';g.beginPath();g.moveTo(330,110);g.bezierCurveTo(380,80,420,140,450,100);g.bezierCurveTo(500,90,540,150,520,200);g.bezierCurveTo(460,215,420,170,370,200);g.bezierCurveTo(330,190,320,150,330,110);g.fill();g.strokeStyle='#a33';g.setLineDash([5,4]);g.beginPath();g.moveTo(350,130);g.lineTo(420,170);g.lineTo(500,140);g.stroke();g.setLineDash([]);txt('✕',500,140,18,'#a22');[[340,215,'#d22'],[380,215,'#2a2'],[420,215,'#22d'],[460,215,'#cc0']].forEach(p=>{g.fillStyle=p[2];g.fillRect(p[0],p[1],3,3)});
+  // light panel
+  rr(610,110,140,190,10,'#2b2b33','#777');for(let i=0;i<9;i++){const on=f.lo?f.lo[i]:0;g.fillStyle=on?'#ffd000':'#444';g.beginPath();g.arc(640+(i%3)*40,150+Math.floor(i/3)*40,13,0,7);g.fill()}if(f.panel){[['#d22',640],['#22d',680],['#2a2',720]].forEach(p=>{g.fillStyle=p[0];g.fillRect(p[1]-14,268,28,14)})}else txt('?',680,275,20,'#888');
+  // vase
+  if(!f.vase){g.fillStyle='#2a6fb5';g.beginPath();g.moveTo(215,425);g.bezierCurveTo(170,380,190,340,220,330);g.lineTo(220,310);g.lineTo(250,310);g.lineTo(250,330);g.bezierCurveTo(280,340,300,380,255,425);g.fill();g.strokeStyle='#fff8';g.beginPath();g.arc(235,375,20,3,5);g.stroke()}else{g.fillStyle='#2a6fb5';for(let i=0;i<7;i++){g.beginPath();g.moveTo(190+i*14,425);g.lineTo(200+i*14,410-(i%3)*6);g.lineTo(208+i*14,425);g.fill()}if(!f.gotMag){g.save();g.translate(214,370);ITEMS.mag.d(g);g.restore()}}
+  // pedestal & gold
+  g.fillStyle='#777';g.fillRect(330,330,120,95);g.fillStyle='#ffd166';for(let i=0;i<3;i++)g.fillRect(345+i*30,310-(i%2)*8,26,20);
+  door(800,92,f.doorOpen,'#5c5c66');rr(758,210,36,60,6,'#333','#999');for(let i=0;i<3;i++){g.fillStyle='#ddd';g.beginPath();g.arc(776,224+i*17,6,0,7);g.fill()}
+  if(!f.lights){g.fillStyle='rgba(0,0,0,.94)';g.fillRect(0,0,W,H);const rg=g.createRadialGradient(90,230,5,90,230,90);rg.addColorStop(0,'rgba(255,60,60,.35)');rg.addColorStop(1,'rgba(255,60,60,0)');g.fillStyle=rg;g.fillRect(0,130,200,200);g.fillStyle='#f33';g.fillRect(74,250,32,22)}
+ },
+ hs:[
+  {id:'breaker',x:50,y:170,w:80,h:120,click(){if(st.f.lights){say('The breaker is on.');return}st.f.lights=1;S.swit();S.good();say('CLUNK. You throw the breaker and the lights flicker on!')}},
+  {id:'vase',x:180,y:305,w:120,h:122,vis:()=>!st.f.vase,click(){st.f.vase=1;noise(.3,.3);tone(1800,.2,'triangle',.08,600);say('The vase topples and shatters. Something was inside!')}},
+  {id:'mag',x:205,y:362,w:50,h:50,vis:()=>st.f.vase&&!st.f.gotMag,click(){st.f.gotMag=1;give('mag','A magnifying glass!')}},
+  {id:'map',x:290,y:60,w:280,h:180,click(){if(st.f.mapRead||st.sel==='mag'){if(st.sel==='mag'){st.sel=null;renderInv()}st.f.mapRead=1;S.good();showNote('Under the magnifier',`<div style="font:700 30px monospace;line-height:1.6"><span style="color:#f55">RED = 5</span><br><span style="color:#5d5">GREEN = 2</span><br><span style="color:#69f">BLUE = 8</span><br><span style="color:#ee3">YELLOW = 9</span></div>`);say('Tiny colored numbers: red 5, green 2, blue 8, yellow 9.');return}if(st.sel){S.bad();say("That doesn't help.");st.sel=null;renderInv();return}say('An old treasure map. Along the bottom are four tiny colored dots — far too small to read.')}},
+  {id:'panel',x:610,y:110,w:140,h:190,click(){if(st.f.panel){say('The panel shows colored bars in order: RED, BLUE, GREEN.');return}openLights()}},
+  {id:'gold',x:330,y:300,w:120,h:125,click(){say('Gold bars! Tempting... but they are bolted to the pedestal.')}},
+  {id:'dials',x:752,y:204,w:48,h:72,vis:()=>!st.f.doorOpen,click(){openDials('Vault door dials',[5,8,2],()=>{st.f.doorOpen=1;S.door();say('The dials click into place. The vault door groans open!')})}},
+  {id:'door',x:800,y:92,w:160,h:330,click(){if(st.f.doorOpen)winGame();else say('A massive vault door locked with three number dials.')}}
+ ],
+ hints:[[()=>!st.f.lights,'It is pitch dark. Click the faint red glow — it is a breaker switch.'],[()=>!st.f.panel,'The light panel: each button toggles itself and its neighbors. Turn all 9 lights on. (Try the corners and center.)'],[()=>!st.f.gotMag,'That vase on the floor looks fragile. Something might be inside.'],[()=>!st.f.mapRead,'Use the magnifying glass on the map to read the tiny dots.'],[()=>!st.f.doorOpen,'Panel order is RED, BLUE, GREEN. The map gives each color a number. Set the dials to 5 - 8 - 2.'],[()=>true,'Walk through the vault door!']]
+}];
+// ---------- modals ----------
+function saveHub(t){const n=Math.round(Number(t)*10)/10;if(!(n>0))return;let prev=NaN;try{prev=Number(localStorage.getItem('arcade-lock-best'))}catch(e){}if(Number.isFinite(prev)&&prev<=n)return;try{localStorage.setItem('arcade-lock-best',String(n))}catch(e){}}
+function syncOverlay(){const on=$('mod').style.display==='flex'||$('win').style.display==='flex';document.body.classList.toggle('overlay',on)}
+function modal(html){$('mbox').innerHTML=html;$('mod').style.display='flex';syncOverlay()}
+function closeModal(){$('mod').style.display='none';syncOverlay()}
+$('mod').addEventListener('click',e=>{if(e.target.id==='mod')closeModal()});
+function showNote(t,h){modal(`<h2>${t}</h2>${h}<br><button class="tb close" id="mclose">Close</button>`);$('mclose').onclick=closeModal}
+function openKeypad(title,code,ok){let v='';modal(`<h2>${title}</h2><div class="disp" id="kd">----</div><div class="keys">${[1,2,3,4,5,6,7,8,9,'C',0,'✓'].map(k=>`<button id="kp_${k==='✓'?'ok':k}">${k}</button>`).join('')}</div><button class="tb close" id="mclose">Close</button>`);const d=$('kd');const up=()=>d.textContent=(v+'----').slice(0,4);
+ $('mbox').querySelectorAll('.keys button').forEach(b=>b.onclick=()=>{const k=b.textContent;S.key();if(k==='C'){v=''}else if(k==='✓'){if(v===code){closeModal();ok()}else{S.bad();d.style.color='#f55';setTimeout(()=>d.style.color='',400);v=''}}else if(v.length<4)v+=k;up()});$('mclose').onclick=closeModal}
+function openLetters(title,n,code,ok){const L='ABCDEFGHIJKLMNOPQRSTUVWXYZ';const v=Array(n).fill(0);modal(`<h2>${title}</h2><div class="wheels">${v.map((_,i)=>`<div class="wheel"><button id="lu${i}">▲</button><div class="wv" id="lv${i}">A</div><button id="ld${i}">▼</button></div>`).join('')}</div><button class="big" id="ltry">Open</button><br><button class="tb close" id="mclose">Close</button>`);
+ for(let i=0;i<n;i++){$('lu'+i).onclick=()=>{v[i]=(v[i]+1)%26;$('lv'+i).textContent=L[v[i]];S.key()};$('ld'+i).onclick=()=>{v[i]=(v[i]+25)%26;$('lv'+i).textContent=L[v[i]];S.key()}}
+ $('ltry').onclick=()=>{if(v.map(x=>L[x]).join('')===code){closeModal();ok()}else{S.bad();say('The lock does not budge.')}};$('mclose').onclick=closeModal}
+function openDials(title,code,ok){const v=[0,0,0];modal(`<h2>${title}</h2><div class="wheels">${v.map((_,i)=>`<div class="wheel"><button id="du${i}">▲</button><div class="wv" id="dv${i}">0</div><button id="dd${i}">▼</button></div>`).join('')}</div><button class="big" id="dtry">Turn handle</button><br><button class="tb close" id="mclose">Close</button>`);
+ for(let i=0;i<3;i++){$('du'+i).onclick=()=>{v[i]=(v[i]+1)%10;$('dv'+i).textContent=v[i];S.key()};$('dd'+i).onclick=()=>{v[i]=(v[i]+9)%10;$('dv'+i).textContent=v[i];S.key()}}
+ $('dtry').onclick=()=>{if(v.join()===code.join()){closeModal();ok()}else{S.bad();say('The handle will not turn.')}};$('mclose').onclick=closeModal}
+function openLights(){const f=st.f;if(!f.lo){f.lo=[1,1,1,1,1,1,1,1,1];[0,4,8].forEach(i=>tog(f.lo,i))}
+ modal(`<h2>Light panel</h2><p style="margin:0;color:#cbb">Light up all nine.</p><div class="lgrid">${f.lo.map((o,i)=>`<div class="lt${o?' on':''}" id="lt${i}"></div>`).join('')}</div><button class="tb" id="lreset">Reset</button> <button class="tb close" id="mclose">Close</button>`);
+ const draw=()=>f.lo.forEach((o,i)=>$('lt'+i).className='lt'+(o?' on':''));
+ for(let i=0;i<9;i++)$('lt'+i).onclick=()=>{tog(f.lo,i);S.swit();draw();if(f.lo.every(x=>x)){f.panel=1;S.good();setTimeout(()=>{closeModal();say('All lights on! The panel reveals colored bars: RED, BLUE, GREEN.')},350)}};
+ $('lreset').onclick=()=>{f.lo=[1,1,1,1,1,1,1,1,1];[0,4,8].forEach(i=>tog(f.lo,i));draw()};$('mclose').onclick=closeModal}
+function tog(a,i){const r=Math.floor(i/3),c=i%3;[[0,0],[1,0],[-1,0],[0,1],[0,-1]].forEach(([dr,dc])=>{const R=r+dr,C=c+dc;if(R>=0&&R<3&&C>=0&&C<3)a[R*3+C]^=1})}
+// ---------- flow ----------
+function fmt(t){t=Math.floor(t);return Math.floor(t/60)+':'+String(t%60).padStart(2,'0')}
+function nextRoom(){st.rt[st.room]=st.t-(st.room?st.rt.slice(0,st.room).reduce((a,b)=>a+b,0):0);st.room++;st.f={};st.inv=[];st.sel=null;renderInv();S.door();say('You step into '+RD[st.room].name+'. Look around.')}
+function winGame(){running=false;st.rt[2]=st.t-st.rt[0]-st.rt[1];S.good();const best=LS.get('lockedin_best',null);const nb=!best||st.t<best;if(nb)LS.set('lockedin_best',st.t);saveHub(st.t);const rb=LS.get('lockedin_rooms',[null,null,null]);st.rt.forEach((t,i)=>{if(rb[i]==null||t<rb[i])rb[i]=t});LS.set('lockedin_rooms',rb);
+ $('wtxt').innerHTML=`Total time: <b>${fmt(st.t)}</b>${nb?' 🏆 New best!':''}<br>Study ${fmt(st.rt[0])} · Lab ${fmt(st.rt[1])} · Vault ${fmt(st.rt[2])}<br>Hints used: ${st.hints} (+${st.hints*30}s included)<br>Best: ${fmt(Math.min(st.t,best||1e9))}`;$('win').style.display='flex';syncOverlay()}
+function hint(){if(!running)return;const r=RD[st.room];const h=r.hints.find(h=>h[0]());st.hints++;st.t+=30;S.hint();showNote('💡 Hint (+30s)','<p style="font-size:17px;max-width:420px">'+h[1]+'</p>')}
+$('hintB').onclick=hint;
+function start(){ac();st=newState();running=true;$('title').style.display='none';$('tbg').style.display='none';$('game').style.display='flex';$('hintB').style.display='';$('win').style.display='none';$('mod').style.display='none';syncOverlay();layout();renderInv();say('You wake up in '+RD[0].name+'. The door is locked. Search everything!');S.door()}
+$('startB').onclick=start;$('againB').onclick=start;
+function canvasClick(e){if(!running)return;const r=cv.getBoundingClientRect();const x=(e.clientX-r.left)/r.width*W,y=(e.clientY-r.top)/r.height*H;const room=RD[st.room];if(st.room===2&&!st.f.lights){const h=hsAt(room.hs,x,y);if(h&&h.id==='breaker')h.click();else{say('It is too dark to see anything... except a faint red glow.');}return}const h=hsAt(room.hs,x,y);if(h){S.click();h.click()}else{if(st.sel){st.sel=null;renderInv()}say(['Nothing interesting there.','Just a wall.','You find nothing.'][Math.floor(Math.random()*3)])}}
+cv.addEventListener('click',canvasClick);
+function hsCoords(id){const h=RD[st.room].hs.find(h=>h.id===id);const r=cv.getBoundingClientRect();return{x:r.left+(h.x+h.w/2)/W*r.width,y:r.top+(h.y+h.h/2)/H*r.height}}
+window.__lk={hs:hsCoords,get st(){return st},get running(){return running},saveHub,setTime(t){if(st)st.t=t},winGame,start,openKeypad,openLetters,openDials,openLights,closeModal};
+function loop(t){const dt=Math.min(.1,(t-lastT)/1000||0);lastT=t;if(running){st.t+=dt;$('mid').textContent=RD[st.room].name+' · ⏱ '+fmt(st.t);RD[st.room].draw()}else if($('tbg').style.display!=='none')drawTbg(t/1000);requestAnimationFrame(loop)}
+// title background
+const tb=$('tbg'),tg=tb.getContext('2d');function sizeTbg(){tb.width=innerWidth;tb.height=innerHeight}
+function drawTbg(t){const w=tb.width,h=tb.height;tg.fillStyle='#0d0b10';tg.fillRect(0,0,w,h);const cx=w/2,cy=h*.42;for(let i=0;i<14;i++){const a=t*.3+i*Math.PI/7;tg.strokeStyle=`rgba(255,209,102,${.05+.04*Math.sin(t+i)})`;tg.lineWidth=2;tg.beginPath();tg.arc(cx,cy,60+i*26,a,a+1.4);tg.stroke()}
+ tg.save();tg.translate(cx,h*.84);const s=Math.min(1.4,w/500);tg.scale(s,s);tg.fillStyle='#ffd16633';tg.beginPath();tg.arc(0,-30,26,Math.PI,0);tg.lineWidth=9;tg.strokeStyle='#ffd16655';tg.stroke();tg.fillRect(-36,-30,72,56);tg.fillStyle='#0d0b10';tg.beginPath();tg.arc(0,-6,7,0,7);tg.fill();tg.fillRect(-3,-4,6,18);tg.restore()}
+{const b=LS.get('lockedin_best',null),rb=LS.get('lockedin_rooms',[null,null,null]);$('best').textContent=b?('🏆 Best escape: '+fmt(b)+'\nStudy '+fmt(rb[0]||0)+' · Lab '+fmt(rb[1]||0)+' · Vault '+fmt(rb[2]||0)):'No escapes yet.';if(typeof b==='number'&&b>0)saveHub(b)}
+sizeTbg();layout();requestAnimationFrame(loop);
+
+</script>
+</body></html>

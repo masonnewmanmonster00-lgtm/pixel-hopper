@@ -310,6 +310,12 @@ h1 span{color:#ff6b6b}
 .jig{background:#241a3e}
 .jig i{position:absolute;left:18%;top:24%;width:18%;height:22%;background:#ff9a3c;box-shadow:22px 0 0 #4a90d9,44px 0 0 #6bbf4a,0 26px 0 #c2407a,22px 26px 0 #ffd76b,44px 26px 0 #7a5cff}
 .jig b{position:absolute;right:16%;bottom:18%;width:14px;height:14px;background:#fff;border-radius:3px}
+.brd{background:linear-gradient(#7eb6e6,#2f6b3a 58%)}
+.brd i{position:absolute;left:0;right:0;bottom:0;height:34%;background:#245c32}
+.brd b{position:absolute;left:16%;bottom:34%;width:68%;height:8px;border-radius:4px;background:#d7b07a;box-shadow:0 -12px 0 -3px #8d5a32}
+.eln{background:linear-gradient(#b7e39a,#1c6b34)}
+.eln i{position:absolute;left:58%;bottom:18%;width:3px;height:48%;background:#f4f1ea}
+.eln b{position:absolute;left:61%;top:30%;width:0;height:0;border-top:7px solid transparent;border-bottom:7px solid transparent;border-left:14px solid #e63946}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -372,7 +378,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Sixty-six browser games. Best scores stay on this device.</p>
+<p class="lede">Sixty-eight browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -660,6 +666,14 @@ a.card[hidden]{display:none}
 <a class="card" href="./jigsaw.html" data-cat="Puzzle" data-key="arcade-jigsaw-best" data-name="Jigsaw Studio">
 <div class="thumb jig" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Puzzle</p><h2>Jigsaw Studio</h2><p>Fit the pieces. Best is your fastest clear.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./bridge-builder.html" data-cat="Puzzle" data-key="arcade-bridge-best" data-name="Bridge Builder">
+<div class="thumb brd" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Puzzle</p><h2>Bridge Builder</h2><p>Span the gap on a budget. Best is your stars.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./emerald-links.html" data-cat="Sports" data-key="arcade-links-best" data-name="Emerald Links">
+<div class="thumb eln" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Sports</p><h2>Emerald Links</h2><p>Play a nine-hole round. Best is your score versus par.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

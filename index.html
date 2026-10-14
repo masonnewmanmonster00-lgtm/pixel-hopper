@@ -251,6 +251,9 @@ h1 span{color:#ff6b6b}
 .rr{background:#1a0c28}
 .rr i{position:absolute;left:16%;top:62%;width:68%;height:8px;border-radius:4px;background:#6a4a8a}
 .rr b{position:absolute;left:40%;top:30%;width:16px;height:22px;border-radius:6px 6px 3px 3px;background:#5cff9d}
+.skb{background:#1a0826}
+.skb i{position:absolute;left:34%;top:22%;width:32%;height:32%;border-radius:50%;background:#5ff;box-shadow:0 0 0 6px #ff3fb4}
+.skb b{position:absolute;left:46%;top:64%;width:12px;height:12px;border-radius:50%;background:#d9a066}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -313,7 +316,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Forty-seven browser games. Best scores stay on this device.</p>
+<p class="lede">Forty-eight browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -524,6 +527,10 @@ a.card[hidden]{display:none}
 <a class="card" href="./rail-rush.html" data-cat="Action" data-key="arcade-rail-best" data-name="Rail Rush">
 <div class="thumb rr" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Action</p><h2>Rail Rush</h2><p>Dodge the trains and grab coins. Best is your highest run.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./skee-ball.html" data-cat="Arcade" data-key="arcade-skee-best" data-name="Skee-Ball">
+<div class="thumb skb" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Arcade</p><h2>Skee-Ball</h2><p>Roll nine balls up the ramp. Best is your highest game.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

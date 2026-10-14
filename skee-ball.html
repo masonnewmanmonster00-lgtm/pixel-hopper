@@ -1,0 +1,68 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#0b0b14"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon.svg"><link rel="apple-touch-icon" href="./icon.svg"><title>Skee-Ball</title>
+<style>html,body{margin:0;height:100%;background:#1a0826;overflow:hidden;touch-action:none;font-family:system-ui,sans-serif}canvas{display:block;width:100%;height:100%}
+#ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#000c;color:#fff;text-align:center}
+#ov h1{font-size:42px;margin:0 0 8px;color:#5ff}#ov button{font-size:19px;padding:10px 20px;border-radius:12px;border:0;background:#5ff;font-weight:800;margin:5px}
+#shop{display:none;flex-wrap:wrap;justify-content:center;gap:8px;max-width:560px;margin-top:8px}#shop div{background:#fff1;border:1px solid #fff3;border-radius:10px;padding:6px 10px;font-size:14px;cursor:pointer}#shop .own{background:#5ff3}
+#bt{position:fixed;top:8px;right:8px;display:flex;gap:6px;z-index:60}.b{background:#fff2;border:1px solid #fff5;color:#fff;border-radius:8px;padding:0 12px;min-height:40px;font-weight:700}
+a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:95;display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 12px;border-radius:999px;background:rgba(8,8,16,.82);color:#ffe14d;border:1px solid rgba(255,225,77,.55);font:700 12px/1 ui-monospace,monospace;letter-spacing:.04em;text-decoration:none;touch-action:manipulation}a.back:focus-visible{outline:2px solid #ffe14d;outline-offset:2px}
+@media(max-height:520px){#ov h1{font-size:28px;margin:0 0 4px}#msg{font-size:13px;line-height:1.3;max-width:680px}#shop{max-height:110px;overflow:auto}}</style></head><body>
+<a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a>
+<canvas id="c"></canvas><div id="bt"><button class="b" id="pb">II</button><button class="b" id="rb">↻</button></div>
+<div id="ov"><h1>🎟️ Skee-Ball</h1><div id="msg">Swipe up to roll. Faster means farther, and the angle of your swipe aims it.<br>PC: ←→ aim, hold Space for power and release. P pause, R restart.<br>9 balls per game. Points earn tickets for the prize counter!</div><div id="tk"></div><div><button id="go">Play</button><button id="sh">Prize Counter</button></div><div id="shop"></div></div>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d');let W,H,D;function rs(){D=devicePixelRatio||1;W=innerWidth;H=innerHeight;c.width=W*D;c.height=H*D;x.setTransform(D,0,0,D,0,0)}addEventListener('resize',rs);rs();
+let AC;function snd(f,d,t='sine',v=.2){try{AC=AC||new AudioContext();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.setValueAtTime(v,AC.currentTime);g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.connect(g).connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
+let S={best:0,tickets:0,own:[]};try{const raw=localStorage.getItem('skeeSave');if(raw){const o=JSON.parse(raw);if(o&&typeof o==='object')S=Object.assign(S,o)}}catch(e){}if(!Array.isArray(S.own))S.own=[];
+function save(){try{localStorage.setItem('skeeSave',JSON.stringify(S))}catch(e){}}
+function saveHub(){const n=Math.floor(S.best)||0;if(!(n>0))return;try{const prev=+localStorage.getItem('arcade-skee-best')||0;if(n>prev)localStorage.setItem('arcade-skee-best',String(n))}catch(e){}}
+const PRIZES=[['🍬','Candy',20],['🦆','Rubber Duck',50],['🎈','Balloon',80],['🪀','Yo-yo',120],['🧸','Teddy Bear',250],['🦖','Dino',400],['🎸','Guitar',700],['🚀','Rocket',1000],['👑','Crown',2000]];
+// world: lane x -1..1, y 0..10 ramp, jump at y=6, target board above
+const HOLES=[{x:0,y:8.6,r:.38,p:10},{x:0,y:9.2,r:.3,p:20},{x:0,y:9.7,r:.24,p:30},{x:0,y:10.1,r:.2,p:40},{x:0,y:10.45,r:.17,p:50},{x:-.78,y:10.45,r:.16,p:100},{x:.78,y:10.45,r:.16,p:100}];
+let st='menu',paused=false,score,balls,ball,aim=0,charge=0,drag=null,msgT='',msgTime=0,lit=null,litT=0;
+function start(){paused=false;score=0;balls=9;ball=null;aim=0;st='play';ov.style.display='none'}
+function roll(v,a){if(ball||st!='play'||paused||balls<=0)return;balls--;ball={x:a*.3,y:0,z:0,vx:a*1.1,vy:Math.max(4,Math.min(12,v)),vz:0,air:false};snd(90,1,'sine',.2)}
+function say(s){msgT=s;msgTime=1.4}
+function upd(dt){if(charge>0)charge=Math.min(1,charge+dt*.9);if(litT>0)litT-=dt;if(!ball)return;const b=ball;
+if(!b.air){b.vy-=1.6*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;if(Math.abs(b.x)>.9){b.x=Math.sign(b.x)*.9;b.vx=-b.vx*.6;snd(300,.05,'square',.1)}
+if(b.y>=6){b.air=true;b.vz=b.vy*.55;b.vy*=.6;snd(500,.06,'triangle',.15)}if(b.vy<=0){b.vy=0;miss()}}
+else{b.vz-=9*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;b.z+=b.vz*dt;if(Math.abs(b.x)>.95){b.x=Math.sign(b.x)*.95;b.vx=-b.vx*.5}if(b.y>10.7){b.y=10.7;b.vy=-b.vy*.3}
+if(b.z<=0&&b.vz<0){let best=null;for(const h of HOLES){const d=Math.hypot(b.x-h.x,(b.y-h.y)*1.0);if(d<h.r&&(!best||h.p>best.p))best=h}if(best){score+=best.p;lit=best;litT=1;say('+'+best.p);snd(400+best.p*6,.25,'square',.15);if(best.p>=50)setTimeout(()=>snd(1200,.3,'sine',.15),120);next();return}
+if(b.y<8.2){b.z=0;b.vz=-b.vz*.35;if(Math.abs(b.vz)<.6){miss();return}}else{b.z=0;b.vz=Math.abs(b.vz)*.4;b.vy=-Math.abs(b.vy)*.3-1;if(b.vz<.4)b.vy=-3}}
+if(b.y<5.5){miss()}}}
+function miss(){say('0');score+=0;next()}
+function next(){ball=null;if(balls<=0)setTimeout(end,900)}
+function end(){st='over';const t=Math.floor(score/10);S.tickets+=t;if(score>S.best)S.best=score;save();saveHub();ov.style.display='flex';msg.innerHTML='Score <b>'+score+'</b> &nbsp; Best '+S.best+'<br>🎟️ +'+t+' tickets';go.textContent='Play again';showT()}
+function showT(){tk.innerHTML='🎟️ '+S.tickets+' tickets &nbsp; Prizes: '+(S.own.map(i=>PRIZES[i][0]).join(' ')||'none yet')}
+function proj(wx,wy,wz=0){// ramp 0..6 rising, board 8..11 vertical-ish
+const t=Math.min(wy,11)/11,sy=H*.95-(H*.75)*Math.pow(t,.85)-wz*H*.06,sc=1-.55*t,half=Math.min(W*.22,H*.5)*sc;return[W/2+wx*half,sy,sc,half]}
+function draw(){const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#2d0b45');g.addColorStop(1,'#09030f');x.fillStyle=g;x.fillRect(0,0,W,H);
+// cabinet side neon
+const poly=(pts,f)=>{x.beginPath();pts.forEach((p,i)=>i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1]));x.closePath();x.fillStyle=f;x.fill()};
+const P=(a,b)=>proj(a,b);poly([P(-1.15,0),P(1.15,0),P(1.15,11),P(-1.15,11)],'#3a1a5a');
+const rg=x.createLinearGradient(0,P(0,0)[1],0,P(0,6)[1]);rg.addColorStop(0,'#c98a4a');rg.addColorStop(1,'#7a4a20');poly([P(-1,0),P(1,0),P(1,6),P(-1,6)],rg);
+x.strokeStyle='#0003';for(let i=1;i<12;i++){const[a,b]=P(-1,i*.5),[c2]=P(1,i*.5);x.beginPath();x.moveTo(a,b);x.lineTo(c2,b);x.stroke()}
+poly([P(-1,6),P(1,6),P(1,6.4),P(-1,6.4)],'#ff3fb4');
+poly([P(-1,6.4),P(1,6.4),P(1,11),P(-1,11)],'#14062a');
+// target rings
+for(const h of HOLES.slice().sort((a,b)=>b.r-a.r)){const[sx,sy,sc,half]=proj(h.x,h.y);const r=h.r*half;const on=lit==h&&litT>0;x.fillStyle=on?'#fff':(h.p>=100?'#ff3fb4':['#3ff','#5f5','#ff5','#f93','#f55'][h.p/10-1]);x.beginPath();x.ellipse(sx,sy,r*1.25,r*.75,0,0,7);x.fill();x.fillStyle='#000';x.beginPath();x.ellipse(sx,sy,r,r*.55,0,0,7);x.fill();x.fillStyle='#fff';x.font='bold '+Math.max(10,r*.5)+'px system-ui';x.textAlign='center';x.textBaseline='middle';x.fillText(h.p,sx,sy-r*.95)}
+// lights
+const t=performance.now()/200;for(let i=0;i<14;i++){const yy=i*11/13;[-1.12,1.12].forEach(s=>{const[a,b,sc]=P(s,yy);x.fillStyle=(Math.floor(t)+i)%3==0?'#ffef5a':'#5a3a7a';x.beginPath();x.arc(a,b,4*sc+1,0,7);x.fill()})}
+// ball
+if(ball){const[sx,sy,sc,half]=proj(ball.x,ball.y,ball.z);const[,shy]=proj(ball.x,ball.y,0);const r=half*.13;x.fillStyle='#0005';x.beginPath();x.ellipse(sx,shy,r,r*.35,0,0,7);x.fill();const bg=x.createRadialGradient(sx-r*.3,sy-r*1.3,1,sx,sy-r,r);bg.addColorStop(0,'#fff');bg.addColorStop(1,'#8a5a2a');x.fillStyle=bg;x.beginPath();x.arc(sx,sy-r,r,0,7);x.fill()}
+else if(st=='play'&&balls>0){const[sx,sy,sc,half]=proj(aim*.3,0);const r=half*.13;x.fillStyle='#d9a066';x.beginPath();x.arc(sx,sy-r,r,0,7);x.fill();x.setLineDash([5,6]);x.strokeStyle='#fff7';x.beginPath();x.moveTo(sx,sy-r);const[ex,ey]=proj(aim*.3+aim*1.1*.9,4);x.lineTo(ex,ey);x.stroke();x.setLineDash([]);
+if(charge>0){x.fillStyle='#0008';x.fillRect(16,H*.3,14,H*.5);x.fillStyle=`hsl(${120-charge*120},90%,55%)`;x.fillRect(16,H*.3+H*.5*(1-charge),14,H*.5*charge)}}
+// HUD
+x.fillStyle='#000a';x.fillRect(118,8,220,62);x.fillStyle='#5ff';x.font='bold 26px monospace';x.textAlign='left';x.textBaseline='alphabetic';x.fillText(String(score||0).padStart(4,'0'),128,38);x.fillStyle='#fff';x.font='14px system-ui';x.fillText('Balls '+(balls??9)+'  Best '+S.best,128,60);x.fillText('🎟️ '+S.tickets,248,36);
+if(msgTime>0){x.globalAlpha=Math.min(1,msgTime);x.font='bold 46px system-ui';x.textAlign='center';x.fillStyle='#fff';x.strokeStyle='#ff3fb4';x.lineWidth=5;x.strokeText(msgT,W/2,H*.35);x.fillText(msgT,W/2,H*.35);x.globalAlpha=1}
+if(paused){x.fillStyle='#0008';x.fillRect(0,0,W,H);x.fillStyle='#fff';x.font='bold 40px system-ui';x.textAlign='center';x.fillText('Paused',W/2,H/2)}}
+let last=0;function loop(t){const dt=Math.min(.033,(t-last)/1000||0);last=t;if(st=='play'&&!paused)upd(dt);if(msgTime>0)msgTime-=dt;draw();requestAnimationFrame(loop)}
+c.addEventListener('pointerdown',e=>{if(st!='play'||ball||paused)return;drag=[[e.clientX,e.clientY,performance.now()]]});
+addEventListener('pointermove',e=>{if(!drag)return;drag.push([e.clientX,e.clientY,performance.now()]);if(drag.length>6)drag.shift()});
+addEventListener('pointerup',e=>{if(!drag)return;const a=drag[0],b=drag[drag.length-1];drag=null;const dy=a[1]-b[1],dt=Math.max(.02,(b[2]-a[2])/1000);if(dy<30)return;const v=dy/dt/H*3.2;const an=Math.max(-1,Math.min(1,(b[0]-a[0])/dy*1.4));aim=an;roll(v,an)});
+addEventListener('keydown',e=>{const k=e.key;if(st=='play'&&!ball&&!paused){if(k=='ArrowLeft')aim=Math.max(-1,aim-.05);if(k=='ArrowRight')aim=Math.min(1,aim+.05);if(k==' '){e.preventDefault();if(!charge)charge=.01}}else if(k==' '&&st!='play'){e.preventDefault();start()}if((k=='p'||k=='P')&&!e.repeat)paused=!paused;if((k=='r'||k=='R')&&!e.repeat)start()});
+addEventListener('keyup',e=>{if(e.key==' '&&charge>0){roll(5+charge*7,aim);charge=0}});
+function shop(){shopEl.style.display='flex';shopEl.innerHTML='';PRIZES.forEach((p,i)=>{const d=document.createElement('div');const own=S.own.includes(i);d.className=own?'own':'';d.innerHTML=p[0]+' '+p[1]+'<br>'+(own?'Owned':'🎟️ '+p[2]);d.onclick=()=>{if(own)return;if(S.tickets>=p[2]){S.tickets-=p[2];S.own.push(i);save();snd(880,.2,'triangle');showT();shop()}else{d.style.borderColor='#f55'}};shopEl.appendChild(d)})}
+const shopEl=document.getElementById('shop');sh.onclick=shop;showT();
+pb.onclick=()=>{if(st=='play')paused=!paused};rb.onclick=start;go.onclick=start;requestAnimationFrame(loop);
+window.__skee={start,roll,end,setScore(n){score=n},state(){return{st,paused,score,balls,aim,charge,best:S.best,hasBall:!!ball}}};
+</script></body></html>

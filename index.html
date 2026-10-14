@@ -361,6 +361,12 @@ h1 span{color:#ff6b6b}
 .bgm{background:#1f6b45}
 .bgm i{position:absolute;left:22%;top:28%;width:0;height:0;border-left:16px solid transparent;border-right:16px solid transparent;border-bottom:26px solid #e9d6a8}
 .bgm b{position:absolute;left:28%;top:62%;width:14px;height:14px;border-radius:50%;background:#f5efe2;box-shadow:20px -8px 0 #7a1515,40px 0 0 #f5efe2}
+.ctq{background:#3f9a40}
+.ctq i{position:absolute;left:22%;top:32%;width:26px;height:20px;border-radius:14px 14px 10px 10px;background:#f6d63a;box-shadow:38px 10px 0 #4aa0ec}
+.ctq b{position:absolute;left:28%;top:38%;width:7px;height:7px;border-radius:50%;background:#1a1a2a;box-shadow:10px 0 0 #1a1a2a,40px 12px 0 #1a1a2a,50px 12px 0 #1a1a2a}
+.rvs{background:#1d6b3a}
+.rvs i{position:absolute;left:18%;top:32%;width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#555,#111)}
+.rvs b{position:absolute;left:52%;top:44%;width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#c8c8c8)}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -423,7 +429,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Eighty-three browser games. Best scores stay on this device.</p>
+<p class="lede">Eighty-five browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -780,6 +786,14 @@ a.card[hidden]{display:none}
 <a class="card" href="./backgammon.html" data-cat="Board" data-key="arcade-bg-best" data-name="Backgammon">
 <div class="thumb bgm" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Board</p><h2>Backgammon</h2><p>Move your checkers home before the CPU. Best is your wins.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./critters.html" data-cat="Adventure" data-key="arcade-critter-best" data-name="Critter Quest">
+<div class="thumb ctq" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Adventure</p><h2>Critter Quest</h2><p>Catch critters and become Champion. Best is critters caught.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./reversi.html" data-cat="Board" data-key="arcade-reversi-best" data-name="Reversi">
+<div class="thumb rvs" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Board</p><h2>Reversi</h2><p>Outflank the discs against the CPU. Best is your wins.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

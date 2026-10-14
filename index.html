@@ -177,6 +177,17 @@ h1 span{color:#ff6b6b}
 .hoop{background:#1a2744}
 .hoop i{position:absolute;left:34%;top:28%;width:46px;height:8px;border-radius:8px;border:3px solid #ff6a1a;background:transparent}
 .hoop b{position:absolute;left:46%;top:52%;width:18px;height:18px;border-radius:50%;background:#e07020}
+.pin{background:#03020a}
+.pin i{position:absolute;bottom:18%;height:8px;border-radius:4px;background:#3df4ff}
+.pin i:nth-child(1){left:22%;width:28px;transform:rotate(-28deg)}
+.pin i:nth-child(2){right:22%;width:28px;transform:rotate(28deg)}
+.pin b{position:absolute;left:46%;top:28%;width:16px;height:16px;border-radius:50%;background:#ff3dcf;box-shadow:0 0 10px #ff3dcf}
+.sdk{background:#0a0720}
+.sdk i{position:absolute;background:#1c1748;border:1px solid #0ff}
+.sdk i:nth-child(1){left:22%;top:28%;width:18px;height:18px}
+.sdk i:nth-child(2){left:42%;top:28%;width:18px;height:18px}
+.sdk i:nth-child(3){left:62%;top:28%;width:18px;height:18px}
+.sdk b{position:absolute;left:46%;top:52%;width:18px;height:18px;background:#6a2a9a;border:1px solid #f6f}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -239,7 +250,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Thirty browser games. Best scores stay on this device.</p>
+<p class="lede">Thirty-two browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -377,6 +388,14 @@ a.card[hidden]{display:none}
 <div class="thumb hoop" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Sports</p><h2>Hoop Shot</h2><p>Drag back and shoot. Swishes add time, and a streak doubles the points.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
+<a class="card" href="./pinball.html" data-cat="Arcade" data-key="arcade-pinball-best" data-name="Neon Pinball">
+<div class="thumb pin" aria-hidden="true"><i></i><i></i><b></b></div>
+<div class="meta"><p class="kicker">Arcade</p><h2>Neon Pinball</h2><p>Flip, nudge, and launch. Three balls, and the high score stays on this device.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./sudoku.html" data-cat="Puzzle" data-key="arcade-sudoku-best" data-name="Neon Sudoku">
+<div class="thumb sdk" aria-hidden="true"><i></i><i></i><i></i><b></b></div>
+<div class="meta"><p class="kicker">Puzzle</p><h2>Neon Sudoku</h2><p>Fill the grid. Best is your fastest time on any difficulty.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
 <a class="card" href="./whack-a-mole.html" data-cat="Arcade" data-key="arcade-mole-best" data-name="Whack-a-Mole">
 <div class="thumb mole" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Arcade</p><h2>Whack-a-Mole</h2><p>Whack the moles before they hide. Gold pays more. Bombs cost time.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
@@ -387,7 +406,7 @@ a.card[hidden]{display:none}
 "use strict";
 const RECENT="arcade-recent";
 let cat="All";
-function readScore(key){try{const v=localStorage.getItem(key);if(v==null||v==="")return null;const n=Number(v);if(Number.isFinite(n))return n;const o=JSON.parse(v);if(!o||typeof o!=="object"||Array.isArray(o))return null;if(Number.isFinite(Number(o.w))&&("l" in o))return Number(o.w);let m=null;for(const rec of Object.values(o)){const s=rec&&typeof rec==="object"?Number(rec.score):Number(rec);if(Number.isFinite(s)&&(m==null||s>m))m=s}return m}catch(e){return null}}
+function readScore(key){try{const v=localStorage.getItem(key);if(v==null||v==="")return null;const n=Number(v);if(Number.isFinite(n))return n;const o=JSON.parse(v);if(!o||typeof o!=="object"||Array.isArray(o))return null;if(Number.isFinite(Number(o.w))&&("l" in o))return Number(o.w);if(Number.isFinite(Number(o.best)))return Number(o.best);let m=null;for(const rec of Object.values(o)){const s=rec&&typeof rec==="object"?Number(rec.score):Number(rec);if(Number.isFinite(s)&&(m==null||s>m))m=s}return m}catch(e){return null}}
 function readRecent(){try{const v=JSON.parse(localStorage.getItem(RECENT)||"[]");return Array.isArray(v)?v.filter(x=>typeof x==="string"):[]}catch(e){return []}}
 function remember(href){try{const next=[href,...readRecent().filter(x=>x!==href)].slice(0,8);localStorage.setItem(RECENT,JSON.stringify(next))}catch(e){}}
 function paintScores(){document.querySelectorAll("a.card").forEach(card=>{const n=readScore(card.dataset.key);const el=card.querySelector(".best");if(el)el.textContent=n==null?"-":String(n)})}

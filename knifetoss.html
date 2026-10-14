@@ -1,0 +1,93 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b14"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon.svg"><link rel="apple-touch-icon" href="./icon.svg">
+<title>Knife Toss</title><style>html,body{margin:0;height:100%;background:#1a1226;overflow:hidden;touch-action:none;user-select:none;font-family:system-ui,sans-serif}canvas{display:block;width:100%;height:100%}
+a.back{position:fixed;z-index:95;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));color:#fff;background:#16162a;border:1px solid #2a2a44;border-radius:8px;padding:8px 12px;text-decoration:none;font:600 14px/1.2 system-ui,sans-serif;min-height:40px;display:inline-flex;align-items:center;box-sizing:border-box}</style></head><body>
+<a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a>
+<canvas id="c"></canvas><script>
+(()=>{
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');let W,H,DPR;
+function rs(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0)}addEventListener('resize',rs);rs();
+const SKINS=[{n:'Steel',c:'#cfd8dc',h:'#5d4037',cost:0},{n:'Gold',c:'#ffd54f',h:'#6d4c41',cost:10},{n:'Ruby',c:'#ef5350',h:'#212121',cost:20},{n:'Emerald',c:'#66bb6a',h:'#1b5e20',cost:30},{n:'Frost',c:'#80deea',h:'#01579b',cost:45},{n:'Shadow',c:'#7e57c2',h:'#000',cost:60}];
+const BOSSES=['Cheese Wheel','Iron Shield','Pizza','Tire','Clock'];
+let save;try{save=JSON.parse(localStorage.getItem('knifeSave'))}catch(e){}
+save=Object.assign({muted:false,apples:0,best:0,skin:0,owned:[0]},save||{});
+let AC=null;function unlock(){try{if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended'){const p=AC.resume();if(p&&p.catch)p.catch(()=>{})}}catch(e){}}
+function tone(f,d,type,vol,f2,delay){if(save.muted||!AC)return;const t=AC.currentTime+(delay||0),o=AC.createOscillator(),g=AC.createGain();o.type=type||'sine';o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);g.gain.setValueAtTime(vol||.2,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.02)}
+function noise(d,vol,fc,delay){if(save.muted||!AC)return;const t=AC.currentTime+(delay||0),n=AC.sampleRate*d,b=AC.createBuffer(1,n,AC.sampleRate),a=b.getChannelData(0);for(let i=0;i<n;i++)a[i]=Math.random()*2-1;const s=AC.createBufferSource(),fl=AC.createBiquadFilter(),g=AC.createGain();s.buffer=b;fl.type='bandpass';fl.frequency.value=fc||1000;g.gain.setValueAtTime(vol||.3,t);g.gain.exponentialRampToValueAtTime(.001,t+d);s.connect(fl);fl.connect(g);g.connect(AC.destination);s.start(t)}
+const SFX={throw:()=>noise(.15,.25,2500),thunk:()=>{tone(140,.12,'triangle',.4,60);noise(.06,.3,400)},pop:()=>tone(500,.12,'sine',.3,1400),clang:()=>{tone(900,.4,'square',.15,850);tone(1350,.35,'sawtooth',.1,1300)},shatter:()=>{noise(.5,.4,800);tone(200,.3,'triangle',.3,50)},fanfare:()=>[523,659,784,1046].forEach((f,i)=>tone(f,.25,'square',.12,0,i*.13)),chime:()=>{tone(1318,.2,'sine',.25,0,0);tone(1760,.3,'sine',.25,0,.1)}};
+function toggleMute(){save.muted=!save.muted;persist()}
+const MB={x:()=>W-56,y:()=>H-56,s:44};function muteHit(x,y){return x>=MB.x()&&x<=MB.x()+MB.s&&y>=MB.y()&&y<=MB.y()+MB.s}
+function saveHub(){try{const n=Math.round(save.best);if(!(n>0))return;const k='arcade-knife-best';const prev=Number(localStorage.getItem(k));if(Number.isFinite(prev)&&prev>=n)return;localStorage.setItem(k,String(n));}catch(e){}}
+function persist(){try{localStorage.setItem('knifeSave',JSON.stringify(save))}catch(e){}saveHub()}
+saveHub();
+let S={mode:'menu',stage:1,score:0,rot:0,vel:0,t:0,knives:0,stuck:[],apples:[],fly:null,bounce:null,shards:[],paused:false,flash:0,clearT:0};
+const LR=()=>Math.min(W,H*1.2)*0.17, CY=()=>H*0.34, KY=()=>H*0.86, KL=()=>Math.max(34,LR()*0.75);
+const isBoss=s=>s%5===0;
+function pattern(s){const b=1.2+Math.min(s,25)*0.06;const p=isBoss(s)?3:(s%4);
+ return t=>{switch(p){case 0:return b;case 1:return b*(Math.sin(t*1.3)>0?1:-1)*1.1; // reverse
+  case 2:return b*(0.4+1.4*Math.abs(Math.sin(t*0.9))); // accelerate
+  default:return b*1.3*Math.sin(t*0.8)+ (Math.sin(t*2.7)>0.6?b:0)}}}
+let spd;
+function startStage(){const s=S.stage;S.knives=isBoss(s)?9:Math.min(5+Math.floor(s/2),10);S.stuck=[];S.apples=[];S.rot=0;S.t=0;S.fly=null;S.bounce=null;spd=pattern(s);
+ const pre=isBoss(s)?3:Math.min(Math.floor((s-1)/2),3);for(let i=0;i<pre;i++)S.stuck.push({a:i*2*Math.PI/pre+0.3,pre:1});
+ const na=Math.random()<.7?1+(s>6&&Math.random()<.4):0;for(let i=0;i<na;i++){let a,ok,n=0;do{a=Math.random()*Math.PI*2;ok=S.stuck.every(k=>adiff(k.a,a)>0.4)&&S.apples.every(p=>adiff(p.a,a)>0.4)}while(!ok&&++n<50);S.apples.push({a})}
+ S.mode='play'}
+function adiff(a,b){let d=((a-b)%(2*Math.PI)+3*Math.PI)%(2*Math.PI)-Math.PI;return Math.abs(d)}
+function newGame(){S.stage=1;S.score=0;S.shards=[];startStage()}
+function throwK(){if(S.mode==='menu'||S.mode==='over'){newGame();return}if(S.mode!=='play'||S.paused||S.fly||S.knives<=0)return;S.knives--;S.fly={y:KY()};SFX.throw()}
+function fail(){SFX.clang();S.mode='over';S.flash=1;S.bounce={x:W/2,y:CY()+LR(),vx:(Math.random()-.5)*6,vy:-4,r:0};persist();try{navigator.vibrate&&navigator.vibrate(200)}catch(e){}}
+function clearStage(){SFX.shatter();if(isBoss(S.stage))SFX.fanfare();S.mode='clear';S.clearT=1.1;const cx=W/2,cy=CY(),R=LR();for(let i=0;i<14;i++){const a=Math.random()*6.28;S.shards.push({x:cx+Math.cos(a)*R*.5,y:cy+Math.sin(a)*R*.5,vx:Math.cos(a)*(3+Math.random()*5),vy:Math.sin(a)*(3+Math.random()*5)-3,r:Math.random()*6,vr:(Math.random()-.5)*.4,s:R*(.25+Math.random()*.3),l:1})}
+ S.stuck.forEach(k=>S.shards.push({x:cx,y:cy,vx:(Math.random()-.5)*10,vy:-6-Math.random()*4,r:k.a,vr:.3,knife:1,l:1}));
+ if(isBoss(S.stage)){save.apples+=5}S.score+=isBoss(S.stage)?5:1;if(S.stage>save.best)save.best=S.stage;persist()}
+function land(){const a=((Math.PI/2-S.rot)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
+ const th=Math.atan2(10,LR())*1.25;if(S.stuck.some(k=>adiff(k.a,a)<th)){S.fly=null;fail();return false}
+ for(let i=S.apples.length-1;i>=0;i--)if(adiff(S.apples[i].a,a)<0.28){S.apples.splice(i,1);SFX.pop();save.apples+=1;persist();S.score++}
+ S.stuck.push({a});SFX.thunk();S.fly=null;S.score++;S.flash=.25;if(S.knives<=0)clearStage();return true}
+function buySkin(i){const k=SKINS[i];if(save.owned.includes(i)){save.skin=i;persist();return true}if(save.apples>=k.cost){save.apples-=k.cost;save.owned.push(i);save.skin=i;persist();SFX.chime();return true}return false}
+// input
+function skinHit(x,y){if(S.mode!=='menu')return -1;const n=SKINS.length,w=Math.min(70,W/(n+1)),x0=W/2-n*w/2,y0=H*.7;if(y<y0||y>y0+w)return -1;const i=Math.floor((x-x0)/w);return i>=0&&i<n?i:-1}
+function onTap(x,y){unlock();if(muteHit(x,y)){toggleMute();return}const i=skinHit(x,y);if(i>=0){buySkin(i);return}throwK()}
+cv.addEventListener('touchstart',e=>{e.preventDefault();const t=e.changedTouches[0];onTap(t.clientX,t.clientY)},{passive:false});
+cv.addEventListener('mousedown',e=>{onTap(e.clientX,e.clientY)});
+addEventListener('keydown',e=>{unlock();if(e.repeat&&(e.code==='KeyM'||e.code==='Space'||e.code==='Enter'||e.code==='KeyP'||e.code==='KeyR'||e.code==='Escape'))return;if(e.code==='KeyM'){toggleMute();return}if(e.code==='Space'||e.code==='Enter'){e.preventDefault();throwK()}else if(e.code==='KeyP'){if(S.mode==='play')S.paused=!S.paused}else if(e.code==='KeyR'){newGame()}else if(e.code==='Escape'){S.mode='menu'}});
+addEventListener('blur',()=>{if(S.mode==='play')S.paused=true});
+// draw
+function knife(x,y,ang,sk){const L=KL();ctx.save();ctx.translate(x,y);ctx.rotate(ang);const s=SKINS[sk];ctx.fillStyle=s.h;ctx.fillRect(-4,L*.05,8,L*.45);ctx.fillStyle='#999';ctx.fillRect(-7,0,14,4);ctx.fillStyle=s.c;ctx.beginPath();ctx.moveTo(-5,0);ctx.lineTo(5,0);ctx.lineTo(5,-L*.4);ctx.lineTo(0,-L*.55);ctx.lineTo(-5,-L*.4);ctx.closePath();ctx.fill();ctx.restore()}
+function apple(x,y,r){ctx.fillStyle='#e53935';ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();ctx.fillStyle='#43a047';ctx.fillRect(x-1,y-r-5,3,6)}
+function drawLog(){const cx=W/2,cy=CY(),R=LR(),boss=isBoss(S.stage);
+ S.stuck.forEach(k=>{const a=k.a+S.rot;const x=cx+Math.cos(a)*R,y=cy+Math.sin(a)*R;knife(x,y,a-Math.PI/2+Math.PI,k.pre?0:save.skin)});
+ S.apples.forEach(p=>{const a=p.a+S.rot;apple(cx+Math.cos(a)*(R+12),cy+Math.sin(a)*(R+12),10)});
+ ctx.save();ctx.translate(cx,cy);ctx.rotate(S.rot);const bi=Math.floor(S.stage/5-1)%BOSSES.length;
+ const cols=boss?[['#fbc02d','#f57f17'],['#90a4ae','#37474f'],['#ffb74d','#d84315'],['#424242','#111'],['#eceff1','#5d4037']][bi]:['#a1887f','#6d4c41'];
+ ctx.fillStyle=cols[1];ctx.beginPath();ctx.arc(0,0,R,0,7);ctx.fill();ctx.fillStyle=cols[0];ctx.beginPath();ctx.arc(0,0,R*.9,0,7);ctx.fill();ctx.strokeStyle=cols[1];ctx.lineWidth=2;for(let r=R*.25;r<R*.9;r+=R*.2){ctx.beginPath();ctx.arc(0,0,r,0,7);ctx.stroke()}
+ if(boss){ctx.fillStyle=cols[1];for(let i=0;i<6;i++){ctx.beginPath();ctx.arc(Math.cos(i)*R*.5,Math.sin(i)*R*.5,R*.08,0,7);ctx.fill()}}ctx.restore()}
+function drawMute(){const x=MB.x(),y=MB.y();ctx.fillStyle='rgba(255,255,255,.15)';ctx.fillRect(x,y,MB.s,MB.s);ctx.font='22px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fff';ctx.fillText(save.muted?'🔇':'🔊',x+MB.s/2,y+MB.s/2);ctx.textBaseline='alphabetic'}
+function txt(s,x,y,sz,c,al){ctx.fillStyle=c||'#fff';ctx.font='bold '+sz+'px system-ui';ctx.textAlign=al||'center';ctx.fillText(s,x,y)}
+let last=performance.now();
+function frame(now){const dt=Math.min(.05,(now-last)/1000);last=now;step(dt);draw();requestAnimationFrame(frame)}
+function step(dt){if(S.paused)return;S.flash=Math.max(0,S.flash-dt*2);
+ if(S.mode==='play'){S.t+=dt;S.rot+=spd(S.t)*dt;if(S.fly){S.fly.y-=dt*H*3.2;if(S.fly.y<=CY()+LR())land()}}
+ if(S.mode==='over'&&S.bounce){const b=S.bounce;b.x+=b.vx;b.y+=b.vy;b.vy+=.4;b.r+=.3}
+ S.shards.forEach(s=>{s.x+=s.vx;s.y+=s.vy;s.vy+=.35;s.r+=s.vr;s.l-=dt*.7});S.shards=S.shards.filter(s=>s.l>0&&s.y<H+50);
+ if(S.mode==='clear'){S.clearT-=dt;if(S.clearT<=0){S.stage++;startStage()}}}
+function draw(){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#2a1d3d');g.addColorStop(1,'#120c1a');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ drawMute();if(S.mode==='menu'){txt('KNIFE TOSS',W/2,H*.2,Math.min(56,W/9),'#ffd54f');txt('Tap / Click / Space to play',W/2,H*.32,18);
+  apple(W/2-60,H*.43,9);txt(save.apples+'   Best stage: '+save.best,W/2+10,H*.45,18,'#fff');txt('Skins (tap to buy/equip)',W/2,H*.64,15,'#ccc');
+  const n=SKINS.length,w=Math.min(70,W/(n+1)),x0=W/2-n*w/2,y0=H*.7;SKINS.forEach((s,i)=>{ctx.fillStyle=i===save.skin?'#5e35b1':'#2d2240';ctx.fillRect(x0+i*w+3,y0,w-6,w);const own=save.owned.includes(i);ctx.globalAlpha=own?1:.4;knife(x0+i*w+w/2,y0+w*.55,0,i);ctx.globalAlpha=1;txt(own?s.n:'🍎'+s.cost,x0+i*w+w/2,y0+w+14,11,own?'#fff':'#f88')});
+  txt('P pause · R restart · M mute · Esc menu',W/2,H*.97,12,'#888');return}
+ if(isBoss(S.stage)&&S.mode!=='over')txt('BOSS: '+BOSSES[Math.floor(S.stage/5-1)%BOSSES.length],W-14,108,16,'#ff7043','right');
+ if(S.mode!=='clear')drawLog();
+ S.shards.forEach(s=>{ctx.save();ctx.globalAlpha=Math.max(0,s.l);if(s.knife){knife(s.x,s.y,s.r,save.skin)}else{ctx.translate(s.x,s.y);ctx.rotate(s.r);ctx.fillStyle='#8d6e63';ctx.fillRect(-s.s/2,-s.s/4,s.s,s.s/2)}ctx.restore()});
+ if(S.fly)knife(W/2,S.fly.y,0,save.skin);else if(S.mode==='play'&&S.knives>0)knife(W/2,KY(),0,save.skin);
+ if(S.bounce)knife(S.bounce.x,S.bounce.y,S.bounce.r,save.skin);
+ for(let i=0;i<S.knives;i++){ctx.fillStyle='#ddd';ctx.fillRect(16,H-24-i*16,6,12)}
+ txt('Stage '+S.stage,W/2,72,20,'#fff');txt('Score '+S.score,14,96,16,'#fff','left');apple(W-80,64,8);txt(''+save.apples,W-64,72,16,'#fff','left');
+ if(S.flash>0&&S.mode==='over'){ctx.fillStyle='rgba(255,0,0,'+S.flash*.4+')';ctx.fillRect(0,0,W,H)}
+ if(S.mode==='clear')txt(isBoss(S.stage)?'BOSS DEFEATED! +5🍎':'STAGE CLEAR!',W/2,H*.5,30,'#ffd54f');
+ if(S.mode==='over'){txt('OUCH! Game Over',W/2,H*.5,32,'#ff5252');txt('Stage '+S.stage+' · Score '+S.score+' · Tap to retry',W/2,H*.5+30,16)}
+ drawMute();if(S.paused){ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(0,0,W,H);txt('PAUSED (P)',W/2,H/2,32)}}
+function uiButtons(){const list=[{id:'mute',x:MB.x(),y:MB.y(),w:MB.s,h:MB.s}];if(S.mode==='menu'){const n=SKINS.length,w=Math.min(70,W/(n+1)),x0=W/2-n*w/2,y0=H*.7;SKINS.forEach((s,i)=>list.push({id:'skin'+i,x:x0+i*w,y:y0,w,h:w}))}return list}
+window.__kt={get S(){return S},save:()=>save,get buttons(){return uiButtons()},startStage,newGame,throwK,buySkin,SKINS,step,SFX,toggleMute,saveHub,setBest(n){save.best=n},persist,AC:()=>AC};
+requestAnimationFrame(frame);
+})();
+</script></body></html>

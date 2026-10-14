@@ -118,6 +118,13 @@ h1 span{color:#ff6b6b}
 .rink b{left:46%;top:46%;width:12px;height:12px;background:#eee}
 .racer{background:linear-gradient(#1d6b2a 0 28%,#4a4a4a 28%)}.racer i{position:absolute;left:46%;bottom:18%;width:16px;height:34px;background:#fff;border-radius:3px}
 .racer b{position:absolute;left:22%;right:22%;top:42%;height:0;border-top:3px dashed #fff}
+.chk{background:#e8cfa0;background-image:linear-gradient(45deg,#6b4423 25%,transparent 25%),linear-gradient(-45deg,#6b4423 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#6b4423 75%),linear-gradient(-45deg,transparent 75%,#6b4423 75%);background-size:28px 28px;background-position:0 0,0 14px,14px -14px,-14px 0}
+.chk i{position:absolute;left:38%;top:42%;width:18px;height:18px;border-radius:50%;background:#c41818;box-shadow:24px -20px 0 #161616}
+.fruit{background:linear-gradient(#6d3b17,#2b1608)}
+.fruit i{position:absolute;border-radius:50%}
+.fruit i:nth-child(1){left:26%;top:34%;width:30px;height:30px;background:#e53935}
+.fruit i:nth-child(2){left:46%;top:44%;width:26px;height:26px;background:#fb8c00}
+.fruit i:nth-child(3){left:64%;top:30%;width:22px;height:22px;background:#7cb342}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -180,7 +187,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Sixteen browser games. Best scores stay on this device.</p>
+<p class="lede">Eighteen browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -191,6 +198,7 @@ a.card[hidden]{display:none}
 <button type="button" class="chip" data-cat="Arcade" aria-pressed="false">Arcade</button>
 <button type="button" class="chip" data-cat="Classic" aria-pressed="false">Classic</button>
 <button type="button" class="chip" data-cat="Strategy" aria-pressed="false">Strategy</button>
+<button type="button" class="chip" data-cat="Board" aria-pressed="false">Board</button>
 </div>
 </div>
 </header>
@@ -262,6 +270,14 @@ a.card[hidden]{display:none}
 <a class="card" href="./air-hockey.html" data-cat="Classic Arcade" data-key="arcade-hockey-best" data-name="Air Hockey">
 <div class="thumb rink" aria-hidden="true"><i></i><i></i><b></b></div>
 <div class="meta"><p class="kicker">Classic · Arcade</p><h2>Air Hockey</h2><p>Two players on one phone. Drag a paddle on each half and race to 7 goals.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./checkers.html" data-cat="Board" data-key="arcade-checkers-best" data-name="Checkers">
+<div class="thumb chk" aria-hidden="true"><i></i></div>
+<div class="meta"><p class="kicker">Board</p><h2>Checkers</h2><p>Jump the CPU's pieces and crown a king. Wins stay on this device.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./fruit-slice.html" data-cat="Arcade" data-key="arcade-fruit-best" data-name="Fruit Slice">
+<div class="thumb fruit" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="meta"><p class="kicker">Arcade</p><h2>Fruit Slice</h2><p>Swipe through the fruit. Miss one or hit a bomb and the run ends.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

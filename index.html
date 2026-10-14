@@ -242,6 +242,15 @@ h1 span{color:#ff6b6b}
 .drt{background:#14301f}
 .drt i{position:absolute;left:28%;top:26%;width:44%;height:44%;border-radius:50%;background:radial-gradient(circle,#c8202a 0 16%,#1f8a3c 17% 34%,#efe2c0 35% 68%,#111 69%)}
 .drt b{position:absolute;left:47%;top:14%;width:4px;height:42%;background:#eee;transform:rotate(16deg)}
+.lud{background:#1a1030}
+.lud i{position:absolute;width:16px;height:16px;border-radius:50%}
+.lud i:nth-child(1){left:26%;top:34%;background:#ff3b5c}
+.lud i:nth-child(2){left:44%;top:34%;background:#22d36b}
+.lud i:nth-child(3){left:62%;top:34%;background:#ffd23f}
+.lud b{position:absolute;left:44%;top:58%;width:16px;height:16px;border-radius:50%;background:#3ba7ff}
+.rr{background:#1a0c28}
+.rr i{position:absolute;left:16%;top:62%;width:68%;height:8px;border-radius:4px;background:#6a4a8a}
+.rr b{position:absolute;left:40%;top:30%;width:16px;height:22px;border-radius:6px 6px 3px 3px;background:#5cff9d}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -304,7 +313,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Forty-five browser games. Best scores stay on this device.</p>
+<p class="lede">Forty-seven browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -507,6 +516,14 @@ a.card[hidden]{display:none}
 <a class="card" href="./darts.html" data-cat="Sports" data-key="arcade-darts-best" data-name="Pub Darts">
 <div class="thumb drt" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Sports</p><h2>Pub Darts</h2><p>501 against the CPU, or around the clock. Wins are saved.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./ludo.html" data-cat="Board" data-key="arcade-ludo-best" data-name="Ludo Royale">
+<div class="thumb lud" aria-hidden="true"><i></i><i></i><i></i><b></b></div>
+<div class="meta"><p class="kicker">Board</p><h2>Ludo Royale</h2><p>Race four tokens home. Wins by a human player are saved.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./rail-rush.html" data-cat="Action" data-key="arcade-rail-best" data-name="Rail Rush">
+<div class="thumb rr" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Action</p><h2>Rail Rush</h2><p>Dodge the trains and grab coins. Best is your highest run.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

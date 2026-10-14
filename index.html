@@ -201,6 +201,14 @@ h1 span{color:#ff6b6b}
 .wrd i:nth-child(1){left:18%;background:#19e68c}
 .wrd i:nth-child(2){left:40%;background:#ffd23f}
 .wrd i:nth-child(3){left:62%;background:#3a3a5c}
+.flt{background:#041428}
+.flt i{position:absolute;height:10px;border-radius:8px;background:linear-gradient(#d5e4ee,#4a6274)}
+.flt i:nth-child(1){left:16%;top:36%;width:62px}
+.flt i:nth-child(2){left:28%;top:56%;width:40px}
+.flt b{position:absolute;right:18%;top:32%;width:10px;height:10px;border-radius:50%;background:#ff5a1f;box-shadow:0 0 8px #ff5a1f}
+.twd{background:linear-gradient(#7ec8f0 0 46%,#1d6a62 46%)}
+.twd i{position:absolute;left:18%;top:58%;width:64px;height:6px;border-radius:4px;background:#e07a12;transform:rotate(-18deg)}
+.twd b{position:absolute;right:22%;top:40%;width:18px;height:10px;border-radius:10px 12px 6px 6px;background:#ffc93c}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -263,7 +271,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Thirty-five browser games. Best scores stay on this device.</p>
+<p class="lede">Thirty-seven browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -277,6 +285,7 @@ a.card[hidden]{display:none}
 <button type="button" class="chip" data-cat="Board" aria-pressed="false">Board</button>
 <button type="button" class="chip" data-cat="Music" aria-pressed="false">Music</button>
 <button type="button" class="chip" data-cat="Sports" aria-pressed="false">Sports</button>
+<button type="button" class="chip" data-cat="Casual" aria-pressed="false">Casual</button>
 </div>
 </div>
 </header>
@@ -424,6 +433,14 @@ a.card[hidden]{display:none}
 <a class="card" href="./neon-word.html" data-cat="Puzzle" data-key="arcade-word-best" data-name="Neon Word">
 <div class="thumb wrd" aria-hidden="true"><i></i><i></i><i></i></div>
 <div class="meta"><p class="kicker">Puzzle</p><h2>Neon Word</h2><p>Guess the five-letter word in six tries. Best is your longest streak.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./battleship.html" data-cat="Board" data-key="arcade-fleet-best" data-name="Neon Fleet">
+<div class="thumb flt" aria-hidden="true"><i></i><i></i><b></b></div>
+<div class="meta"><p class="kicker">Board</p><h2>Neon Fleet</h2><p>Hunt the enemy fleet. Best is your fewest shots to sink them.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./fishing.html" data-cat="Casual" data-key="arcade-fish-best" data-name="Tidewater">
+<div class="thumb twd" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Casual</p><h2>Tidewater</h2><p>Cast, hook, and reel. Best is your lifetime earnings.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

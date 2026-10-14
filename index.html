@@ -292,6 +292,12 @@ h1 span{color:#ff6b6b}
 .sdg{background:radial-gradient(circle at 70% 45%,#16345c,#070814 62%)}
 .sdg i{position:absolute;left:18%;top:46%;width:46%;height:8px;background:#d7e4f5;box-shadow:0 -8px 0 #7fe7ff}
 .sdg b{position:absolute;right:16%;top:40%;width:0;height:0;border-top:9px solid transparent;border-bottom:9px solid transparent;border-left:16px solid #ff5a7a}
+.esp{background:#241833}
+.esp i{position:absolute;left:18%;top:28%;width:18%;height:46%;border-radius:3px;background:#7a2a22;border:2px solid #e0846a;box-shadow:26px 0 0 #24507a,52px 0 0 #6a3a86}
+.esp b{position:absolute;left:46%;bottom:14%;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:14px solid #ffd76a}
+.pwd{background:linear-gradient(#4a90d8,#f4fbff 58%)}
+.pwd i{position:absolute;left:12%;bottom:30%;width:76%;height:10px;border-radius:5px;background:#fff;transform:rotate(-14deg)}
+.pwd b{position:absolute;left:40%;bottom:40%;width:26px;height:8px;border-radius:4px;background:#e8402a;transform:rotate(-14deg)}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -354,7 +360,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Sixty browser games. Best scores stay on this device.</p>
+<p class="lede">Sixty-two browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -618,6 +624,14 @@ a.card[hidden]{display:none}
 <a class="card" href="./star-dogfight.html" data-cat="Action" data-key="arcade-dogfight-best" data-name="Star Dogfight">
 <div class="thumb sdg" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Action</p><h2>Star Dogfight</h2><p>Clear fighter waves through an asteroid field, then the boss. Best is your score.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./ember-spire.html" data-cat="Strategy" data-key="arcade-spire-best" data-name="Ember Spire">
+<div class="thumb esp" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Strategy</p><h2>Ember Spire</h2><p>Climb a deck-building spire. Best is your deepest floor.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./powder-rush.html" data-cat="Sports" data-key="arcade-powder-best" data-name="Powder Rush">
+<div class="thumb pwd" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Sports</p><h2>Powder Rush</h2><p>Shred the mountain and outrun the avalanche. Best is your score.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

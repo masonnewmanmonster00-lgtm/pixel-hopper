@@ -141,6 +141,12 @@ h1 span{color:#ff6b6b}
 .mem{background:linear-gradient(#1a1440,#0b0b14)}
 .mem i{position:absolute;top:32%;width:26px;height:36px;border-radius:5px;background:linear-gradient(#ffe68a,#e0941c)}
 .mem i:nth-child(1){left:22%}.mem i:nth-child(2){left:42%}.mem i:nth-child(3){left:62%;background:linear-gradient(#f4f7ff,#b7c4ee)}
+.beat{background:#14012e}
+.beat i{position:absolute;bottom:22%;width:10px;border-radius:6px}
+.beat i:nth-child(1){left:22%;height:34px;background:#ff2fd6}
+.beat i:nth-child(2){left:38%;height:50px;background:#28e7ff}
+.beat i:nth-child(3){left:54%;height:26px;background:#7dff3a}
+.beat i:nth-child(4){left:70%;height:42px;background:#ffb21f}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -203,7 +209,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Twenty-two browser games. Best scores stay on this device.</p>
+<p class="lede">Twenty-three browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -215,6 +221,7 @@ a.card[hidden]{display:none}
 <button type="button" class="chip" data-cat="Classic" aria-pressed="false">Classic</button>
 <button type="button" class="chip" data-cat="Strategy" aria-pressed="false">Strategy</button>
 <button type="button" class="chip" data-cat="Board" aria-pressed="false">Board</button>
+<button type="button" class="chip" data-cat="Music" aria-pressed="false">Music</button>
 </div>
 </div>
 </header>
@@ -311,13 +318,17 @@ a.card[hidden]{display:none}
 <div class="thumb mem" aria-hidden="true"><i></i><i></i><i></i></div>
 <div class="meta"><p class="kicker">Puzzle</p><h2>Memory Match</h2><p>Flip cards and find the pairs before the clock runs out.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
+<a class="card" href="./neon-beat.html" data-cat="Music" data-key="arcade-beat-best" data-name="Neon Beat">
+<div class="thumb beat" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+<div class="meta"><p class="kicker">Music</p><h2>Neon Beat</h2><p>Hit the four lanes on the beat. Three songs, three difficulties.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
 </main>
 <p id="empty" hidden>No games match that search.</p>
 <script>
 "use strict";
 const RECENT="arcade-recent";
 let cat="All";
-function readScore(key){try{const v=localStorage.getItem(key);if(v==null||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}catch(e){return null}}
+function readScore(key){try{const v=localStorage.getItem(key);if(v==null||v==="")return null;const n=Number(v);if(Number.isFinite(n))return n;const o=JSON.parse(v);if(!o||typeof o!=="object")return null;let m=null;for(const rec of Object.values(o)){const s=rec&&typeof rec==="object"?Number(rec.score):Number(rec);if(Number.isFinite(s)&&(m==null||s>m))m=s}return m}catch(e){return null}}
 function readRecent(){try{const v=JSON.parse(localStorage.getItem(RECENT)||"[]");return Array.isArray(v)?v.filter(x=>typeof x==="string"):[]}catch(e){return []}}
 function remember(href){try{const next=[href,...readRecent().filter(x=>x!==href)].slice(0,8);localStorage.setItem(RECENT,JSON.stringify(next))}catch(e){}}
 function paintScores(){document.querySelectorAll("a.card").forEach(card=>{const n=readScore(card.dataset.key);const el=card.querySelector(".best");if(el)el.textContent=n==null?"-":String(n)})}

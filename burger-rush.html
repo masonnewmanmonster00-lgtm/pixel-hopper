@@ -1,0 +1,73 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b14"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon.svg"><link rel="apple-touch-icon" href="./icon.svg">
+<title>Burger Rush</title>
+<style>html,body{margin:0;height:100%;background:#2b1408;overflow:hidden;touch-action:none;font-family:system-ui,sans-serif;user-select:none}canvas{display:block;width:100%;height:100%}
+a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:95;display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 12px;border-radius:999px;background:rgba(8,8,16,.82);color:#ffe14d;border:1px solid rgba(255,225,77,.55);font:700 12px/1 ui-monospace,monospace;letter-spacing:.04em;text-decoration:none;touch-action:manipulation}a.back:focus-visible{outline:2px solid #ffe14d;outline-offset:2px}
+#ov{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#000b;color:#fff;text-align:center;overflow:auto;padding:56px 16px 16px}
+#ov h1{font-size:42px;margin:0 0 8px;color:#ffb627}#ov button{font-size:20px;padding:10px 24px;border-radius:12px;border:0;background:#ffb627;font-weight:800;margin-top:10px;min-height:44px}
+#bt{position:fixed;top:8px;right:8px;z-index:30;display:flex;gap:6px}.b{background:#0005;border:1px solid #fff5;color:#fff;border-radius:8px;padding:0 12px;min-height:40px;font-weight:700}
+@media(max-height:520px){#ov h1{font-size:28px}#ov{font-size:13px}#ov button{font-size:16px;padding:8px 16px}}</style></head><body>
+<canvas id="c"></canvas>
+<a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a>
+<div id="bt"><button class="b" id="pb" aria-label="Pause">II</button><button class="b" id="rb" aria-label="Restart">↻</button></div>
+<div id="ov"><h1>🍔 Burger Rush</h1><div id="msg">Customers show you their orders. Tap ingredients to stack the burger, then tap SERVE.<br>Raw patties go on the grill first. Tap one when it's browned, but don't burn it!<br>PC: keys 1–8 add ingredients, G grills, Enter serves, Backspace clears. P pause, R restart.<br>3 angry customers and the shift is over.</div><button id="go">Open Diner</button></div>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d');let W,H,D;function rs(){D=devicePixelRatio||1;W=innerWidth;H=innerHeight;c.width=W*D;c.height=H*D;x.setTransform(D,0,0,D,0,0)}addEventListener('resize',rs);rs();
+let AC;function snd(f,d,t='sine',v=.2){try{AC=AC||new AudioContext();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.setValueAtTime(v,AC.currentTime);g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.connect(g).connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
+let best=0;try{best=+localStorage.getItem('burgerBest')||0}catch(e){}
+function saveHub(n){n=Math.floor(n)||0;if(!(n>0))return;try{const prev=+localStorage.getItem('arcade-burger-best')||0;if(n>prev)localStorage.setItem('arcade-burger-best',String(n))}catch(e){}}
+const ING={bun:{c:'#e0a050',h:.5,n:'Bun'},patty:{c:'#6b3a1f',h:.45,n:'Patty'},cheese:{c:'#ffd23a',h:.18,n:'Cheese'},lettuce:{c:'#5cc84a',h:.2,n:'Lettuce'},tomato:{c:'#e63946',h:.2,n:'Tomato'},onion:{c:'#e9d8f0',h:.16,n:'Onion'},bacon:{c:'#c1443a',h:.16,n:'Bacon'},pickle:{c:'#7a9a2a',h:.14,n:'Pickle'}};
+const BTN=['cheese','lettuce','tomato','onion','bacon','pickle'];const FACES=['#f2c79a','#c68642','#8d5524','#ffdbac','#e0ac69'];
+let st='menu',paused=false,cust,stack,grill,money,angry,served,t,level,spawnT,popups=[],cookedPatties;
+function start(){cust=[];stack=[];grill=[null,null,null];cookedPatties=0;money=0;angry=0;served=0;t=0;level=1;spawnT=1;popups=[];paused=false;st='play';ov.style.display='none'}
+function mkOrder(){const o=['bun','patty'];const extra=Math.min(5,1+Math.floor(level/2)+Math.floor(Math.random()*2));if(level>3&&Math.random()<.35)o.push('cheese','patty');for(let i=0;i<extra;i++)o.push(BTN[Math.floor(Math.random()*Math.min(6,2+level))]);o.push('bun');return o}
+function spawn(){const free=[0,1,2].filter(s=>!cust.some(c=>c.slot==s));if(!free.length)return;const s=free[Math.floor(Math.random()*free.length)];const o=mkOrder();cust.push({slot:s,order:o,pat:Math.max(18,40-level*2)+o.length*2.5,max:0,face:FACES[Math.floor(Math.random()*5)],hair:Math.floor(Math.random()*4),enter:0,leave:0});cust[cust.length-1].max=cust[cust.length-1].pat;snd(880,.1,'triangle',.12)}
+function add(k){if(st!='play'||paused)return;if(k=='patty'){if(cookedPatties<=0){pop(W*.5,H*.5,'Grill a patty first!','#f88');snd(160,.1,'square',.1);return}cookedPatties--}if(stack.length>=14)return;stack.push(k);snd(500+stack.length*30,.06,'triangle',.15)}
+function grillTap(i){if(st!='play'||paused)return;const g=grill[i];if(!g){grill[i]={t:0};snd(200,.3,'sawtooth',.06);return}if(g.t<4){pop(gx(i),gy(),'Still raw!','#f88');return}if(g.t>9){grill[i]=null;pop(gx(i),gy(),'Burnt! Tossed','#f88');snd(120,.2,'square',.1);return}grill[i]=null;cookedPatties++;snd(700,.1,'triangle',.15)}
+function grillAny(){const e=grill.findIndex(g=>!g);const r=grill.findIndex(g=>g&&g.t>=4&&g.t<=9);if(r>=0)grillTap(r);else if(e>=0)grillTap(e)}
+function serve(){if(st!='play'||paused||!stack.length)return;let bi=-1,bs=-1;cust.forEach((c,i)=>{if(c.leave)return;const m=same(c.order,stack);if(m&&(bs<0||c.pat<bs)){bi=i;bs=c.pat}});
+if(bi<0){pop(W*.5,H*.45,'Nobody ordered that!','#f88');snd(150,.2,'square',.15);stack=[];return}const c=cust[bi];const tip=Math.ceil(c.pat/c.max*10);const pay=c.order.length*3+tip;money+=pay;served++;c.leave=1;c.happy=true;pop(cx(c.slot),H*.2,'+$'+pay+(tip>=7?' 😊':''),'#7f7');snd(660,.1,'triangle',.2);setTimeout(()=>snd(990,.15,'triangle',.2),90);stack=[];if(served%4==0){level++;pop(W/2,H*.35,'Level '+level+'!','#ffb627')}}
+function same(a,b){return a.length==b.length&&a.every((v,i)=>v==b[i])}
+function pop(px,py,s,col){popups.push({x:px,y:py,s,col,t:1.3})}
+function cx(s){return W*(.2+s*.3)}function gx(i){return W*.08+i*Math.min(70,W*.08)}function gy(){return H*.62}
+function upd(dt){t+=dt;spawnT-=dt;if(spawnT<=0){spawn();spawnT=Math.max(3,9-level*.6)+Math.random()*3}
+cust.forEach(c=>{c.enter=Math.min(1,c.enter+dt*2);if(c.leave){c.leave+=dt*2;return}c.pat-=dt;if(c.pat<=0){c.leave=1;c.happy=false;angry++;pop(cx(c.slot),H*.2,'😡 Too slow!','#f55');snd(140,.4,'sawtooth',.15);if(angry>=3)setTimeout(end,800)}});cust=cust.filter(c=>c.leave<2);
+grill.forEach(g=>{if(g){g.t+=dt;if(g.t>9&&g.t-dt<=9)snd(100,.2,'sawtooth',.08)}});popups.forEach(p=>{p.t-=dt;p.y-=30*dt});popups=popups.filter(p=>p.t>0)}
+function end(){if(st!='play')return;st='over';if(money>best){best=money;try{localStorage.setItem('burgerBest',String(best))}catch(e){}}saveHub(money);ov.style.display='flex';msg.innerHTML='Shift over!<br>Served <b>'+served+'</b> customers · Earned <b>$'+money+'</b><br>Best $'+best;go.textContent='Next shift'}
+function drawStack(arr,bx,by,w,scale){let y=by;arr.forEach((k,i)=>{const g=ING[k],h=g.h*w*.35*scale;x.fillStyle=g.c;if(k=='bun'){const top=i==arr.length-1&&i>0;x.beginPath();if(top){x.ellipse(bx,y-h*.3,w/2,h*1.1,0,Math.PI,0);x.fill();x.fillStyle='#fff8';for(let s=0;s<5;s++){x.beginPath();x.ellipse(bx-w*.3+s*w*.15,y-h*.8,2*scale,1*scale,0,0,7);x.fill()}}else{x.roundRect(bx-w/2,y-h,w,h,h*.4);x.fill()}}
+else if(k=='lettuce'){x.beginPath();for(let s=0;s<=10;s++)x.lineTo(bx-w*.55+s*w*.11,y-h+(s%2?h:0));x.lineTo(bx+w*.55,y);x.lineTo(bx-w*.55,y);x.fill()}
+else if(k=='cheese'){x.beginPath();x.moveTo(bx-w*.52,y-h);x.lineTo(bx+w*.52,y-h);x.lineTo(bx+w*.4,y+h*.8);x.lineTo(bx+w*.3,y);x.lineTo(bx-w*.52,y);x.fill()}
+else{x.beginPath();x.roundRect(bx-w*(k=='patty'?.5:.46),y-h,w*(k=='patty'?1:.92),h,h*.5);x.fill()}y-=h});}
+function draw(){// wall
+x.fillStyle='#f6e6c8';x.fillRect(0,0,W,H*.5);x.fillStyle='#e63946';for(let i=0;i<W;i+=40){x.fillRect(i,H*.44,20,H*.06)}x.fillStyle='#fff';for(let i=20;i<W;i+=40)x.fillRect(i,H*.44,20,H*.06);
+x.fillStyle='#8a4b2a';x.fillRect(0,H*.5,W,H*.5);x.fillStyle='#a8613a';x.fillRect(0,H*.5,W,H*.04);
+if(!cust)return;
+// customers
+cust.forEach(c=>{const px=cx(c.slot),k=c.leave?Math.max(0,1-c.leave):c.enter;const py=H*.47+(1-k)*H*.3;x.globalAlpha=Math.max(0,k);
+x.fillStyle=['#3a86ff','#8338ec','#ff006e','#fb5607'][c.slot%4];x.beginPath();x.roundRect(px-28,py-46,56,50,12);x.fill();x.fillStyle=c.face;x.beginPath();x.arc(px,py-64,22,0,7);x.fill();x.fillStyle=['#2b1a0e','#d4a017','#111','#8b2e16'][c.hair];x.beginPath();x.arc(px,py-72,22,Math.PI,0);x.fill();
+x.fillStyle='#000';const mood=c.leave?(c.happy?1:-1):c.pat/c.max>.5?1:c.pat/c.max>.25?0:-1;x.fillRect(px-9,py-68,4,4);x.fillRect(px+5,py-68,4,4);x.strokeStyle='#000';x.lineWidth=2;x.beginPath();if(mood>0)x.arc(px,py-58,7,.2,Math.PI-.2);else if(mood<0)x.arc(px,py-50,7,Math.PI+.3,-.3);else{x.moveTo(px-6,py-54);x.lineTo(px+6,py-54)}x.stroke();
+if(!c.leave){// order bubble
+const bw=Math.min(W*.13,100),bh=H*.22,bx=px-bw/2+bw*.75,by=H*.06;x.fillStyle='#fff';x.beginPath();x.roundRect(bx,by,bw,bh,10);x.fill();x.beginPath();x.moveTo(bx,by+bh*.6);x.lineTo(bx-12,by+bh*.8);x.lineTo(bx,by+bh*.8);x.fill();
+drawStack(c.order,bx+bw/2,by+bh-20,bw*.6,Math.min(1,(bh-36)/(c.order.length*12)));const f=c.pat/c.max;x.fillStyle='#ddd';x.fillRect(bx+8,by+bh-14,bw-16,7);x.fillStyle=f>.5?'#3c3':f>.25?'#fb3':'#f33';x.fillRect(bx+8,by+bh-14,(bw-16)*f,7)}x.globalAlpha=1});
+// counter
+x.fillStyle='#5a2f18';x.fillRect(0,H*.52,W,8);
+// grill
+const gw=Math.min(70,W*.08);x.fillStyle='#333';x.beginPath();x.roundRect(gx(0)-gw*.6,gy()-gw*.6,gw*3.2,gw*1.25,10);x.fill();x.fillStyle='#fff';x.font='bold 12px system-ui';x.textAlign='center';x.fillText('GRILL (G)',gx(1),gy()+gw*.8);
+grill.forEach((g,i)=>{const px=gx(i),py=gy();x.strokeStyle='#555';x.lineWidth=2;x.beginPath();x.arc(px,py,gw*.42,0,7);x.stroke();if(g){const k=Math.min(1,g.t/9);const col=g.t>9?'#111':g.t>=4?'#6b3a1f':`rgb(${220-k*100},${110-k*40},${110-k*50})`;x.fillStyle=col;x.beginPath();x.ellipse(px,py,gw*.38,gw*.3,0,0,7);x.fill();if(g.t>=4&&g.t<=9){x.strokeStyle='#7f7';x.lineWidth=3;x.beginPath();x.arc(px,py,gw*.45,0,7);x.stroke()}if(g.t>7){x.fillStyle='#aaa8';for(let s=0;s<3;s++){x.beginPath();x.arc(px-8+s*8,py-gw*.5-((t*30+s*10)%20),4,0,7);x.fill()}}}else{x.fillStyle='#fff5';x.fillText('+',px,py+4)}});
+x.fillStyle='#fff';x.font='bold 14px system-ui';x.fillText('Ready patties: '+cookedPatties,gx(1),gy()+gw*1.1);
+// plate & stack
+const plx=W*.5,ply=H*.88;x.fillStyle='#eee';x.beginPath();x.ellipse(plx,ply,W*.11,H*.03,0,0,7);x.fill();drawStack(stack,plx,ply-4,Math.min(W*.16,140),1);
+// buttons
+const bs=btns();bs.forEach(b=>{x.fillStyle=b.k=='serve'?'#2a9d4a':b.k=='clear'?'#9a2a2a':'#fff2';x.beginPath();x.roundRect(b.x,b.y,b.w,b.h,10);x.fill();x.strokeStyle='#fff4';x.stroke();if(ING[b.k]){x.fillStyle=ING[b.k].c;x.beginPath();x.roundRect(b.x+b.w*.15,b.y+b.h*.2,b.w*.7,b.h*.35,6);x.fill()}x.fillStyle='#fff';x.font='bold '+Math.min(13,b.w*.2)+'px system-ui';x.textAlign='center';x.fillText(b.label,b.x+b.w/2,b.y+b.h*.85)});
+// HUD
+x.fillStyle='#0009';x.fillRect(96,8,168,52);x.fillStyle='#ffb627';x.font='bold 20px system-ui';x.textAlign='left';x.fillText("$"+money,106,30);x.fillStyle='#fff';x.font='13px system-ui';x.fillText('Lv '+level+'  '+'😡'.repeat(angry)+'⚪'.repeat(3-angry),106,50);
+popups.forEach(p=>{x.globalAlpha=Math.min(1,p.t);x.fillStyle=p.col;x.strokeStyle='#000';x.lineWidth=4;x.font='bold 22px system-ui';x.textAlign='center';x.strokeText(p.s,p.x,p.y);x.fillText(p.s,p.x,p.y)});x.globalAlpha=1;
+if(paused){x.fillStyle='#0008';x.fillRect(0,0,W,H);x.fillStyle='#fff';x.font='bold 40px system-ui';x.textAlign='center';x.fillText('Paused',W/2,H/2)}}
+function btns(){const ks=['bun','patty',...BTN];const bh=Math.min(H*.1,56),bw=Math.min(64,W*.075),gap=6;const out=[];const lx=W*.3;ks.forEach((k,i)=>{const col=i%4,row=Math.floor(i/4);out.push({k,x:W-(4-col)*(bw+gap)-10,y:H*.6+row*(bh+gap),w:bw,h:bh,label:(i+1)+' '+ING[k].n})});
+out.push({k:'serve',x:W-4*(bw+gap)-10,y:H*.6+2*(bh+gap),w:bw*2+gap,h:bh*.75,label:'SERVE ⏎'});out.push({k:'clear',x:W-2*(bw+gap)-10,y:H*.6+2*(bh+gap),w:bw*2+gap,h:bh*.75,label:'CLEAR ⌫'});return out}
+c.addEventListener('pointerdown',e=>{if(st!='play'||paused)return;const px=e.clientX,py=e.clientY;for(const b of btns())if(px>b.x&&px<b.x+b.w&&py>b.y&&py<b.y+b.h){if(b.k=='serve')serve();else if(b.k=='clear'){stack=[];snd(200,.1)}else add(b.k);return}
+const gw=Math.min(70,W*.08);grill.forEach((g,i)=>{if(Math.hypot(px-gx(i),py-gy())<gw*.5)grillTap(i)})});
+addEventListener('keydown',e=>{const k=e.key;const ks=['bun','patty',...BTN];if(k>='1'&&k<='8')add(ks[+k-1]);if(k=='g'||k=='G')grillAny();if(k=='Enter')serve();if(k=='Backspace'){e.preventDefault();stack=[]}if(!e.repeat){if((k=='p'||k=='P')&&st=='play')paused=!paused;if(k=='r'||k=='R')start()}if(k==' '&&st!='play'&&!e.repeat){e.preventDefault();start()}});
+let last=0;function loop(tt){const dt=Math.min(.05,(tt-last)/1000||0);last=tt;if(st=='play'&&!paused)upd(dt);draw();requestAnimationFrame(loop)}
+pb.onclick=()=>{if(st=='play')paused=!paused};rb.onclick=start;go.onclick=start;requestAnimationFrame(loop);
+</script></body></html>

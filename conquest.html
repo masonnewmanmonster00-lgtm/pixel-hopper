@@ -1,0 +1,249 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b14"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon.svg"><link rel="apple-touch-icon" href="./icon.svg">
+<title>Conquest</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:#07111f;color:#e8eef8;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;user-select:none;-webkit-user-select:none}
+a.back{position:fixed;z-index:95;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));color:#fff;background:#16162a;border:1px solid #2a2a44;border-radius:8px;padding:8px 12px;text-decoration:none;font:600 14px/1.2 system-ui,sans-serif;min-height:40px;display:inline-flex;align-items:center;box-sizing:border-box}
+#top{position:fixed;top:0;left:0;right:0;height:44px;display:flex;align-items:center;gap:8px;padding:0 8px 0 112px;background:linear-gradient(#162a46,#0d1a2e);border-bottom:1px solid #2a4870;z-index:5}
+#ttl{font-weight:900;letter-spacing:3px;color:#ffd77a;font-size:15px}
+#plist{flex:1;display:flex;gap:4px;overflow:hidden;justify-content:flex-end;min-width:0}
+.pchip{display:flex;align-items:center;gap:4px;padding:2px 7px;border-radius:12px;background:#0007;font-size:12px;white-space:nowrap;border:2px solid transparent;transition:.2s}
+.pchip.cur{border-color:#fff;box-shadow:0 0 8px #fff8}
+.pchip.dead{opacity:.3;text-decoration:line-through}
+.dot{width:10px;height:10px;border-radius:50%;flex:none;box-shadow:0 0 0 1px #0008}
+button{font:inherit;cursor:pointer;border:none;border-radius:9px;padding:9px 13px;background:linear-gradient(#34598f,#24426e);color:#fff;font-weight:700;font-size:14px;box-shadow:0 2px 0 #0007;touch-action:manipulation}
+button:active{transform:translateY(1px)}
+button:disabled{opacity:.35;cursor:default}
+button.pri{background:linear-gradient(#f5bb3c,#c98010);color:#1f1505}
+button.red{background:linear-gradient(#e0504a,#a52822)}
+#mute{background:#0006;padding:6px 9px;box-shadow:none;flex:none}
+#cv{position:fixed;left:0;top:44px;display:block;touch-action:none}
+#hud{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(#0f1f37f0,#081220);border-top:1px solid #2a4870;padding:7px 8px calc(7px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:7px;z-index:4}
+#info{font-size:14px;display:flex;gap:8px;align-items:center;min-height:26px}
+#msg{flex:1;min-width:0;line-height:1.25}
+#log{font-size:12px;color:#9fb3cf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#btns{display:flex;gap:6px;flex-wrap:wrap}
+#dice{display:flex;gap:3px;align-items:center;flex:none}
+.die{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;font-weight:900;font-size:15px;box-shadow:inset 0 -2px 0 #0004}
+.die.a{background:#e0403a;color:#fff}.die.d{background:#f1f1f1;color:#123}
+.die.roll{animation:sh .09s infinite}
+.die.lost{opacity:.35}
+@keyframes sh{0%{transform:rotate(-18deg)}50%{transform:rotate(18deg) scale(1.12)}100%{transform:rotate(-18deg)}}
+.ov{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;z-index:10;padding:12px}
+.box{background:linear-gradient(#1a3354,#0d1c31);border:1px solid #3d6396;border-radius:16px;padding:18px;max-width:460px;width:100%;max-height:100%;overflow:auto;text-align:center;box-shadow:0 12px 50px #000}
+.hidden{display:none!important}
+#title .box{max-width:520px}
+.logo{font-size:clamp(40px,11vw,66px);font-weight:900;letter-spacing:6px;background:linear-gradient(#ffe9a8,#e3a020 60%,#9a5a08);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 0 #0008)}
+.sub{color:#9fb8d8;margin:2px 0 14px;font-size:14px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:9px 0;font-size:14px}
+.seg{display:flex;background:#0006;border-radius:10px;padding:3px;gap:3px}
+.seg button{padding:7px 10px;background:transparent;box-shadow:none;font-size:13px}
+.seg button.on{background:#f0b030;color:#211}
+.big{display:flex;gap:8px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+.big button{font-size:17px;padding:12px 22px}
+.help{font-size:12.5px;color:#a9bbd4;text-align:left;margin-top:14px;line-height:1.45;background:#0004;padding:10px;border-radius:10px}
+.cards{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:12px 0}
+.card{width:76px;height:104px;border-radius:9px;background:linear-gradient(#f6ecd2,#d9c79c);color:#3a2a10;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:3px solid #b99c5e;cursor:pointer;transition:.15s;padding:3px;text-align:center}
+.card .ic{font-size:30px;line-height:1.1}
+.card.sel{transform:translateY(-8px);border-color:#ffcc33;box-shadow:0 0 14px #fc3}
+.mv{display:flex;align-items:center;justify-content:center;gap:10px;margin:14px 0}
+.mv b{font-size:34px;min-width:60px}
+#toast{position:fixed;top:54px;left:50%;transform:translateX(-50%);background:#000c;padding:8px 14px;border-radius:20px;font-size:14px;z-index:20;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;max-width:94vw;overflow:hidden;text-overflow:ellipsis}
+#toast.on{opacity:1}
+h2{font-size:30px;margin-bottom:6px}
+@media (max-width:560px){#ttl{display:none}.pchip .nm{display:none}.pchip{padding:2px 5px}button{padding:8px 10px;font-size:13px}}
+@media (max-height:520px){.logo{font-size:28px;letter-spacing:2px}.sub{margin-bottom:6px}.help{display:none}.row{margin:4px 0}.big{margin-top:8px}.big button{font-size:15px;padding:10px 16px}.box{padding:10px}}
+</style></head><body>
+<a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a><div id="top"><span id="ttl">CONQUEST</span><div id="plist"></div><button id="mute">🔊</button></div>
+<canvas id="cv"></canvas>
+<div id="hud"><div id="info"><span class="dot" id="cdot"></span><div id="msg"></div><div id="dice"></div></div><div id="log"></div><div id="btns"></div></div>
+<div id="toast"></div>
+<div class="ov" id="title"><div class="box">
+<div class="logo">CONQUEST</div><div class="sub">Command your armies. Conquer the world.</div>
+<div class="row"><span>Opponents</span><div class="seg" id="sOpp"></div></div>
+<div class="row"><span>Difficulty</span><div class="seg" id="sDiff"></div></div>
+<div class="row"><span>AI speed</span><div class="seg" id="sSpd"></div></div>
+<div class="big"><button class="pri" id="bNew">New Game</button><button id="bCont">Continue</button></div>
+<div class="help"><b>How to play:</b> 42 territories, 6 continents. Each turn: <b>Reinforce</b> (tap your lands to place armies; hold whole continents for bonus armies), <b>Attack</b> (tap your land, then an enemy neighbour — Roll or Auto), then <b>Fortify</b> (move armies once between connected lands). Conquer a land in a turn to earn a card; trade 3 matching or 3 different cards for extra armies. Eliminate every rival to win! On a phone, drag the map sideways to scroll.</div>
+<div class="sub" id="stats" style="margin:10px 0 0"></div>
+</div></div>
+<div class="ov hidden" id="modal"><div class="box" id="mbox"></div></div>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+const TEST=window.__CQ_TEST||{};
+// ---------- audio
+let AC=null,muted=LS.get('cq_mute',false);
+function ac(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)()}catch(e){AC=null}}if(AC&&AC.state==='suspended'){const p=AC.resume();if(p&&p.catch)p.catch(()=>{})}return AC}
+function saveHub(n){n=Math.floor(Number(n))||0;if(!(n>0))return;try{const prev=+localStorage.getItem('arcade-conquest-best')||0;if(n>prev)localStorage.setItem('arcade-conquest-best',String(n));}catch(e){}}
+function tone(f,d,type,v,slide,delay){if(muted)return;const a=ac();if(!a)return;const t=a.currentTime+(delay||0);const o=a.createOscillator(),g=a.createGain();o.type=type||'sine';o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);g.gain.setValueAtTime(v||.12,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+d+.03)}
+function noise(d,v,delay,fc){if(muted)return;const a=ac();if(!a)return;const t=a.currentTime+(delay||0);const b=a.createBuffer(1,Math.ceil(a.sampleRate*d),a.sampleRate),ch=b.getChannelData(0);for(let i=0;i<ch.length;i++)ch[i]=(Math.random()*2-1)*(1-i/ch.length);const s=a.createBufferSource();s.buffer=b;const f=a.createBiquadFilter();f.type='bandpass';f.frequency.value=fc||1500;const g=a.createGain();g.gain.value=v||.2;s.connect(f);f.connect(g);g.connect(a.destination);s.start(t)}
+const SFX={click:()=>tone(700,.05,'square',.05),place:()=>tone(380,.09,'triangle',.13,240),dice:()=>{for(let i=0;i<6;i++)noise(.035,.25,i*.045,2600)},hit:()=>{noise(.12,.25,0,500);tone(150,.18,'sawtooth',.08,-70)},cap:()=>{[523,659,784].forEach((f,i)=>tone(f,.16,'triangle',.14,0,i*.09))},card:()=>noise(.09,.2,0,4500),trade:()=>{[440,554,659,880].forEach((f,i)=>tone(f,.14,'square',.06,0,i*.06))},win:()=>[523,659,784,1047,1319].forEach((f,i)=>tone(f,.4,'triangle',.14,0,i*.15)),lose:()=>[392,330,262,196].forEach((f,i)=>tone(f,.45,'sawtooth',.07,0,i*.22)),elim:()=>{tone(220,.6,'sawtooth',.1,-170);noise(.4,.2,0,300)}};
+function setMute(){$('#mute').textContent=muted?'🔇':'🔊'}
+$('#mute').onclick=()=>{muted=!muted;LS.set('cq_mute',muted);setMute();SFX.click()};setMute();
+// ---------- map data
+const T=[['Alaska',62,95,0],['NW Territory',150,88,0],['Greenland',330,52,0],['Alberta',140,145,0],['Ontario',212,150,0],['Quebec',282,148,0],['Western US',148,212,0],['Eastern US',232,222,0],['Central America',168,285,0],
+['Venezuela',238,330,1],['Peru',245,405,1],['Brazil',312,380,1],['Argentina',262,478,1],
+['Iceland',418,100,2],['Great Britain',405,168,2],['Scandinavia',492,88,2],['N. Europe',490,165,2],['W. Europe',425,232,2],['S. Europe',512,222,2],['Ukraine',578,128,2],
+['N. Africa',455,318,3],['Egypt',540,292,3],['E. Africa',595,365,3],['Congo',528,392,3],['S. Africa',545,470,3],['Madagascar',628,462,3],
+['Ural',665,112,4],['Siberia',735,78,4],['Yakutsk',818,62,4],['Kamchatka',910,78,4],['Irkutsk',805,128,4],['Mongolia',825,185,4],['Japan',935,195,4],['Afghanistan',652,190,4],['China',760,228,4],['Middle East',612,262,4],['India',705,285,4],['Siam',790,305,4],
+['Indonesia',800,385,5],['New Guinea',892,372,5],['W. Australia',832,470,5],['E. Australia',920,455,5]];
+const CONT=[['North America',5,'#d8b25a'],['South America',2,'#d27048'],['Europe',5,'#6a8fd0'],['Africa',3,'#b8894a'],['Asia',7,'#6aae66'],['Australia',2,'#ae6ab4']];
+const E='0-1,0-3,0-29,1-3,1-4,1-2,2-4,2-5,2-13,3-4,3-6,4-6,4-7,4-5,5-7,6-7,6-8,7-8,8-9,9-10,9-11,10-11,10-12,11-12,11-20,13-14,13-15,14-15,14-16,14-17,15-16,15-19,16-19,16-18,16-17,17-18,17-20,18-19,18-35,18-21,18-20,19-35,19-33,19-26,20-21,20-22,20-23,21-35,21-22,22-23,22-24,22-25,22-35,23-24,24-25,26-27,26-34,26-33,27-28,27-30,27-31,27-34,28-29,28-30,29-30,29-31,29-32,30-31,31-34,31-32,33-34,33-36,33-35,34-37,34-36,35-36,36-37,37-38,38-39,38-40,39-41,39-40,40-41'.split(',').map(s=>s.split('-').map(Number));
+const ADJ=T.map(()=>[]);E.forEach(([a,b])=>{ADJ[a].push(b);ADJ[b].push(a)});
+const NT=T.length,MW=1000,MH=560,GW=500,GH=280;
+const ID=new Int8Array(GW*GH),EDG=new Uint8Array(GW*GH),SH=new Float32Array(GW*GH);
+(function(){for(let gy=0;gy<GH;gy++)for(let gx=0;gx<GW;gx++){const x=gx*2+1,y=gy*2+1;let b=-1,bd=1e9;for(let t=0;t<NT;t++){const dx=x-T[t][1],dy=y-T[t][2],d=dx*dx+dy*dy;if(d<bd){bd=d;b=t}}
+const nz=7*Math.sin(x*.071+y*.033)+5*Math.sin(y*.113-x*.052)+3*Math.sin((x+y)*.19)+2*Math.sin(x*.37-y*.29);const i=gy*GW+gx;ID[i]=Math.sqrt(bd)<47+nz?b:-1;SH[i]=nz/17}
+for(let gy=0;gy<GH;gy++)for(let gx=0;gx<GW;gx++){const i=gy*GW+gx,id=ID[i];if(id<0)continue;let e=0;for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=gx+dx,ny=gy+dy;const j=(nx<0||ny<0||nx>=GW||ny>=GH)?-1:ID[ny*GW+nx];if(j<0){e=2;break}if(j!==id)e=1}EDG[i]=e}})();
+const SEA=E.filter(([a,b])=>!(a===0&&b===29)&&ID[Math.round((T[a][2]+T[b][2])/4)*GW+Math.round((T[a][1]+T[b][1])/4)]<0);
+// ---------- state
+const PCOL=['#e8443a','#3d7fe8','#35c06a','#e8c43a','#a855e8','#f08a32'];
+const PNAME=['You','Azure','Viridian','Gold','Violet','Ember'];
+const DN=['Easy','Normal','Hard'];
+let S=null,RUN=0,busy=false,amt=1,dirty=true;
+const opt=Object.assign({opp:3,diff:1,spd:1},LS.get('cq_opt',{}));
+const isAI=p=>S.players[p].ai||(p===0&&TEST.auto);
+const rnd=n=>Math.floor(Math.random()*n);
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
+function wait(ms){const f=TEST.speed!=null?TEST.speed:[1.4,.8,.3][opt.spd];return new Promise(r=>setTimeout(r,ms*f))}
+function toast(s){const t=$('#toast');t.textContent=s;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),1800)}
+function owned(p){const r=[];for(let i=0;i<NT;i++)if(S.own[i]===p)r.push(i);return r}
+function ownsCont(p,c){for(let i=0;i<NT;i++)if(T[i][3]===c&&S.own[i]!==p)return false;return true}
+function bonus(p){let n=Math.max(3,Math.floor(owned(p).length/3));for(let c=0;c<6;c++)if(ownsCont(p,c))n+=CONT[c][1];return n}
+function enemyAdj(t,p){return ADJ[t].filter(n=>S.own[n]!==p)}
+function threat(t,p){return enemyAdj(t,p).reduce((s,n)=>s+S.arm[n],0)}
+function reach(src,p){const seen=new Set([src]),q=[src];while(q.length){const x=q.shift();for(const n of ADJ[x])if(S.own[n]===p&&!seen.has(n)){seen.add(n);q.push(n)}}return seen}
+function tradeVal(){const v=[4,6,8,10,12,15];return S.trades<6?v[S.trades]:15+5*(S.trades-5)}
+function validSet(cs){if(cs.length!==3)return false;if(cs.some(c=>c.k===3))return true;const k=cs.map(c=>c.k);return(k[0]===k[1]&&k[1]===k[2])||(k[0]!==k[1]&&k[1]!==k[2]&&k[0]!==k[2])}
+function findSet(cs){for(let a=0;a<cs.length;a++)for(let b=a+1;b<cs.length;b++)for(let c=b+1;c<cs.length;c++)if(validSet([cs[a],cs[b],cs[c]]))return[a,b,c];return null}
+function trade(p,ix){const P=S.players[p];const v=tradeVal();S.trades++;S.pool+=v;const cs=ix.map(i=>P.cards[i]);P.cards=P.cards.filter((c,i)=>!ix.includes(i));let ex='';const own=cs.find(c=>c.t>=0&&S.own[c.t]===p);if(own){S.arm[own.t]+=2;ex=' (+2 on '+T[own.t][0]+')';fx(own.t,'+2','#ffd')}S.discard.push(...cs);logm(P.name+' traded cards for '+v+' armies'+ex);SFX.trade()}
+function logm(s){S.log=s;$('#log').textContent=s}
+function newGame(){RUN++;const n=opt.opp+1;const players=[];for(let i=0;i<n;i++)players.push({name:PNAME[i],color:PCOL[i],ai:i>0,alive:true,cards:[]});
+const own=Array(NT),arm=Array(NT).fill(1);const ord=shuffle([...Array(NT).keys()]);ord.forEach((t,i)=>own[t]=i%n);
+const start={3:35,4:30,5:25,6:20}[n];
+const deck=shuffle(T.map((t,i)=>({t:i,k:i%3})).concat([{t:-1,k:3},{t:-1,k:3}]));
+S={players,own,arm,cur:0,phase:'reinforce',pool:0,trades:0,diff:opt.diff,deck,discard:[],conq:false,turn:1,sel:-1,tgt:-1,log:'',stats:{caps:0,lost:0},over:false};
+for(let p=0;p<n;p++){const mine=owned(p);let left=start-mine.length;while(left-->0)S.arm[mine[rnd(mine.length)]]++}
+dirty=true;$('#title').classList.add('hidden');beginTurn()}
+function save(){if(S&&!S.over)LS.set('cq_save',S)}
+function beginTurn(){const p=S.cur;S.phase='reinforce';S.pool=bonus(p);S.conq=false;S.sel=S.tgt=-1;S.back=false;save();chips();
+if(isAI(p))aiTurn();else{hud();if(S.players[p].cards.length>=5)openCards(true)}}
+function endTurn(){if(S.over)return;const P=S.players[S.cur];if(S.conq){if(!S.deck.length){S.deck=shuffle(S.discard);S.discard=[]}if(S.deck.length){P.cards.push(S.deck.pop());if(!isAI(S.cur))toast('You earned a territory card!');SFX.card()}}
+let n=S.cur;do{n=(n+1)%S.players.length;if(n===0)S.turn++}while(!S.players[n].alive);S.cur=n;S.sel=S.tgt=-1;beginTurn()}
+function roll(from,to){const a=Math.min(3,S.arm[from]-1),d=Math.min(2,S.arm[to]);const A=[],D=[];for(let i=0;i<a;i++)A.push(1+rnd(6));for(let i=0;i<d;i++)D.push(1+rnd(6));A.sort((x,y)=>y-x);D.sort((x,y)=>y-x);let la=0,ld=0;for(let i=0;i<Math.min(a,d);i++)A[i]>D[i]?ld++:la++;S.arm[from]-=la;S.arm[to]-=ld;if(S.own[from]===0)S.stats.lost+=la;return{A,D,la,ld,a,cap:S.arm[to]<=0}}
+function capture(from,to,mv){const p=S.own[from],old=S.own[to];S.own[to]=p;S.arm[to]=mv;S.arm[from]-=mv;S.conq=true;dirty=true;if(p===0)S.stats.caps++;fx(to,'⚑',S.players[p].color,true);SFX.cap();
+if(!owned(old).length){const O=S.players[old];O.alive=false;S.players[p].cards.push(...O.cards);O.cards=[];logm(S.players[p].name+' eliminated '+O.name+'!');toast(S.players[p].name+(p===0?' have':' has')+' eliminated '+O.name+'!');SFX.elim()}
+chips();return checkEnd()}
+function checkEnd(){const alive=S.players.filter(p=>p.alive);if(alive.length===1){gameOver(alive[0]===S.players[0]);return true}if(!S.players[0].alive&&!TEST.auto){gameOver(false);return true}return false}
+function gameOver(win){S.over=true;RUN++;LS.del('cq_save');const st=LS.get('cq_stats',{w:0,l:0});win?st.w++:st.l++;LS.set('cq_stats',st);saveHub(st.w);win?SFX.win():SFX.lose();hud();
+const winner=S.players.find(p=>p.alive);
+modal(`<h2 style="color:${win?'#ffd76a':'#ff7a6a'}">${win?'🏆 VICTORY!':'☠ DEFEAT'}</h2><p>${win?'The whole world bows to your command.':(winner.name+' rules the world.')}</p>
+<p style="margin:12px 0;color:#a9bbd4">Turns: ${S.turn} · Territories you conquered: ${S.stats.caps} · Armies lost: ${S.stats.lost}<br>Record: ${st.w} wins / ${st.l} losses</p>
+<div class="big"><button class="pri" onclick="closeModal();newGame()">Play Again</button><button onclick="closeModal();showTitle()">Title</button></div>`);window.__CQ_RESULT={win,turn:S.turn,winner:winner&&winner.name}}
+// ---------- AI
+function contScore(p){let best=-1,bs=-1e9;for(let c=0;c<6;c++){let o=0,n=0,en=0;for(let i=0;i<NT;i++)if(T[i][3]===c){n++;if(S.own[i]===p)o++;else en+=S.arm[i]}if(o===n)continue;const s=o/n*2+CONT[c][1]/n-en/(n*6);if(s>bs){bs=s;best=c}}return best}
+function aiPlace(p){const d=S.diff,tc=contScore(p);let c=owned(p).filter(i=>enemyAdj(i,p).length);if(!c.length)c=owned(p);
+const sc=i=>threat(i,p)*.5-S.arm[i]*.35+(T[i][3]===tc?5:0)+enemyAdj(i,p).filter(n=>T[n][3]===tc).length*3+Math.max(0,...enemyAdj(i,p).map(n=>S.arm[i]-S.arm[n]))*.3+Math.random()*(d===0?12:1.5);
+let g=0;while(S.pool>0&&g++<200){let t,k;if(d===0){t=c[rnd(c.length)];k=Math.min(S.pool,1+rnd(3))}else{const b=c.slice().sort((x,y)=>sc(y)-sc(x));t=b[0];k=d===2?S.pool:Math.min(S.pool,Math.ceil(S.pool/2))}S.arm[t]+=k;S.pool-=k;fx(t,'+'+k,'#fff')}}
+function aiAttack(p){const d=S.diff,tc=contScore(p);let best=null,bs=-1e9;for(let i=0;i<NT;i++){if(S.own[i]!==p||S.arm[i]<2)continue;const a=S.arm[i];for(const n of ADJ[i]){if(S.own[n]===p)continue;const dd=S.arm[n];
+const ok=d===0?a>=dd+2:d===1?(a>=dd+2||(a>=3&&a>=dd*1.6)):(a>=dd+2||(a>=4&&a>=dd+1));if(!ok)continue;if(d===0&&Math.random()<.3)continue;
+const o=S.own[n];const s=a-dd+(T[n][3]===tc?4:0)+(ownsCont(o,T[n][3])?5:0)+(d>0&&owned(o).length<=2?9:0)+Math.random()*(d===0?6:1);if(s>bs){bs=s;best=[i,n]}}}return best}
+function aiFortify(p){if(S.diff===0&&Math.random()<.5)return;let src=-1,sa=1;for(const i of owned(p))if(!enemyAdj(i,p).length&&S.arm[i]>sa){src=i;sa=S.arm[i]}if(src<0)return;
+let dst=-1,ds=-1e9;for(const i of reach(src,p)){if(!enemyAdj(i,p).length)continue;const s=threat(i,p)-S.arm[i]*.5+(T[i][3]===contScore(p)?3:0);if(s>ds){ds=s;dst=i}}if(dst<0)return;const k=S.arm[src]-1;S.arm[src]-=k;S.arm[dst]+=k;fx(dst,'+'+k,'#9cf');logm(S.players[p].name+' fortified '+T[dst][0])}
+async function aiTurn(){const my=RUN,p=S.cur,P=S.players[p];const alive=()=>my===RUN&&!S.over;hud();
+let f;while((f=findSet(P.cards))&&(P.cards.length>=5||S.diff>0))trade(p,f);aiPlace(p);SFX.place();hud();await wait(500);if(!alive())return;
+S.phase='attack';hud();let wins=0,g=0;
+while(g++<200){const mv=aiAttack(p);if(!mv)break;if(S.diff===0&&wins>=3)break;const[i,n]=mv;S.sel=i;S.tgt=n;focus(n);hud();await wait(260);if(!alive())return;
+while(S.arm[i]>1&&S.own[n]!==p){const r=roll(i,n);showDice(r);SFX.dice();await wait(220);if(!alive())return;
+if(r.cap){const ov=!enemyAdj(i,p).filter(x=>x!==n).length;let k;const prev=S.own[n];S.own[n]=p;const toSafe=!enemyAdj(n,p).length;S.own[n]=prev;const mx=S.arm[i]-1;k=ov?mx:toSafe?Math.min(r.a,mx):Math.max(Math.min(r.a,mx),Math.floor(mx*.65));
+logm(P.name+' conquered '+T[n][0]);wins++;if(capture(i,n,k))return;break}
+if(S.arm[i]<3&&S.arm[i]<=S.arm[n])break}
+S.sel=S.tgt=-1;if(P.cards.length>=5){while(P.cards.length>=5&&(f=findSet(P.cards)))trade(p,f);aiPlace(p)}hud()}
+S.sel=S.tgt=-1;S.phase='fortify';hud();aiFortify(p);await wait(350);if(!alive())return;endTurn()}
+// ---------- human
+const H={};
+function tapTerr(t){if(!S||S.over||busy||isAI(S.cur)||!$('#modal').classList.contains('hidden'))return;const p=S.cur,P=S.players[p];
+if(S.phase==='reinforce'){if(S.own[t]!==p){toast('Place armies on your own territories');return}if(P.cards.length>=5){openCards(true);return}const k=amt===0?S.pool:Math.min(amt,S.pool);S.arm[t]+=k;S.pool-=k;fx(t,'+'+k,'#fff');SFX.place();if(S.pool<=0){S.phase='attack';S.back=false}save();hud();return}
+if(S.phase==='attack'){if(S.own[t]===p){if(S.arm[t]>1){S.sel=t;S.tgt=-1;SFX.click()}else toast('Need at least 2 armies to attack')}else if(S.sel>=0&&ADJ[S.sel].includes(t)){S.tgt=t;SFX.click()}else if(S.sel>=0)toast('Not adjacent to '+T[S.sel][0]);else toast('First tap one of your territories');hud();return}
+if(S.phase==='fortify'){if(S.own[t]!==p)return;if(S.sel<0||t===S.sel){if(t===S.sel)S.sel=-1;else if(S.arm[t]>1)S.sel=t;else toast('Need at least 2 armies to move');}else if(reach(S.sel,p).has(t))openMove('fort',S.sel,t,1,S.arm[S.sel]-1);else if(S.arm[t]>1)S.sel=t;SFX.click();hud()}}
+async function humanRoll(auto){if(busy||S.sel<0||S.tgt<0)return;busy=true;const my=RUN,i=S.sel,n=S.tgt;let r;
+do{if(!auto){showDice(null);SFX.dice();await wait(450);if(my!==RUN)return}r=roll(i,n);showDice(r);if(r.la)SFX.hit();if(auto){SFX.dice();await wait(110);if(my!==RUN)return}}while(auto&&!r.cap&&S.arm[i]>1);
+busy=false;if(r.cap){const mx=S.arm[i]-1;openMove('cap',i,n,Math.min(r.a,mx),mx)}else{if(S.arm[i]<2){S.sel=-1;S.tgt=-1;toast('Attack failed')}}save();hud()}
+function openMove(kind,from,to,mn,mx){let v=kind==='cap'?mx:mx;const up=()=>{$('#mvn').textContent=v};
+modal(`<h3>${kind==='cap'?'Victory! Move armies into':'Fortify'} ${T[to][0]}</h3><p style="color:#a9bbd4;font-size:13px">from ${T[from][0]} (${mn}–${mx})</p><div class="mv"><button id="m1">−</button><b id="mvn">${v}</b><button id="m2">+</button></div><div class="big"><button id="mmin">Min</button><button id="mmax">Max</button><button class="pri" id="mok">Move</button>${kind==='fort'?'<button id="mx">Cancel</button>':''}</div>`);
+$('#m1').onclick=()=>{v=Math.max(mn,v-1);up()};$('#m2').onclick=()=>{v=Math.min(mx,v+1);up()};$('#mmin').onclick=()=>{v=mn;up()};$('#mmax').onclick=()=>{v=mx;up()};
+if($('#mx'))$('#mx').onclick=()=>{closeModal();S.sel=-1;hud()};
+$('#mok').onclick=()=>{closeModal();if(kind==='cap'){S.sel=S.tgt=-1;logm('You conquered '+T[to][0]);if(capture(from,to,v))return;if(S.players[0].cards.length>=5){S.phase='reinforce';S.back=true;openCards(true)}else{if(S.arm[to]>1)S.sel=to}save();hud()}else{S.arm[from]-=v;S.arm[to]+=v;fx(to,'+'+v,'#9cf');SFX.place();endTurn()}}}
+const KN=['Infantry','Cavalry','Artillery','Wild'],KI=['♟','♞','♜','★'];
+function openCards(forced){const P=S.players[S.cur];const sel=new Set();const draw=()=>{const cs=[...sel].map(i=>P.cards[i]);
+$('#mbox').innerHTML=`<h3>Territory Cards</h3><p style="color:#a9bbd4;font-size:13px;margin-top:4px">${forced?'<b style="color:#fc6">You hold 5+ cards and must trade.</b> ':''}Pick 3 of a kind, one of each, or use a Wild. Next set is worth <b>${tradeVal()}</b> armies.</p>
+<div class="cards">${P.cards.map((c,i)=>`<div class="card ${sel.has(i)?'sel':''}" data-i="${i}"><div class="ic">${KI[c.k]}</div>${KN[c.k]}<div style="font-weight:500;font-size:10px">${c.t>=0?T[c.t][0]:''}</div></div>`).join('')||'<i>No cards yet — conquer a territory each turn to earn one.</i>'}</div>
+<div class="big"><button class="pri" id="ctr" ${validSet(cs)&&S.phase==='reinforce'?'':'disabled'}>Trade</button>${forced?'':'<button id="ccl">Close</button>'}</div>`;
+$('#mbox').querySelectorAll('.card').forEach(e=>e.onclick=()=>{const i=+e.dataset.i;sel.has(i)?sel.delete(i):sel.size<3&&sel.add(i);SFX.click();draw()});
+$('#ctr').onclick=()=>{trade(S.cur,[...sel]);sel.clear();if(P.cards.length>=5)draw();else{closeModal();forced=false}save();hud()};if($('#ccl'))$('#ccl').onclick=()=>closeModal()};
+$('#modal').classList.remove('hidden');draw()}
+function modal(h){$('#mbox').innerHTML=h;$('#modal').classList.remove('hidden')}
+function closeModal(){$('#modal').classList.add('hidden')}
+// ---------- HUD
+function chips(){if(!S){$('#plist').innerHTML='';return}$('#plist').innerHTML=S.players.map((P,i)=>`<div class="pchip ${i===S.cur?'cur':''} ${P.alive?'':'dead'}"><span class="dot" style="background:${P.color}"></span><span class="nm">${P.name}</span><b>${owned(i).length}</b></div>`).join('')}
+function showDice(r){const el=$('#dice');if(!r){el.innerHTML='<span class="die a roll">?</span><span class="die a roll">?</span><span class="die d roll">?</span>';return}
+el.innerHTML=r.A.map((v,i)=>`<span class="die a ${i<r.D.length&&r.A[i]<=r.D[i]?'lost':''}">${v}</span>`).join('')+'<span style="opacity:.6">vs</span>'+r.D.map((v,i)=>`<span class="die d ${i<r.A.length&&r.A[i]>r.D[i]?'lost':''}">${v}</span>`).join('')}
+function hud(){if(!S)return;chips();const p=S.cur,P=S.players[p];$('#cdot').style.background=P.color;let m='',b=[];
+const ph={reinforce:'Reinforce',attack:'Attack',fortify:'Fortify'}[S.phase];
+if(S.over)m='Game over';else if(isAI(p))m=`<b style="color:${P.color}">${P.name}</b> · ${ph}${S.phase==='reinforce'?'':' '}… <span style="color:#8aa">(turn ${S.turn})</span>`;
+else if(S.phase==='reinforce'){m=`<b>Reinforce</b> · <b style="color:#ffd76a">${S.pool}</b> armies left — tap your territories`;b=[[`Cards (${P.cards.length})`,'cards'],['Place: '+(amt===0?'All':amt),'amt']]}
+else if(S.phase==='attack'){m=S.sel<0?'<b>Attack</b> · tap your territory (2+ armies)':S.tgt<0?`<b>${T[S.sel][0]}</b> (${S.arm[S.sel]}) → tap an enemy neighbour`:`<b>${T[S.sel][0]}</b> (${S.arm[S.sel]}) ⚔ <b>${T[S.tgt][0]}</b> (${S.arm[S.tgt]})`;b=[['🎲 Roll','roll',S.tgt<0,'pri'],['Auto','auto',S.tgt<0,'red'],['End Attack','endatk']]}
+else{m=S.sel<0?'<b>Fortify</b> · tap a territory to move from, or end turn':`Move from <b>${T[S.sel][0]}</b> → tap a connected territory`;b=[['End Turn','endturn',false,'pri']]}
+$('#msg').innerHTML=m;$('#log').textContent=S.log||' ';$('#btns').innerHTML=b.map(x=>`<button data-a="${x[1]}" ${x[2]?'disabled':''} class="${x[3]||''}">${x[0]}</button>`).join('');resize()}
+$('#btns').onclick=e=>{const a=e.target.dataset&&e.target.dataset.a;if(!a||!S||busy||isAI(S.cur))return;SFX.click();
+if(a==='cards')openCards(S.players[S.cur].cards.length>=5);else if(a==='amt'){amt=amt===1?5:amt===5?0:1;hud()}else if(a==='roll')humanRoll(false);else if(a==='auto')humanRoll(true);
+else if(a==='endatk'){S.phase='fortify';S.sel=S.tgt=-1;save();hud()}else if(a==='endturn')endTurn()};
+// ---------- render
+const cv=$('#cv'),ctx=cv.getContext('2d');const land=document.createElement('canvas');land.width=GW;land.height=GH;const lctx=land.getContext('2d');
+let W=0,CH=0,sc=1,ox=0,oy=0,dpr=1;
+function resize(){dpr=Math.min(2,window.devicePixelRatio||1);W=innerWidth;const hh=$('#hud').classList.contains('hidden')?0:$('#hud').offsetHeight;CH=Math.max(100,innerHeight-44-hh);if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(CH*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(CH*dpr);cv.style.width=W+'px';cv.style.height=CH+'px'}sc=Math.min(CH/MH,Math.max(W/MW,W/430));oy=(CH-MH*sc)/2;panMin=Math.min(0,W-MW*sc);if(panMin===0)panX=ox=(W-MW*sc)/2;else{panX=Math.max(panMin,Math.min(0,panX));ox=Math.max(panMin,Math.min(0,ox))}}
+let panX=0,panMin=0;function focus(i){if(panMin<0)panX=Math.max(panMin,Math.min(0,W/2-T[i][1]*sc))}
+window.addEventListener('resize',resize);
+const hex=h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16));
+function paintLand(){const img=lctx.createImageData(GW,GH),d=img.data;const pc=S?S.players.map(P=>hex(P.color)):null,cc=CONT.map(c=>hex(c[2]));
+for(let i=0;i<GW*GH;i++){const id=ID[i];if(id<0)continue;const c=cc[T[id][3]];let col=S?pc[S.own[id]].map((v,k)=>v*.62+c[k]*.38):c;let f=.82+SH[i]*.12;if(EDG[i]===1)f=.45;if(EDG[i]===2)f=.55;if(S&&(id===S.sel||id===S.tgt))f*=1.25;const o=i*4;d[o]=Math.min(255,col[0]*f);d[o+1]=Math.min(255,col[1]*f);d[o+2]=Math.min(255,col[2]*f);d[o+3]=255}lctx.putImageData(img,0,0)}
+const FX=[];function fx(t,txt,col,ring){FX.push({t,txt,col,ring,s:performance.now()})}
+let lastSel='';
+function render(now){requestAnimationFrame(render);if(panMin<0&&!drag)ox+=(panX-ox)*.15;const k=S?S.sel+','+S.tgt:'';if(k!==lastSel){lastSel=k;dirty=true}if(dirty){paintLand();dirty=false}
+ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#07111f';ctx.fillRect(0,0,W,CH);ctx.translate(ox,oy);ctx.scale(sc,sc);
+const g=ctx.createRadialGradient(500,280,50,500,280,620);g.addColorStop(0,'#16406a');g.addColorStop(1,'#0a1d36');ctx.fillStyle=g;ctx.fillRect(0,0,MW,MH);
+ctx.strokeStyle='rgba(140,190,255,.07)';ctx.lineWidth=1;ctx.beginPath();for(let x=0;x<=MW;x+=50){ctx.moveTo(x,0);ctx.lineTo(x,MH)}for(let y=0;y<=MH;y+=50){ctx.moveTo(0,y);ctx.lineTo(MW,y)}ctx.stroke();
+ctx.save();ctx.shadowColor='rgba(140,210,255,.55)';ctx.shadowBlur=12;ctx.imageSmoothingEnabled=true;ctx.drawImage(land,0,0,MW,MH);ctx.restore();
+ctx.setLineDash([6,6]);ctx.strokeStyle='rgba(220,235,255,.45)';ctx.lineWidth=2;ctx.beginPath();for(const[a,b]of SEA){ctx.moveTo(T[a][1],T[a][2]);ctx.lineTo(T[b][1],T[b][2])}ctx.moveTo(T[0][1],T[0][2]);ctx.lineTo(0,T[0][2]-8);ctx.moveTo(T[29][1],T[29][2]);ctx.lineTo(MW,T[29][2]-8);ctx.stroke();ctx.setLineDash([]);
+// legend
+const lf=Math.max(12,10/sc);ctx.font=`700 ${lf}px system-ui,sans-serif`;ctx.textAlign='left';ctx.textBaseline='middle';CONT.forEach((c,i)=>{const y=MH-8-(6-i)*lf*1.35;const own=S&&[...Array(S.players.length).keys()].find(p=>ownsCont(p,i));ctx.fillStyle=c[2];ctx.fillRect(8,y-lf*.4,lf*.8,lf*.8);ctx.fillStyle=own!=null&&own!==undefined?S.players[own].color:'#dfe8f5';ctx.fillText(c[0]+' +'+c[1],8+lf,y)});
+const t=now/1000,r=Math.max(15,11/sc);
+if(S&&S.sel>=0&&S.tgt>=0){const a=T[S.sel],b=T[S.tgt];ctx.strokeStyle='#ff4a3a';ctx.lineWidth=Math.max(4,3/sc);ctx.setLineDash([12,8]);ctx.lineDashOffset=-t*40;ctx.beginPath();ctx.moveTo(a[1],a[2]);ctx.lineTo(b[1],b[2]);ctx.stroke();ctx.setLineDash([])}
+const human=S&&!S.over&&!isAI(S.cur);
+for(let i=0;i<NT;i++){const[nm,x,y]=T[i];const col=S?S.players[S.own[i]].color:CONT[T[i][3]][2];
+let hl=0;if(human){if(S.phase==='reinforce'&&S.own[i]===S.cur)hl=1;if(S.phase==='attack'&&S.sel>=0&&S.tgt<0&&ADJ[S.sel].includes(i)&&S.own[i]!==S.cur)hl=2;if(S.phase==='fortify'&&S.sel>=0&&i!==S.sel&&S.own[i]===S.cur&&reach(S.sel,S.cur).has(i))hl=1}
+if(hl){ctx.strokeStyle=hl===2?'rgba(255,90,70,.9)':'rgba(255,255,255,.75)';ctx.lineWidth=Math.max(2.5,2/sc);ctx.beginPath();ctx.arc(x,y,r+4+2*Math.sin(t*5),0,7);ctx.stroke()}
+if(S&&(i===S.sel||i===S.tgt)){ctx.strokeStyle=i===S.sel?'#ffd34a':'#ff3a2a';ctx.lineWidth=Math.max(4,3/sc);ctx.beginPath();ctx.arc(x,y,r+5,0,7);ctx.stroke()}
+ctx.fillStyle='rgba(0,0,0,.45)';ctx.beginPath();ctx.arc(x+1.5,y+2.5,r,0,7);ctx.fill();ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=Math.max(2,1.5/sc);ctx.stroke();
+ctx.fillStyle='#fff';ctx.font=`900 ${r*1.05}px system-ui,sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.strokeStyle='rgba(0,0,0,.6)';ctx.lineWidth=r*.18;const s=S?String(S.arm[i]):'';ctx.strokeText(s,x,y+1);ctx.fillText(s,x,y+1);
+if(sc>.72){ctx.font=`600 ${Math.max(10,9/sc)}px system-ui,sans-serif`;ctx.fillStyle='rgba(255,255,255,.85)';ctx.strokeStyle='rgba(0,0,0,.65)';ctx.lineWidth=3;ctx.strokeText(nm,x,y+r+9);ctx.fillText(nm,x,y+r+9)}}
+for(let i=FX.length-1;i>=0;i--){const f=FX[i],a=(now-f.s)/1000;if(a>1.1){FX.splice(i,1);continue}const[,x,y]=T[f.t];if(f.ring){ctx.strokeStyle=f.col;ctx.globalAlpha=1-a/1.1;ctx.lineWidth=4/sc;ctx.beginPath();ctx.arc(x,y,r+a*45,0,7);ctx.stroke()}ctx.globalAlpha=Math.max(0,1-a);ctx.font=`900 ${r*1.1}px system-ui`;ctx.fillStyle=f.col;ctx.strokeStyle='#000';ctx.lineWidth=3;ctx.strokeText(f.txt,x,y-r-a*30);ctx.fillText(f.txt,x,y-r-a*30);ctx.globalAlpha=1}}
+function hit(e){const rc=cv.getBoundingClientRect();const mx=((e.clientX-rc.left)-ox)/sc,my=((e.clientY-rc.top)-oy)/sc;if(mx<0||my<0||mx>=MW||my>=MH)return-1;
+let best=-1,bd=1e9;for(let i=0;i<NT;i++){const d=Math.hypot(mx-T[i][1],my-T[i][2]);if(d<bd){bd=d;best=i}}const r=Math.max(15,11/sc)+6;if(bd<=r)return best;const id=ID[Math.floor(my/2)*GW+Math.floor(mx/2)];if(id>=0)return id;return bd<Math.max(40,22/sc)?best:-1}
+let drag=null;cv.addEventListener('pointerdown',e=>{ac();drag={x:e.clientX,ox,moved:false,e};try{cv.setPointerCapture(e.pointerId)}catch(_){}});
+cv.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x;if(Math.abs(dx)>8)drag.moved=true;if(drag.moved&&panMin<0){ox=panX=Math.max(panMin,Math.min(0,drag.ox+dx))}});
+cv.addEventListener('pointerup',e=>{if(!drag)return;const d=drag;drag=null;if(!d.moved){const t=hit(e);if(t>=0)tapTerr(t)}});cv.addEventListener('pointercancel',()=>drag=null);
+// ---------- title
+function seg(id,vals,key){const el=$(id);const draw=()=>{el.innerHTML=vals.map((v,i)=>`<button class="${opt[key]===v[0]?'on':''}" data-v="${v[0]}">${v[1]}</button>`).join('')};el.onclick=e=>{const v=e.target.dataset.v;if(v==null)return;opt[key]=+v;LS.set('cq_opt',opt);SFX.click();draw()};draw()}
+seg('#sOpp',[[2,'2'],[3,'3'],[4,'4'],[5,'5']],'opp');seg('#sDiff',[[0,'Easy'],[1,'Normal'],[2,'Hard']],'diff');seg('#sSpd',[[0,'Slow'],[1,'Normal'],[2,'Fast']],'spd');
+function showTitle(){RUN++;S=null;dirty=true;chips();$('#hud').classList.add('hidden');resize();$('#title').classList.remove('hidden');const sv=LS.get('cq_save',null);$('#bCont').classList.toggle('hidden',!sv);const st=LS.get('cq_stats',{w:0,l:0});$('#stats').textContent=`Record: ${st.w} wins · ${st.l} losses`}
+$('#bNew').onclick=()=>{ac();SFX.click();$('#hud').classList.remove('hidden');newGame()};
+$('#bCont').onclick=()=>{ac();const sv=LS.get('cq_save',null);if(!sv)return;RUN++;S=sv;opt.diff=S.diff;dirty=true;$('#title').classList.add('hidden');$('#hud').classList.remove('hidden');toast('Game restored — turn '+S.turn);
+if(isAI(S.cur)){S.sel=S.tgt=-1;aiTurn()}else{hud();if(S.phase==='reinforce'&&S.players[S.cur].cards.length>=5)openCards(true)}};
+window.__CQ={get S(){return S},newGame,opt,scr:i=>({x:ox+T[i][1]*sc,y:44+oy+T[i][2]*sc}),ADJ};
+showTitle();requestAnimationFrame(render);
+</script></body></html>

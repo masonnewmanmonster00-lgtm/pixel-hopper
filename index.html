@@ -266,6 +266,14 @@ h1 span{color:#ff6b6b}
 .rh{background:#7ac74f}
 .rh i{position:absolute;left:10%;top:58%;width:80%;height:10%;background:#4a4e57}
 .rh b{position:absolute;left:44%;top:30%;width:14px;height:16px;border-radius:3px;background:#fff;box-shadow:0 -5px 0 #e63946}
+.sks{background:#0b1424}
+.sks i{position:absolute;width:14%;background:#5aa7f0}
+.sks i:nth-child(1){left:18%;top:42%;height:28%}
+.sks i:nth-child(2){left:36%;top:26%;height:44%;background:#ffc94a}
+.sks b{position:absolute;left:56%;top:34%;width:18%;height:36%;background:#ff8a3d}
+.puf{background:#7ec8f0}
+.puf i{position:absolute;left:18%;top:52%;width:64%;height:16%;border-radius:4px;background:#8a5a2b}
+.puf b{position:absolute;left:32%;top:28%;width:18px;height:18px;border-radius:50%;background:#e8473f}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -328,7 +336,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Fifty-two browser games. Best scores stay on this device.</p>
+<p class="lede">Fifty-four browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -559,6 +567,14 @@ a.card[hidden]{display:none}
 <a class="card" href="./road-hopper.html" data-cat="Arcade" data-key="arcade-road-best" data-name="Road Hopper">
 <div class="thumb rh" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Arcade</p><h2>Road Hopper</h2><p>Hop the roads, rivers, and tracks. Best is your furthest row.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./skyline-sprouts.html" data-cat="Strategy" data-key="arcade-city-best" data-name="Skyline Sprouts">
+<div class="thumb sks" aria-hidden="true"><i></i><i></i><b></b></div>
+<div class="meta"><p class="kicker">Strategy</p><h2>Skyline Sprouts</h2><p>Grow a city from a village. Best is your highest population.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./puff-patrol.html" data-cat="Puzzle" data-key="arcade-puff-best" data-name="Puff Patrol">
+<div class="thumb puf" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Puzzle</p><h2>Puff Patrol</h2><p>Fling puffs and topple the forts. Best is stars earned.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

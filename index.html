@@ -166,6 +166,17 @@ h1 span{color:#ff6b6b}
 .chess i:nth-child(2){left:46%;top:44%}
 .chess i:nth-child(3){left:64%;top:22%}
 .chess b{position:absolute;left:44%;top:46%;width:14px;height:16px;border-radius:8px 8px 3px 3px;background:#16131f}
+.bub{background:#1d0f4a}
+.bub i{position:absolute;width:22px;height:22px;border-radius:50%}
+.bub i:nth-child(1){left:24%;top:34%;background:#ff4d6d}
+.bub i:nth-child(2){left:42%;top:28%;background:#ffe14d}
+.bub i:nth-child(3){left:58%;top:40%;background:#3ecf8e}
+.golf{background:linear-gradient(#87d86a,#2f8a3a)}
+.golf i{position:absolute;left:42%;top:38%;width:28px;height:16px;border-radius:50%;background:#143018}
+.golf b{position:absolute;left:58%;top:34%;width:8px;height:8px;border-radius:50%;background:#fff}
+.hoop{background:#1a2744}
+.hoop i{position:absolute;left:34%;top:28%;width:46px;height:8px;border-radius:8px;border:3px solid #ff6a1a;background:transparent}
+.hoop b{position:absolute;left:46%;top:52%;width:18px;height:18px;border-radius:50%;background:#e07020}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -228,7 +239,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Twenty-seven browser games. Best scores stay on this device.</p>
+<p class="lede">Thirty browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -241,6 +252,7 @@ a.card[hidden]{display:none}
 <button type="button" class="chip" data-cat="Strategy" aria-pressed="false">Strategy</button>
 <button type="button" class="chip" data-cat="Board" aria-pressed="false">Board</button>
 <button type="button" class="chip" data-cat="Music" aria-pressed="false">Music</button>
+<button type="button" class="chip" data-cat="Sports" aria-pressed="false">Sports</button>
 </div>
 </div>
 </header>
@@ -352,6 +364,18 @@ a.card[hidden]{display:none}
 <a class="card" href="./chess.html" data-cat="Board" data-key="arcade-chess-best" data-name="Royal Chess">
 <div class="thumb chess" aria-hidden="true"><i></i><i></i><i></i><b></b></div>
 <div class="meta"><p class="kicker">Board</p><h2>Royal Chess</h2><p>Play a full game against the computer or a friend. Wins are saved.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./bubble-shooter.html" data-cat="Puzzle" data-key="arcade-bubble-best" data-name="Bubble Shooter">
+<div class="thumb bub" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="meta"><p class="kicker">Puzzle</p><h2>Bubble Shooter</h2><p>Aim and match three bubbles before the stack reaches the line.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./mini-golf.html" data-cat="Sports" data-key="arcade-golf-best" data-name="Mini Golf">
+<div class="thumb golf" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Sports</p><h2>Mini Golf</h2><p>Putt nine holes through sand, water, and gates. Best is your lowest round.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./hoop-shot.html" data-cat="Sports" data-key="arcade-hoop-best" data-name="Hoop Shot">
+<div class="thumb hoop" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Sports</p><h2>Hoop Shot</h2><p>Drag back and shoot. Swishes add time, and a streak doubles the points.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 <a class="card" href="./whack-a-mole.html" data-cat="Arcade" data-key="arcade-mole-best" data-name="Whack-a-Mole">
 <div class="thumb mole" aria-hidden="true"><i></i><b></b></div>

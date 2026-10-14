@@ -1,0 +1,64 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#0b0b14"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon.svg"><link rel="apple-touch-icon" href="./icon.svg"><title>Pub Darts</title>
+<style>html,body{margin:0;height:100%;background:#0d1a14;overflow:hidden;touch-action:none;font-family:system-ui,sans-serif}canvas{display:block;width:100%;height:100%}
+#ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#000b;color:#fff;text-align:center}
+#ov h1{font-size:42px;margin:0 0 8px;color:#ffcf4a}#ov button{font-size:19px;padding:10px 20px;border-radius:12px;border:0;background:#ffcf4a;font-weight:800;margin:5px}
+#bt{position:fixed;top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));z-index:60;display:flex;gap:6px}.b{background:#fff2;border:1px solid #fff5;color:#fff;border-radius:999px;padding:0 12px;min-height:40px;font-weight:700}a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:95;display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 12px;border-radius:999px;background:rgba(8,8,16,.82);color:#ffe14d;border:1px solid rgba(255,225,77,.55);font:700 12px/1 ui-monospace,monospace;letter-spacing:.04em;text-decoration:none;touch-action:manipulation}a.back:focus-visible{outline:2px solid #ffe14d;outline-offset:2px}</style></head><body>
+<a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a>
+<canvas id="c"></canvas><div id="bt"><button class="b" id="pb">II</button><button class="b" id="rb">↻</button></div>
+<div id="ov"><h1>🎯 Pub Darts</h1><div id="msg">Your aim drifts. Touch and hold to steady it, then release to throw.<br>PC: move the mouse or use the arrow keys, Space to throw. P pause, R restart.<br><b>501</b>: get to exactly 0 and finish on a double.<br><b>Around the Clock</b>: hit 1 through 20 in order, then the bull.</div><div><button id="m1">501 vs CPU</button><button id="m2">Around the Clock</button></div></div>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d');let W,H,D,BX,BY,BRAD;function rs(){D=devicePixelRatio||1;W=innerWidth;H=innerHeight;c.width=W*D;c.height=H*D;x.setTransform(D,0,0,D,0,0);BRAD=Math.min(H*.42,W*.3);BX=W*.42;BY=H*.53}addEventListener('resize',rs);rs();
+let AC;function snd(f,d,t='sine',v=.2){try{AC=AC||new AudioContext();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.setValueAtTime(v,AC.currentTime);g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.connect(g).connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
+const NUMS=[20,1,18,4,13,6,10,15,2,17,3,19,7,16,8,11,14,9,12,5];
+// radii as fraction of BRAD
+const RB=.037,ROB=.094,RT1=.582,RT2=.629,RD1=.953,RD2=1;
+let best={w501:0,clock:0};try{const v=JSON.parse(localStorage.getItem('dartsBest')||'');if(v&&typeof v==='object')best=Object.assign(best,v)}catch(e){}
+function saveBest(){try{localStorage.setItem('dartsBest',JSON.stringify(best))}catch(e){}if(mode=='501'&&best.w501>0){try{const prev=+localStorage.getItem('arcade-darts-best')||0;if(best.w501>prev)localStorage.setItem('arcade-darts-best',String(best.w501))}catch(e){}}}
+let st='menu',mode,paused=false,aimX=0,aimY=0,tx=0,ty=0,hold=false,t0=0,darts=[],flying=null,turnP,scores,turnStart,dartN,msgT='',msgTime=0,clockT,clockDarts,keyAim=false,cpuTimer=0,log=[];
+function start(m){mode=m||mode;st='play';paused=false;ov.style.display='none';darts=[];dartN=0;turnP=0;log=[];if(mode=='501'){scores=[501,501];turnStart=501}else{clockT=1;clockDarts=0}}
+function hitAt(px,py){const dx=px,dy=py,r=Math.hypot(dx,dy);if(r<=RB)return{v:50,m:2,lab:'BULL'};if(r<=ROB)return{v:25,m:1,lab:'25'};if(r>RD2)return{v:0,m:0,lab:'Miss'};let a=Math.atan2(dx,-dy)*180/Math.PI;a=(a+360+9)%360;const n=NUMS[Math.floor(a/18)];if(r>=RT1&&r<=RT2)return{v:n*3,m:3,n,lab:'T'+n};if(r>=RD1)return{v:n*2,m:2,n,lab:'D'+n};return{v:n,m:1,n,lab:''+n}}
+function say(s){msgT=s;msgTime=1.5}
+function throwD(px,py){if(flying||st!='play'||paused)return;flying={sx:BX+BRAD*.2,sy:H+30,tx:px,ty:py,t:0};snd(600,.1,'triangle',.12)}
+function land(px,py){const h=hitAt(px,py);darts.push({x:px,y:py});snd(h.v?180:90,.12,'square',.25);dartN++;
+if(mode=='501'){const s=scores[turnP]-h.v;if(s<0||s==1||(s==0&&h.m!=2)){say('BUST!');scores[turnP]=turnStart;log.push(name(turnP)+' bust');setTimeout(nextTurn,900);return}
+scores[turnP]=s;say(h.lab+(h.v?'  '+h.v:''));if(s==0){say(name(turnP)+' WINS!');setTimeout(()=>over(turnP==0),1200);return}if(dartN>=3){log.push(name(turnP)+' scored '+(turnStart-s));setTimeout(nextTurn,900)}}
+else{clockDarts++;const need=clockT<=20?clockT:25;if(h.n==need||(need==25&&h.v>=25)){clockT+=clockT<=20?(h.m==1?1:h.m):1;if(clockT>21)clockT=21;say('Hit! '+h.lab);snd(880,.15,'sine',.2);if(clockT==21&&need==25||clockT>21){setTimeout(()=>over(true),1000);return}}else say(h.lab);if(dartN>=3)setTimeout(()=>{darts=[];dartN=0},800)}}
+function name(p){return p==0?'You':'CPU'}
+function nextTurn(){darts=[];dartN=0;turnP=1-turnP;turnStart=scores[turnP];if(turnP==1)cpuTimer=1}
+function over(won){st='over';let t='';if(mode=='501'){if(won){best.w501++;t='🏆 You win! Total wins '+best.w501}else t='The CPU checked out. Try again!'}else{if(!best.clock||clockDarts<best.clock)best.clock=clockDarts;t='Finished in <b>'+clockDarts+'</b> darts<br>Best '+best.clock}saveBest();ov.style.display='flex';msg.innerHTML=t}
+function cpuTarget(){const s=scores[1];// simple checkout logic
+const seg=n=>{const i=NUMS.indexOf(n),a=(i*18)*Math.PI/180;return a};let n,r;if(s<=40&&s%2==0){n=s/2;r=(RD1+RD2)/2}else if(s==50){return[0,0]}else if(s<=60&&s>40){n=s-40;r=.4;if(n>20)n=20}else if(s<40){n=1;r=.4}else{n=20;r=(RT1+RT2)/2}const a=seg(n);return[Math.sin(a)*r,-Math.cos(a)*r]}
+function upd(dt){const t=performance.now()/1000;const sway=hold?.35:1;if(st=='play'&&turnP==0){const w=.12*sway;aimX=tx+Math.sin(t*1.7)*w+Math.sin(t*3.1)*w*.5;aimY=ty+Math.cos(t*1.3)*w+Math.sin(t*2.6)*w*.4}
+if(flying){flying.t+=dt*3.2;if(flying.t>=1){const f=flying;flying=null;land(f.tx,f.ty)}}
+if(st=='play'&&mode=='501'&&turnP==1&&!flying&&dartN<3){cpuTimer-=dt;if(cpuTimer<=0){const[a,b]=cpuTarget(),e=.09;throwD(a+(Math.random()-.5)*e*2,b+(Math.random()-.5)*e*2);cpuTimer=1}}}
+let last=0;function loop(t){const dt=Math.min(.033,(t-last)/1000||0);last=t;if(!paused)upd(dt);if(msgTime>0)msgTime-=dt;draw();requestAnimationFrame(loop)}
+function draw(){const g=x.createRadialGradient(BX,BY,10,BX,BY,W);g.addColorStop(0,'#2b4a3a');g.addColorStop(1,'#08110c');x.fillStyle=g;x.fillRect(0,0,W,H);
+x.fillStyle='#2a1a10';x.beginPath();x.arc(BX,BY,BRAD*1.22,0,7);x.fill();x.fillStyle='#111';x.beginPath();x.arc(BX,BY,BRAD*1.12,0,7);x.fill();
+for(let i=0;i<20;i++){const a0=(i*18-9-90)*Math.PI/180,a1=a0+18*Math.PI/180;const dark=i%2==0;const ring=(r0,r1,col)=>{x.fillStyle=col;x.beginPath();x.arc(BX,BY,BRAD*r1,a0,a1);x.arc(BX,BY,BRAD*r0,a1,a0,true);x.fill()};
+ring(ROB,RT1,dark?'#151515':'#efe2c0');ring(RT1,RT2,dark?'#c8202a':'#1f8a3c');ring(RT2,RD1,dark?'#151515':'#efe2c0');ring(RD1,RD2,dark?'#c8202a':'#1f8a3c');
+const am=(i*18-90)*Math.PI/180;x.fillStyle='#fff';x.font='bold '+BRAD*.09+'px system-ui';x.textAlign='center';x.textBaseline='middle';x.fillText(NUMS[i],BX+Math.cos(am)*BRAD*1.07,BY+Math.sin(am)*BRAD*1.07)}
+x.fillStyle='#1f8a3c';x.beginPath();x.arc(BX,BY,BRAD*ROB,0,7);x.fill();x.fillStyle='#c8202a';x.beginPath();x.arc(BX,BY,BRAD*RB,0,7);x.fill();
+x.strokeStyle='#999a';x.lineWidth=1;[RT1,RT2,RD1,RD2,ROB].forEach(r=>{x.beginPath();x.arc(BX,BY,BRAD*r,0,7);x.stroke()});
+if(mode=='clock'&&st=='play'){const n=clockT<=20?clockT:25;if(n==25){x.strokeStyle='#ffcf4a';x.lineWidth=4;x.beginPath();x.arc(BX,BY,BRAD*ROB,0,7);x.stroke()}else{const i=NUMS.indexOf(n),a0=(i*18-9-90)*Math.PI/180;x.strokeStyle='#ffcf4a';x.lineWidth=4;x.beginPath();x.arc(BX,BY,BRAD,a0,a0+Math.PI/10);x.arc(BX,BY,BRAD*ROB,a0+Math.PI/10,a0,true);x.closePath();x.stroke()}}
+darts.forEach(d=>drawDart(BX+d.x*BRAD,BY+d.y*BRAD,1));
+if(flying){const f=flying,e=1-Math.pow(1-f.t,2),px=f.sx+(BX+f.tx*BRAD-f.sx)*e,py=f.sy+(BY+f.ty*BRAD-f.sy)*e-Math.sin(f.t*Math.PI)*H*.15;drawDart(px,py,2.2-f.t*1.2)}
+if(st=='play'&&turnP==0&&!flying&&dartN<3&&!paused){const ax=BX+aimX*BRAD,ay=BY+aimY*BRAD;x.strokeStyle=hold?'#7fff7f':'#fff';x.lineWidth=2;x.beginPath();x.arc(ax,ay,10,0,7);x.moveTo(ax-16,ay);x.lineTo(ax+16,ay);x.moveTo(ax,ay-16);x.lineTo(ax,ay+16);x.stroke()}
+// side panel
+const px=W*.78;x.fillStyle='#0008';x.fillRect(px-10,40,W-px,H-60);x.fillStyle='#fff';x.textAlign='left';x.font='bold 18px system-ui';
+if(st!='menu'){if(mode=='501'){[0,1].forEach(p=>{x.fillStyle=turnP==p?'#ffcf4a':'#fff';x.fillText(name(p),px,70+p*60);x.font='bold 30px system-ui';x.fillText(scores[p],px,98+p*60);x.font='bold 18px system-ui'});x.fillStyle='#fff';x.fillText('Darts: '+'➶'.repeat(3-dartN),px,200);x.font='13px system-ui';x.fillStyle='#ccc';log.slice(-5).forEach((l,i)=>x.fillText(l,px,230+i*18));x.fillText('Wins '+best.w501,px,H-30)}
+else{x.fillText('Target',px,70);x.font='bold 34px system-ui';x.fillStyle='#ffcf4a';x.fillText(clockT<=20?clockT:'BULL',px,105);x.font='bold 18px system-ui';x.fillStyle='#fff';x.fillText('Darts thrown '+clockDarts,px,150);x.fillText('Best '+(best.clock||'-'),px,180);x.font='13px system-ui';x.fillStyle='#ccc';x.fillText('Doubles skip 2,',px,215);x.fillText('trebles skip 3!',px,233)}}
+if(msgTime>0){x.globalAlpha=Math.min(1,msgTime);x.font='bold 38px system-ui';x.textAlign='center';x.fillStyle='#fff';x.strokeStyle='#000';x.lineWidth=5;x.strokeText(msgT,BX,40);x.fillText(msgT,BX,40);x.globalAlpha=1}
+if(paused){x.fillStyle='#0008';x.fillRect(0,0,W,H);x.fillStyle='#fff';x.font='bold 40px system-ui';x.textAlign='center';x.fillText('Paused',W/2,H/2)}}
+function drawDart(px,py,s){x.save();x.translate(px,py);x.rotate(.5);x.fillStyle='#ccc';x.fillRect(-1*s,0,2*s,10*s);x.fillStyle='#333';x.fillRect(-2*s,10*s,4*s,10*s);x.fillStyle='#ffcf4a';x.beginPath();x.moveTo(0,20*s);x.lineTo(-6*s,30*s);x.lineTo(6*s,30*s);x.fill();x.restore()}
+function setT(cx,cy){tx=Math.max(-1.2,Math.min(1.2,(cx-BX)/BRAD));ty=Math.max(-1.2,Math.min(1.2,(cy-BY)/BRAD))}
+const canP=()=>st=='play'&&!paused&&turnP==0&&!flying&&dartN<3;
+c.addEventListener('pointerdown',e=>{if(!canP())return;hold=true;setT(e.clientX,e.clientY-(e.pointerType=='touch'?60:0))});
+addEventListener('pointermove',e=>{if(st!='play')return;if(e.pointerType!='touch'||hold)setT(e.clientX,e.clientY-(e.pointerType=='touch'?60:0))});
+addEventListener('pointerup',e=>{if(hold){hold=false;if(e.pointerType=='touch'&&canP())throwD(aimX,aimY)}});
+c.addEventListener('click',e=>{});
+c.addEventListener('mouseup',e=>{if(canP())throwD(aimX,aimY)});
+addEventListener('keydown',e=>{const k=e.key;if(k=='ArrowLeft')tx-=.04;if(k=='ArrowRight')tx+=.04;if(k=='ArrowUp')ty-=.04;if(k=='ArrowDown')ty+=.04;if(k==' '){e.preventDefault();if(canP())throwD(aimX,aimY)}if(k=='Shift')hold=true;if((k=='p'||k=='P')&&!e.repeat)paused=!paused;if((k=='r'||k=='R')&&!e.repeat)start()});
+addEventListener('keyup',e=>{if(e.key=='Shift')hold=false});
+pb.onclick=()=>{if(st=='play')paused=!paused};rb.onclick=()=>{if(mode)start()};m1.onclick=()=>start('501');m2.onclick=()=>start('clock');requestAnimationFrame(loop);
+window.__darts={start,throwAt(px,py){throwD(px,py)},set501(n){scores[0]=n;turnStart=n;turnP=0;dartN=0;flying=null},finish(won){over(!!won)},state:()=>({st,mode,paused,turnP,dartN,scores:scores?scores.slice():null,aimX,aimY,tx,ty,clockT,clockDarts,w501:best.w501})};
+</script></body></html>

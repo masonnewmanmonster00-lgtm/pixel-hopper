@@ -412,6 +412,9 @@ h1 span{color:#ff6b6b}
 .rbk{background:#1a2a5c}
 .rbk i{position:absolute;left:24%;top:46%;width:34px;height:16px;background:#8e9ab5;transform:skewX(-20deg)}
 .rbk b{position:absolute;left:52%;top:30%;width:14px;height:28px;background:#ffd34d;transform:skewX(-20deg)}
+.crl{background:#dfe9f2}
+.crl i{position:absolute;left:18%;top:58%;width:64%;height:10px;border-radius:4px;background:#2f6fd0;box-shadow:inset 0 0 0 3px #f4f8fc}
+.crl b{position:absolute;left:42%;top:28%;width:18px;height:18px;border-radius:50%;background:#e03a3a;box-shadow:22px 8px 0 #f2c230}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -474,7 +477,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">One hundred browser games. Best scores stay on this device.</p>
+<p class="lede">One hundred one browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -899,6 +902,10 @@ a.card[hidden]{display:none}
 <a class="card" href="./rollblock.html" data-cat="Puzzle" data-key="arcade-roll-best" data-name="Roll Block">
 <div class="thumb rbk" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Puzzle</p><h2>Roll Block</h2><p>Tip the block into the goal across 26 levels. Best is your total stars.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./curling.html" data-cat="Sports" data-key="arcade-curl-best" data-name="Curling Cup">
+<div class="thumb crl" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Sports</p><h2>Curling Cup</h2><p>Slide the stones and sweep. Best is your biggest end.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

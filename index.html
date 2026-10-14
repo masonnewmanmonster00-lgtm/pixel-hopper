@@ -254,6 +254,12 @@ h1 span{color:#ff6b6b}
 .skb{background:#1a0826}
 .skb i{position:absolute;left:34%;top:22%;width:32%;height:32%;border-radius:50%;background:#5ff;box-shadow:0 0 0 6px #ff3fb4}
 .skb b{position:absolute;left:46%;top:64%;width:12px;height:12px;border-radius:50%;background:#d9a066}
+.fac{background:#6fbf4a}
+.fac i{position:absolute;left:16%;top:62%;width:68%;height:14%;border-radius:3px;background:#8a5a33}
+.fac b{position:absolute;left:38%;top:28%;width:24%;height:28%;background:#e8d2a8;border-radius:2px 2px 0 0}
+.jmj{background:#0f4434}
+.jmj i{position:absolute;left:28%;top:26%;width:24%;height:42%;border-radius:3px;background:#fffdf5;box-shadow:7px 6px 0 #b88a3e}
+.jmj b{position:absolute;left:54%;top:34%;width:18%;height:34%;border-radius:3px;background:#fffdf5}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -316,7 +322,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Forty-eight browser games. Best scores stay on this device.</p>
+<p class="lede">Fifty browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -531,6 +537,14 @@ a.card[hidden]{display:none}
 <a class="card" href="./skee-ball.html" data-cat="Arcade" data-key="arcade-skee-best" data-name="Skee-Ball">
 <div class="thumb skb" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Arcade</p><h2>Skee-Ball</h2><p>Roll nine balls up the ramp. Best is your highest game.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./sunny-acres.html" data-cat="Casual" data-key="arcade-farm-best" data-name="Sunny Acres">
+<div class="thumb fac" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Casual</p><h2>Sunny Acres</h2><p>Grow crops and sell the harvest. Best is lifetime earnings.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./mahjong.html" data-cat="Puzzle" data-key="arcade-mahjong-best" data-name="Jade Mahjong">
+<div class="thumb jmj" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Puzzle</p><h2>Jade Mahjong</h2><p>Match free tiles on a solvable board. Best is your fastest clear.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

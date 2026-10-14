@@ -1,0 +1,259 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b14"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon.svg"><link rel="apple-touch-icon" href="./icon.svg">
+<title>Phase Gate</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#05070d;color:#e8eefc;font-family:system-ui,Segoe UI,Arial,sans-serif;overflow:hidden;user-select:none;touch-action:none}
+canvas{position:fixed;left:0;top:0;display:block}
+a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:95;display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 12px;border-radius:999px;background:rgba(8,8,16,.82);color:#ffe14d;border:1px solid rgba(255,225,77,.55);font:700 12px/1 ui-monospace,monospace;letter-spacing:.04em;text-decoration:none;touch-action:manipulation}a.back:focus-visible{outline:2px solid #ffe14d;outline-offset:2px}
+#topR{position:fixed;top:8px;right:8px;z-index:60;display:flex;gap:6px}
+.tb{background:#0d1626d0;border:1px solid #2f5580;color:#bfe3ff;border-radius:8px;padding:0 10px;min-height:40px;font-size:14px;cursor:pointer;font-family:inherit}
+#lvlName{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:20;font-size:14px;color:#9fb8da;white-space:nowrap;pointer-events:none}
+.scr{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:50px 14px 14px;background:radial-gradient(ellipse at center,#101c34e8,#03050aee);overflow:auto}
+.hidden{display:none!important}
+h1{font-size:clamp(40px,11vw,92px);margin:0;letter-spacing:6px;font-weight:900}
+h1 .b{color:#4cc3ff;text-shadow:0 0 24px #1e90ff}h1 .o{color:#ff9a2e;text-shadow:0 0 24px #ff6a00}
+.scr p{color:#b4c4de;max-width:560px;line-height:1.45}
+.big{font:inherit;font-size:19px;padding:11px 26px;margin:6px;border-radius:10px;border:1px solid #4cc3ff;background:#0f2a48;color:#e8f6ff;cursor:pointer}
+.big:hover{background:#17406b}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;width:min(620px,100%);margin:10px 0}
+#grid button{font:inherit;aspect-ratio:1;border-radius:10px;border:1px solid #2f5580;background:#0d1a2e;color:#cfe2ff;font-size:18px;cursor:pointer;position:relative}
+#grid button.done{border-color:#ff9a2e;background:#2a1c0c;color:#ffd7a8}
+#grid button small{position:absolute;bottom:3px;left:0;right:0;font-size:10px;color:#8aa2c4}
+#ctl{position:fixed;z-index:30;left:0;right:0;bottom:0;pointer-events:none;display:none}
+#ctl button{pointer-events:auto;font:inherit;border-radius:14px;border:2px solid #ffffff40;background:#ffffff1c;color:#fff;font-size:22px;touch-action:none}
+#ctl .row{position:absolute;bottom:12px;display:flex;gap:10px}
+#ctl .mv button{width:64px;height:64px}
+#ctl .ac button{width:60px;height:60px}
+#ctl .pc{position:absolute;display:flex;gap:8px}
+#ctl .pc button{width:52px;height:42px;font-size:14px}
+#ctl .pc button.sel{box-shadow:0 0 0 3px #fff}
+#msg{position:fixed;z-index:35;left:50%;transform:translateX(-50%);top:56px;background:#0d1626e8;border:1px solid #2f5580;border-radius:8px;padding:6px 12px;font-size:14px;color:#cfe2ff;pointer-events:none;transition:opacity .4s;max-width:92%;text-align:center}
+@media(max-height:430px){h1{font-size:34px;letter-spacing:2px}.scr{padding:48px 10px 8px}.big{font-size:16px;padding:8px 14px}#ctl .mv button{width:52px;height:52px}#ctl .ac button{width:52px;height:52px}#grid{gap:6px}#grid button{font-size:15px}}
+</style></head><body>
+<canvas id="c"></canvas>
+<a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a>
+<div id="topR"><button class="tb" id="levelsBtn" title="Levels">☰</button><button class="tb" id="resetBtn" title="Restart level (R)">↺</button><button class="tb" id="mute">🔊</button></div>
+<div id="lvlName"></div>
+<div id="msg" style="opacity:0"></div>
+<div id="ctl"><div class="row mv" style="left:12px"><button id="bL">◀</button><button id="bR">▶</button></div>
+<div class="row ac" style="right:12px"><button id="bG">✋</button><button id="bJ">⤒</button></div>
+<div class="pc" id="pcBox"><button id="pB" style="background:#1e90ff55;border-color:#4cc3ff">Blue</button><button id="pO" style="background:#ff6a0055;border-color:#ff9a2e">Orange</button></div></div>
+<div id="title" class="scr">
+<h1><span class="b">PHASE</span> <span class="o">GATE</span></h1>
+<p>Fire linked portals onto white panels. What goes in, comes out — <b>with all its speed</b>. Solve 22 test chambers of cubes, buttons, lasers and spikes.</p>
+<div><button class="big" id="playBtn">Play</button><button class="big" id="selBtn">Levels</button></div>
+<p style="font-size:13px" id="howto"></p>
+</div>
+<div id="sel" class="scr hidden"><h2 style="margin:0">Test Chambers</h2><div id="grid"></div><button class="big" id="backBtn">Back</button></div>
+<div id="win" class="scr hidden"><h2 style="font-size:32px;margin:0">Chamber complete!</h2><p id="winTxt"></p><div><button class="big" id="nextBtn">Next ▶</button><button class="big" id="wSelBtn">Levels</button></div></div>
+<script>
+window.PG_LEVELS=[{"name": "First Light", "hint": "Fire a portal on each white panel, then walk into one.", "map": ["XXXXXXXXXXXXXXXXXXXXXXXX", "X                      #", "X                      #", "X                      #", "X                      #", "X                      X", "X                      X", "X                      X", "X           XX         X", "X           XX         X", "#           XX         X", "#           XX         X", "#  P        XX       E X", "XXXXXXXXXXXXXXXXXXXXXXXX"]}, {"name": "Step Up", "hint": "Portals work on floors too. Drop in, pop out up high.", "map": ["XXXXXXXXXXXXXXXXXXXXXXXX", "X                      X", "X                      #", "X                      #", "X                      X", "X                   E  X", "X                  XXXXX", "X                  X   X", "X                  X   X", "X                  X   X", "X                  X   X", "X  P               X   X", "X                  X   X", "XXXX#####XXXXXXXXXXXXXXX"]}, {"name": "Spike Pit", "hint": "Too far to jump. Think with portals.", "map": ["XXXXXXXXXXXXXXXXXXXXXXXX", "X                      X", "X                      X", "X                      X", "X                      X", "X                      X", "X                      X", "X                      X", "#                      #", "#                      #", "#P                    E#", "XXXX              XXXXXX", "X^^^^^^^^^^^^^^^^^^^^^^X", "XXXXXXXXXXXXXXXXXXXXXXXX"]}, {"name": "Weighted Cube", "hint": "Press E (\u270b on phones) to grab the cube. Drop it on the button.", "map": ["XXXXXXXXXXXXXXXXXXXXXXXX", "X                 X    X", "X                 X    X", "X                 X    X", "X                 X    X", "X                 X    X", "X                 X    X", "X                 X    X", "X                 D    X", "X                 D    X", "X                 D    X", "X                 D    X", "X P    C     B    D  E X", "XXXXXXXXXXXXXXXXXXXXXXXX"]}, {"name": "Fetch", "hint": "The cube is up on the shelf. You may need to move a portal to get back.", "map": ["XXXXXXXXXXXXXXXXXXXXXXXX", "X                      #", "X                      #", "X                    C X", "X                  XXXXX", "X                      X", "X                      X", "XXXX                   X", "X  D                   X", "X  D                   X", "X  D                   X", "X  D                   X", "X ED   B        P      X", "XXXXXXXX#####XXXXXXXXXXX"]}, {"name": "Flinging", "hint": "Speedy thing goes in, speedy thing comes out. Fall, fall faster, then aim the exit.", "map": ["XXXXXXXXXXXXXXXXXXXXXXXX", "X######                X", "X                      X", "X                      X", "#                      X", "#                      X", "X                      X", "X                      X", "X                      X", "X                      X", "X                      X", "X                      X", "XP    ^^^^^^^^^^^^   E X", "X#####XXXXXXXXXXXXXXXXXX"]}, {"name": "Laser Block", "hint": "Cubes stop laser beams.", "map": ["XXXXXXXXXXXXXXXXXXXXXXXX", "X                      X", "X                      X", "X                      X", "X                      X", "X                      X", "X                      X", "X                      X", "X  P C                 X", "XXXXXXXXX              X", "X                      X", "X                      X", "X>                   E X", "XXXXXXXXXXXXXXXXXXXXXXXX"]}, {"name": "Ferry", "hint": "Ride the moving platform across.", "map": ["XXXXXXXXXXXXXXXXXXXXXXXX", "X                      X", "X                      X", "X                      X", "X                      X", "X                      X", "X                      X", "X                      X", "X                      X", "X                      X", "X                      X", "XP                   E X", "XXXXM^^^^^^^^^^^^^^XXXXX", "XXXXXXXXXXXXXXXXXXXXXXXX"]}, {"name": "Going Up", "hint": "Hop on the lift and jump to the ledge.", "map": ["XXXXXXXXXXXXXXXXXXXXXXXX", "X                      X", "X                      X", "X                      X", "X                   E  X", "X                 XXXXXX", "X                 X    X", "X                 X    X", "X                 X    X", "X                 X    X", "X                 X    X", "X                 X    X", "X P          N    X    X", "XXXXXXXXXXXXXXXXXXXXXXXX"]}, {"name": "Two Buttons", "hint": "Every button must be held down to open the door.", "map": ["XXXXXXXXXXXXXXXXXXXXXXXX", "#                      X", "#                      X", "X                      X", "X  C                   X", "XXXXX                  X", "X                      X", "X                  XXXXX", "X                  D   X", "X                  D   X", "X                  D   X", "X                  D   X", "X  P  C   B   B    D E X", "XXXXXXXXXXXXXX#####XXXXX"]}, {"name": "Geyser", "hint": "A floor portal can launch you skyward if you enter fast enough.", "map": ["XXXXXXXXXXXXXXXXXXXXXXXX", "X##                    X", "X                      X", "X                  E   X", "X              XXXXXXXXX", "X              X       X", "X              X       X", "X              X       X", "X              X       X", "X              X       X", "X              X       X", "X              X       X", "XP             X       X", "X###XXXXXXXX###XXXXXXXXX"]}, {"name": "Laser Fetch", "hint": "Bring the cube down to shield yourself from the beam.", "map": ["XXXXXXXXXXXXXXXXXXXXXXXX", "X                      #", "X                      #", "X                    C X", "X                   XXXX", "X                      X", "X  P                   X", "X######                X", "X                      X", "X                      X", "X                      X", "X                      X", "X E                   <X", "XXXXXXXXXXXXXXXXXXXXXXXX"]}, {"name": "Cliff Dive", "hint": "Gravity is free speed.", "map": ["XXXXXXXXXXXXXXXXXXXXXXXX", "X                      #", "X                    P #", "X                 XXXXXX", "X                      X", "X                      X", "X                      X", "X                      X", "X                      X", "X                      X", "X                      X", "X E                    X", "XXXXXXX^^^^^^^####^^^^^X", "XXXXXXXXXXXXXXXXXXXXXXXX"]}, {"name": "Relay", "hint": "Hop from island to island. Portals can be re-placed at any time.", "map": ["XXXXXXXXX##XXXXXXXXXXXXX", "X                      X", "X                      X", "X                      X", "X                      X", "X                      X", "X        ##            X", "X        XX            X", "X        XX            #", "#        XX            #", "# P      XX          E #", "XXXX     XX          XXX", "X^^^^^^^^^^^^^^^^^^^^^^X", "XXXXXXXXXXXXXXXXXXXXXXXX"]}, {"name": "Cube Toss", "hint": "Cubes keep their momentum too.", "map": ["XXXXXXXXXXXXXXXXXXXXXXXX", "X######            X   X", "X                  X   X", "X                  X   X", "#                  X   X", "#                  X   X", "X                  D   X", "X                  D   X", "X                  D   X", "X                  D   X", "X                  D   X", "X                  D   X", "X   CP^^^^^^^^^^^ BD E X", "X####XXXXXXXXXXXXXXXXXXX"]}, {"name": "Pit Escape", "hint": "You cannot see out of the pit... unless you jump.", "map": ["XXXXXXXXXXXXXXXXXXXXXXXX", "X                      #", "X                      #", "X                    E X", "X                  XXXXX", "X                      X", "X                      X", "X                      X", "X                      X", "X                      X", "X  X     X             X", "X  X     X             X", "X  X  P  X             X", "XXXX#####XXXXXXXXXXXXXXX"]}, {"name": "Laser Floor", "hint": "Do not touch the floor. Ceilings take portals too.", "map": ["XXXXXXXXXXXXXXXXXXXX#XXX", "X                      X", "X                      X", "X                      X", "X                      X", "X                      X", "X                      X", "#                      X", "#P                   E X", "XXXX               XXXXX", "X                      X", "X                      X", "X>                     X", "XXXXXXXXXXXXXXXXXXXXXXXX"]}, {"name": "Round Trip", "hint": "Fetch the cube from across the pit.", "map": ["XXXXXXXXXXXXXXXXXXXXXXXX", "X D                    X", "X D                    X", "X D                    X", "X D                    X", "X D                    X", "X D                    X", "X D                    X", "X D                    X", "X D                    X", "X D                    X", "XED B  P            C  X", "XXXXXXXXXM^^^^^^^^XXXXXX", "XXXXXXXXXXXXXXXXXXXXXXXX"]}, {"name": "Geyser II", "hint": "Build speed, then point it up.", "map": ["XXXXXXXXXXXXXXXXXXXXXXXX", "X                  ### X", "X                      X", "X    E                 X", "XXXXXXXXX              X", "X       X              X", "X       X              X", "X       X              X", "X       X              X", "X       X              X", "X       X              X", "X       X              X", "X       X  ^^^^^^^   P X", "XXXXXXXXX##XXXXXXXX###XX"]}, {"name": "Curtain", "hint": "The beam splits the room. Go around it.", "map": ["XXXXXXXXXXXXXXXXXXXXXXXX", "X           v       #  X", "X                   #  X", "X                   #  X", "X                   #  X", "X                   #  X", "X                   #  X", "X                   #  X", "X                   D  X", "X                   D  X", "X                   D  X", "#                   D  X", "#  P           C B  D EX", "XXXXXXXXXXXXXXXXXXXXXXXX"]}, {"name": "Elevator", "hint": "The cube is up on the high shelf.", "map": ["XXXXXXXXXXXXXXXXXXXXXXXX", "X            D         X", "X C          D         X", "XXXX         D         X", "X            D         X", "X            D         X", "X            D         X", "X            D         X", "X            D         X", "X            D         X", "X            D         X", "X            D         X", "X   N   P B  D  E      X", "XXXXXXXXXXXXXXXXXXXXXXXX"]}, {"name": "Graduation", "hint": "Everything you have learned, all at once.", "map": ["XXXXXXXXXXXXXXXXXXXXXXXX", "X             v        #", "X                      #", "X                    C X", "X                  XXXXX", "X                   D  X", "X                   D  X", "X                   D  X", "X                   D  X", "X                   D  X", "X  X     X          D  X", "X  X     X          D  X", "X  X  P  X       B  D EX", "XXXX#####XXXXXXXXXXXXXXX"]}];
+(()=>{
+const cv=document.getElementById('c'),cx=cv.getContext('2d');const $=id=>document.getElementById(id);
+let W=0,H=0,DPR=1,TS=20,OX=0,OY=0;const COLS=24,ROWS=14;
+const touch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+function layout(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+'px';cv.style.height=H+'px';cx.setTransform(DPR,0,0,DPR,0,0);
+ const top=44;let availH=H-top-6,ctlH=0;const portrait=H>W;
+ if(touch){ctlH=portrait?150:0;availH-=ctlH;}
+ TS=Math.floor(Math.min((W-(touch&&!portrait?0:8))/COLS,availH/ROWS)*100)/100;
+ OX=Math.round((W-TS*COLS)/2);OY=Math.round(top+(availH-TS*ROWS)/2);
+ const c=$('ctl');c.style.display=touch?'block':'none';
+ const pc=$('pcBox');if(portrait){pc.style.left='50%';pc.style.transform='translateX(-50%)';pc.style.bottom='92px';}else{pc.style.left='50%';pc.style.transform='translateX(-50%)';pc.style.bottom='12px';}
+}
+addEventListener('resize',layout);
+const ls={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+let done={};try{done=JSON.parse(ls.get('phasegate_done','{}'))||{}}catch(e){done={}}
+// audio
+let AC=null,muted=ls.get('phasegate_mute','0')==='1';
+function ac(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(AC&&AC.state==='suspended'){const p=AC.resume();if(p&&p.catch)p.catch(()=>{})}return AC}
+function tone(f,d,type='sine',v=.08,sl=0,delay=0){if(muted)return;const a=ac();if(!a)return;const t=a.currentTime+delay,o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(sl)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+sl),t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g).connect(a.destination);o.start(t);o.stop(t+d+.02)}
+const S={shootB:()=>tone(900,.18,'sawtooth',.05,-600),shootO:()=>tone(600,.18,'sawtooth',.05,-400),place:()=>tone(1200,.12,'sine',.06,400),fail:()=>tone(150,.15,'square',.05,-50),warp:()=>{tone(300,.25,'sine',.08,900);tone(500,.2,'triangle',.04,700,.03)},jump:()=>tone(320,.1,'square',.03,240),land:()=>tone(90,.06,'sine',.06),btn:()=>{tone(500,.08,'square',.05);tone(750,.1,'square',.05,0,.07)},door:()=>tone(200,.3,'sawtooth',.04,200),die:()=>{tone(400,.5,'sawtooth',.08,-350)},win:()=>{[523,659,784,1046,1318].forEach((f,i)=>tone(f,.25,'triangle',.07,0,i*.09))},grab:()=>tone(660,.08,'triangle',.06)};
+function updMute(){$('mute').textContent=muted?'🔇':'🔊'}updMute();
+$('mute').onclick=()=>{muted=!muted;ls.set('phasegate_mute',muted?'1':'0');updMute()};
+// ---------- level state ----------
+const LV=window.PG_LEVELS;let L=null,cur=0,state='title';
+const GRAV=30,TERM=24,RUN=7,JUMP=12.5;
+function tileAt(x,y){if(x<0||y<0||x>=COLS||y>=ROWS)return 'X';return L.g[y][x]}
+function solidTile(x,y){const t=tileAt(x,y);return t==='#'||t==='X'||((t==='D')&&!L.doorOpen)}
+function load(i){cur=i;const d=LV[i];const g=d.map.map(r=>r.padEnd(COLS,' ').split(''));
+ L={g,name:d.name,hint:d.hint,p:null,cubes:[],plats:[],portals:{b:null,o:null},doorOpen:false,doorAnim:0,buttons:[],lasers:[],beams:[],t:0,won:false,dead:0,parts:[],shots:[]};
+ for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const c=g[y][x];
+  if(c==='P'){L.p={x:x+.5,y:y+1-.45,vx:0,vy:0,hw:.35,hh:.45,face:1,gr:false,co:0,held:null,tp:0};g[y][x]=' '}
+  else if(c==='C'){L.cubes.push({x:x+.5,y:y+1-.4,vx:0,vy:0,hw:.4,hh:.4,sx:x+.5,sy:y+1-.4,tp:0});g[y][x]=' '}
+  else if(c==='M'||c==='N'){L.plats.push({x:x,y:y,w:2,h:.5,vx:c==='M'?2.5:0,vy:c==='N'?2.2:0,dx:0,dy:0});g[y][x]=(g[y][x+1]==='^'||(x>0&&g[y][x-1]==='^'))?'^':' '}
+  else if(c==='B')L.buttons.push({x,y,on:false});
+  else if(c==='>'||c==='<'||c==='v'||c==='A')L.lasers.push({x,y,dx:c==='>'?1:c==='<'?-1:0,dy:c==='v'?1:c==='A'?-1:0});}
+ if(!L.buttons.length)L.doorOpen=true;
+ $('lvlName').textContent=(i+1)+'. '+d.name;msg(d.hint,5000);state='play';}
+let msgT=0;function msg(t,ms=2500){const e=$('msg');e.textContent=t;e.style.opacity=t?1:0;clearTimeout(msgT);msgT=setTimeout(()=>e.style.opacity=0,ms)}
+// ---------- collision ----------
+function rectSolid(x0,y0,x1,y1,ignorePlat){for(let ty=Math.floor(y0);ty<=Math.floor(y1-1e-6);ty++)for(let tx=Math.floor(x0);tx<=Math.floor(x1-1e-6);tx++)if(solidTile(tx,ty))return true;
+ if(!ignorePlat)for(const p of L.plats)if(x1>p.x&&x0<p.x+p.w&&y1>p.y&&y0<p.y+p.h)return true;return false}
+function cubeTops(e){// cubes act as one-way platforms for player
+ return L.cubes.filter(c=>c!==e&&c!==L.p.held)}
+const NRM={u:[0,-1],d:[0,1],l:[-1,0],r:[1,0]};
+function portalFor(e,nx,ny){// check if entity moving into a portal face; returns [portal,other]
+ const P=L.portals;if(!P.b||!P.o)return null;
+ for(const k of ['b','o']){const p=P[k],q=P[k==='b'?'o':'b'];const [px,py]=NRM[p.f];
+  if(p.f==='u'){if(ny+e.hh>p.y&&e.y+e.hh<=p.y+.02&&nx>p.x&&nx<p.x+1&&e.vy>=0)return[p,q]}
+  else if(p.f==='d'){if(ny-e.hh<p.y+1&&e.y-e.hh>=p.y+1-.02&&nx>p.x&&nx<p.x+1&&e.vy<=0)return[p,q]}
+  else if(p.f==='l'){if(nx+e.hw>p.x&&e.x+e.hw<=p.x+.02&&ny>p.y&&ny<p.y+1&&e.vx>=0)return[p,q]}
+  else if(p.f==='r'){if(nx-e.hw<p.x+1&&e.x-e.hw>=p.x+1-.02&&ny>p.y&&ny<p.y+1&&e.vx<=0)return[p,q]}}
+ return null}
+function faceCenter(p){return p.f==='u'?[p.x+.5,p.y]:p.f==='d'?[p.x+.5,p.y+1]:p.f==='l'?[p.x,p.y+.5]:[p.x+1,p.y+.5]}
+function teleport(e,p,q){const n1=NRM[p.f],n2=NRM[q.f];const vn=Math.max(0,-(e.vx*n1[0]+e.vy*n1[1]));const t1=[-n1[1],n1[0]],t2=[-n2[1],n2[0]];const vt=e.vx*t1[0]+e.vy*t1[1];
+ let out=vn;if(q.f==='u')out=Math.max(out,7.5);else if(q.f!=='d')out=Math.max(out,3.5);
+ e.vx=n2[0]*out-t2[0]*vt;e.vy=n2[1]*out-t2[1]*vt;if(q.f==='l'||q.f==='r'){e.vy=(p.f==='u'||p.f==='d')?0:Math.max(-6,Math.min(6,e.vy))}else if(p.f==='l'||p.f==='r'){e.vx=Math.max(-RUN,Math.min(RUN,e.vx))}
+ const [fx,fy]=faceCenter(q);const ext=n2[0]?e.hw:e.hh;e.x=fx+n2[0]*(ext+.03);e.y=fy+n2[1]*(ext+.03);
+ if(n2[0]){// keep entity above floor inside portal span
+  e.y=Math.min(e.y,q.y+1-e.hh-.01);}
+ e.tp=.12;spark(fx,fy,q.c==='b'?'#4cc3ff':'#ff9a2e',16);}
+function moveEnt(e,dt,isPlayer){e.gr=false;
+ let nx=e.x+e.vx*dt,ny=e.y;
+ let pt=portalFor(e,nx,e.y);if(pt&&(pt[0].f==='l'||pt[0].f==='r')){teleport(e,pt[0],pt[1]);if(isPlayer)S.warp();if(e.held)carry(e);return}
+ if(rectSolid(nx-e.hw,e.y-e.hh,nx+e.hw,e.y+e.hh)){// resolve x
+  if(e.vx>0){nx=Math.floor(nx+e.hw)-e.hw-.0001;}else{nx=Math.ceil(nx-e.hw)+e.hw+.0001;}
+  if(rectSolid(nx-e.hw,e.y-e.hh,nx+e.hw,e.y+e.hh))nx=e.x;// platform case
+  e.vx=0}
+ e.x=nx;ny=e.y+e.vy*dt;
+ pt=portalFor(e,e.x,ny);if(pt){teleport(e,pt[0],pt[1]);if(isPlayer)S.warp();if(e.held)carry(e);return}
+ if(rectSolid(e.x-e.hw,ny-e.hh,e.x+e.hw,ny+e.hh)){
+  if(e.vy>0){let fy=null;for(const p of L.plats)if(e.x+e.hw>p.x&&e.x-e.hw<p.x+p.w&&ny+e.hh>p.y&&e.y+e.hh<=p.y+.35)fy=fy===null?p.y-e.hh-.0001:Math.min(fy,p.y-e.hh-.0001);if(fy===null)fy=Math.floor(ny+e.hh)-e.hh-.0001;
+   if(rectSolid(e.x-e.hw,fy-e.hh,e.x+e.hw,fy+e.hh))fy=e.y;ny=fy;if(isPlayer&&e.vy>8)S.land();e.gr=true}
+  else{let fy=Math.ceil(ny-e.hh)+e.hh+.0001;if(rectSolid(e.x-e.hw,fy-e.hh,e.x+e.hw,fy+e.hh))fy=e.y;ny=fy}
+  e.vy=0}
+ else if(e.vy>=0){// one-way cube tops
+  for(const c of (isPlayer?cubeTops(e):L.cubes.filter(c=>c!==e&&c!==L.p.held))){if(e.x+e.hw>c.x-c.hw&&e.x-e.hw<c.x+c.hw&&e.y+e.hh<=c.y-c.hh+.02&&ny+e.hh>c.y-c.hh){ny=c.y-c.hh-e.hh-.0001;e.vy=0;e.gr=true;e.on=c}}}
+ e.y=ny}
+function carry(p){const c=p.held;if(!c)return;let tx=p.x+p.face*.85,ty=p.y-.05;if(rectSolid(tx-c.hw,ty-c.hh,tx+c.hw,ty+c.hh)){tx=p.x;}c.x=tx;c.y=ty;c.vx=p.vx;c.vy=p.vy}
+// ---------- portals ----------
+function fire(col,ax,ay){const p=L.p;if(!p||L.won)return null;let dx=ax-p.x,dy=ay-p.y;const d=Math.hypot(dx,dy);if(d<.01)return null;dx/=d;dy/=d;
+ let x=p.x,y=p.y,ptx=Math.floor(x),pty=Math.floor(y);const shot={x0:x,y0:y,x1:x,y1:y,c:col,t:.25};L.shots.push(shot);col==='b'?S.shootB():S.shootO();
+ for(let s=0;s<2400;s++){x+=dx*.02;y+=dy*.02;const tx=Math.floor(x),ty=Math.floor(y);
+  let platHit=L.plats.some(q=>x>q.x&&x<q.x+q.w&&y>q.y&&y<q.y+q.h);
+  if(platHit||solidTile(tx,ty)){shot.x1=x;shot.y1=y;if(platHit){S.fail();spark(x,y,'#888',6);return null}
+   let f=null;if(tx!==ptx&&ty!==pty){f=Math.abs((x-dx*.02)-(dx>0?tx:tx+1))<Math.abs((y-dy*.02)-(dy>0?ty:ty+1))?(dx>0?'l':'r'):(dy>0?'u':'d');}
+   else if(tx!==ptx)f=dx>0?'l':'r';else f=dy>0?'u':'d';
+   const n=NRM[f];if(tileAt(tx,ty)!=='#'||solidTile(tx+n[0],ty+n[1])){spark(x,y,'#aaa',8);S.fail();return null}
+   const other=L.portals[col==='b'?'o':'b'];if(other&&other.x===tx&&other.y===ty&&other.f===f){S.fail();return null}
+   L.portals[col]={x:tx,y:ty,f,c:col,t:0};S.place();spark(x,y,col==='b'?'#4cc3ff':'#ff9a2e',20);return L.portals[col]}
+  ptx=tx;pty=ty}
+ return null}
+// ---------- particles ----------
+function spark(x,y,c,n){for(let i=0;i<n;i++){const a=Math.random()*6.28,s=Math.random()*6+1;L.parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,t:Math.random()*.5+.2,c})}}
+// ---------- input ----------
+const inp={l:0,r:0,j:0,jp:0,g:0};let auto=false;const keys={};
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(keys[k])return;keys[k]=1;if(state!=='play')return;if(k===' '||k==='w'||k==='arrowup'){inp.jp=1;e.preventDefault()}if(k==='e'||k==='f')inp.g=1;if(k==='r')load(cur);if(k==='q'||k==='1')selCol='b';if(k==='2')selCol='o';});
+addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=0});
+let aim={x:12,y:7},selCol='b';
+function toWorld(cx_,cy_){return[(cx_-OX)/TS,(cy_-OY)/TS]}
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('pointermove',e=>{const[x,y]=toWorld(e.clientX,e.clientY);aim.x=x;aim.y=y});
+cv.addEventListener('pointerdown',e=>{ac();if(state!=='play')return;const[x,y]=toWorld(e.clientX,e.clientY);aim.x=x;aim.y=y;
+ if(e.pointerType==='mouse'){fire(e.button===2?'o':'b',x,y)}else{if(x<0||x>COLS||y<0||y>ROWS)return;fire(selCol,x,y);selCol=selCol==='b'?'o':'b';updSel()}});
+function hold(id,k){const b=$(id);const on=e=>{e.preventDefault();ac();if(k==='j')inp.jp=1;else if(k==='g')inp.g=1;else inp[k]=1};const off=e=>{e.preventDefault();if(k!=='j'&&k!=='g')inp[k]=0};b.addEventListener('pointerdown',on);b.addEventListener('pointerup',off);b.addEventListener('pointercancel',off);b.addEventListener('pointerleave',off)}
+hold('bL','l');hold('bR','r');hold('bJ','j');hold('bG','g');
+function updSel(){$('pB').classList.toggle('sel',selCol==='b');$('pO').classList.toggle('sel',selCol==='o')}
+$('pB').onclick=()=>{selCol='b';updSel()};$('pO').onclick=()=>{selCol='o';updSel()};updSel();
+// ---------- update ----------
+function kill(){if(L.dead)return;L.dead=.9;S.die();spark(L.p.x,L.p.y,'#ff4d4d',30);if(L.p.held){L.p.held=null}}
+function overlap(e,x0,y0,x1,y1){return e.x+e.hw>x0&&e.x-e.hw<x1&&e.y+e.hh>y0&&e.y-e.hh<y1}
+function update(dt){if(!L||state!=='play')return;L.t+=dt;const p=L.p;
+ if(L.dead){L.dead-=dt;if(L.dead<=0)load(cur);stepParts(dt);return}
+ // platforms
+ for(const q of L.plats){const ox=q.x,oy=q.y;q.x+=q.vx*dt;q.y+=q.vy*dt;
+  const riding=e=>e.x+e.hw>ox&&e.x-e.hw<ox+q.w&&Math.abs(e.y+e.hh-oy)<.06;if(rectSolid(q.x,q.y,q.x+q.w,q.y+q.h,true)||[p,...L.cubes].some(e=>e!==p.held&&!riding(e)&&e.y>q.y+q.h&&overlap(e,q.x,q.y,q.x+q.w,q.y+q.h))){q.x=ox;q.y=oy;q.vx=-q.vx;q.vy=-q.vy}q.dx=q.x-ox;q.dy=q.y-oy;
+  for(const e of [p,...L.cubes]){if(e===p.held)continue;if(e.x+e.hw>ox&&e.x-e.hw<ox+q.w&&Math.abs(e.y+e.hh-oy)<.06){e.x+=q.dx;e.y=q.y-e.hh-.001;if(rectSolid(e.x-e.hw,e.y-e.hh,e.x+e.hw,e.y+e.hh))e.x-=q.dx}}}
+ // player control
+ const kl=keys['a']||keys['arrowleft']||inp.l,kr=keys['d']||keys['arrowright']||inp.r;const dir=(kr?1:0)-(kl?1:0);
+ if(dir)p.face=dir;
+ if(p.gr){const tgt=dir*RUN;const a=dir?60:45;if(Math.abs(p.vx-tgt)<a*dt)p.vx=tgt;else p.vx+=Math.sign(tgt-p.vx)*a*dt}
+ else{if(dir){if(dir*p.vx<RUN){p.vx+=dir*28*dt;if(dir*p.vx>RUN)p.vx=dir*RUN}}else if(Math.abs(p.vx)<=RUN+.5)p.vx*=1-2.2*dt}
+ p.co=p.gr?.09:p.co-dt;
+ if(inp.jp){if(p.co>0){p.vy=-JUMP;p.co=0;p.gr=false;S.jump()}}inp.jp=0;
+ if(inp.g){inp.g=0;if(p.held){const c=p.held;p.held=null;c.vx=p.vx*.8;c.vy=Math.min(0,p.vy);if(rectSolid(c.x-c.hw,c.y-c.hh,c.x+c.hw,c.y+c.hh)){c.x=p.x;c.y=p.y}S.grab()}
+  else{let best=null,bd=1.5;for(const c of L.cubes){const d=Math.hypot(c.x-p.x,c.y-p.y);if(d<bd){bd=d;best=c}}if(best){p.held=best;S.grab()}}}
+ p.vy=Math.min(TERM,p.vy+GRAV*dt);p.tp-=dt;
+ const sub=Math.ceil(Math.max(Math.abs(p.vx),Math.abs(p.vy))*dt/.2)||1;
+ for(let i=0;i<sub;i++){moveEnt(p,dt/sub,true);carry(p)}
+ for(const c of L.cubes){if(c===p.held)continue;c.vy=Math.min(TERM,c.vy+GRAV*dt);const s2=Math.ceil(Math.max(Math.abs(c.vx),Math.abs(c.vy))*dt/.2)||1;for(let i=0;i<s2;i++)moveEnt(c,dt/s2,false);if(c.gr)c.vx*=1-8*dt;
+  if(c.y>ROWS+2){c.x=c.sx;c.y=c.sy;c.vx=c.vy=0}}
+ // buttons & doors
+ let all=true;for(const b of L.buttons){const was=b.on;b.on=[p,...L.cubes].some(e=>overlap(e,b.x+.1,b.y+.7,b.x+.9,b.y+1));if(b.on&&!was)S.btn();if(!b.on)all=false}
+ if(L.buttons.length){if(all!==L.doorOpen){if(all||!doorBlocked())L.doorOpen=all,S.door()}}
+ L.doorAnim+=((L.doorOpen?1:0)-L.doorAnim)*Math.min(1,dt*8);
+ // lasers
+ L.beams=[];for(const ls_ of L.lasers){let x=ls_.x+.5,y=ls_.y+.5,len=0;for(let s=0;s<600;s++){x+=ls_.dx*.05;y+=ls_.dy*.05;len+=.05;if(solidTile(Math.floor(x),Math.floor(y)))break;let hit=false;for(const c of L.cubes)if(Math.abs(x-c.x)<c.hw&&Math.abs(y-c.y)<c.hh)hit=true;for(const q of L.plats)if(x>q.x&&x<q.x+q.w&&y>q.y&&y<q.y+q.h)hit=true;if(hit)break;
+   if(Math.abs(x-p.x)<p.hw-.05&&Math.abs(y-p.y)<p.hh-.05){kill()}}L.beams.push([ls_.x+.5,ls_.y+.5,x,y])}
+ // spikes
+ for(let ty=Math.floor(p.y-p.hh);ty<=Math.floor(p.y+p.hh);ty++)for(let tx=Math.floor(p.x-p.hw);tx<=Math.floor(p.x+p.hw);tx++)if(tileAt(tx,ty)==='^'&&overlap(p,tx+.1,ty+.55,tx+.9,ty+1))kill();
+ if(p.y>ROWS+1)kill();
+ // exit
+ for(let ty=Math.floor(p.y-p.hh);ty<=Math.floor(p.y+p.hh);ty++)for(let tx=Math.floor(p.x-p.hw);tx<=Math.floor(p.x+p.hw);tx++)if(tileAt(tx,ty)==='E'&&!L.won)winLevel();
+ for(const k of ['b','o'])if(L.portals[k])L.portals[k].t+=dt;
+ L.shots.forEach(s=>s.t-=dt);L.shots=L.shots.filter(s=>s.t>0);stepParts(dt)}
+function doorBlocked(){for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)if(L.g[y][x]==='D')for(const e of [L.p,...L.cubes])if(overlap(e,x,y,x+1,y+1))return true;return false}
+function stepParts(dt){L.parts.forEach(q=>{q.x+=q.vx*dt;q.y+=q.vy*dt;q.vy+=10*dt;q.t-=dt});L.parts=L.parts.filter(q=>q.t>0)}
+function saveHub(){const n=Object.keys(done).reduce((a,k)=>a+(done[k]?1:0),0);if(!(n>0))return;try{const prev=+localStorage.getItem('arcade-phase-best')||0;if(n>prev)localStorage.setItem('arcade-phase-best',String(n))}catch(e){}}
+function winLevel(){L.won=true;S.win();done[cur]=1;ls.set('phasegate_done',JSON.stringify(done));saveHub();if(auto)return;
+ setTimeout(()=>{state='win';$('winTxt').textContent=cur+1>=LV.length?'You have completed every test chamber. Outstanding, subject.':`Chamber ${cur+1}: ${LV[cur].name} — cleared in ${L.t.toFixed(1)}s.`;$('nextBtn').style.display=cur+1<LV.length?'':'none';$('win').classList.remove('hidden')},700)}
+// ---------- render ----------
+function rr(x,y,w,h,r){cx.beginPath();cx.moveTo(x+r,y);cx.arcTo(x+w,y,x+w,y+h,r);cx.arcTo(x+w,y+h,x,y+h,r);cx.arcTo(x,y+h,x,y,r);cx.arcTo(x,y,x+w,y,r);cx.fill()}
+function drawPortal(p,t){const s=TS,[fx,fy]=faceCenter(p);const X=OX+fx*s,Y=OY+fy*s;const col=p.c==='b'?['#4cc3ff','#1e70ff']:['#ffb24c','#ff6a00'];const grow=Math.min(1,p.t*6);
+ cx.save();cx.translate(X,Y);if(p.f==='l'||p.f==='r')cx.rotate(Math.PI/2);cx.shadowColor=col[0];cx.shadowBlur=s*.8;
+ const g=cx.createRadialGradient(0,0,0,0,0,s*.6);g.addColorStop(0,'#fff');g.addColorStop(.3,col[0]);g.addColorStop(1,col[1]+'00');cx.fillStyle=g;cx.beginPath();cx.ellipse(0,0,Math.max(.1,s*.55*grow),Math.max(.1,s*.2*grow),0,0,6.28);cx.fill();
+ cx.strokeStyle=col[0];cx.lineWidth=Math.max(2,s*.09);cx.beginPath();cx.ellipse(0,0,Math.max(.1,s*.52*grow),Math.max(.1,s*.14*grow+Math.sin(t*8)*s*.02),0,0,6.28);cx.stroke();cx.restore()}
+function draw(t){cx.fillStyle='#05070d';cx.fillRect(0,0,W,H);if(!L){drawTitleBg(t);return}
+ const s=TS;cx.save();
+ // backdrop
+ const bg=cx.createLinearGradient(0,OY,0,OY+ROWS*s);bg.addColorStop(0,'#141c2c');bg.addColorStop(1,'#0b101b');cx.fillStyle=bg;cx.fillRect(OX,OY,COLS*s,ROWS*s);
+ cx.strokeStyle='#ffffff08';cx.lineWidth=1;for(let x=0;x<=COLS;x++){cx.beginPath();cx.moveTo(OX+x*s,OY);cx.lineTo(OX+x*s,OY+ROWS*s);cx.stroke()}for(let y=0;y<=ROWS;y++){cx.beginPath();cx.moveTo(OX,OY+y*s);cx.lineTo(OX+COLS*s,OY+y*s);cx.stroke()}
+ for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const c=L.g[y][x],X=OX+x*s,Y=OY+y*s;
+  if(c==='#'){cx.fillStyle='#d9e2ef';cx.fillRect(X,Y,s,s);cx.fillStyle='#b9c6d8';cx.fillRect(X+s*.08,Y+s*.08,s*.84,s*.84);cx.fillStyle='#e9f0f8';cx.fillRect(X+s*.12,Y+s*.12,s*.76,s*.36)}
+  else if(c==='X'){cx.fillStyle='#2b3342';cx.fillRect(X,Y,s,s);cx.fillStyle='#3a4558';cx.fillRect(X+1,Y+1,s-2,s*.3);cx.fillStyle='#1d232e';cx.fillRect(X,Y+s-2,s,2);if((x+y)%3===0){cx.fillStyle='#55607a';cx.fillRect(X+s*.15,Y+s*.6,s*.12,s*.12)}}
+  else if(c==='^'){cx.fillStyle='#c94a4a';for(let i=0;i<3;i++){cx.beginPath();cx.moveTo(X+i*s/3,Y+s);cx.lineTo(X+(i+.5)*s/3,Y+s*.5);cx.lineTo(X+(i+1)*s/3,Y+s);cx.fill()}cx.fillStyle='#ff8a8a';cx.fillRect(X,Y+s-2,s,2)}
+  else if(c==='D'){const o=L.doorAnim;cx.fillStyle='#1a2a3a';cx.fillRect(X+s*.1,Y,s*.8,s);cx.fillStyle=L.doorOpen?'#3cff9a':'#ff4d6d';cx.globalAlpha=1-o*.85;cx.fillRect(X+s*.2,Y,s*.6,s);cx.globalAlpha=1;cx.fillStyle=L.doorOpen?'#3cff9a':'#ff4d6d';cx.fillRect(X+s*.1,Y+s*.45,s*.8,s*.1)}
+  else if(c==='B'){const b=L.buttons.find(b=>b.x===x&&b.y===y);cx.fillStyle='#555f70';cx.fillRect(X+s*.05,Y+s*.85,s*.9,s*.15);cx.fillStyle=b&&b.on?'#3cff9a':'#ff4d6d';cx.shadowColor=cx.fillStyle;cx.shadowBlur=b&&b.on?10:0;cx.fillRect(X+s*.15,Y+s*(b&&b.on?.8:.7),s*.7,s*.12);cx.shadowBlur=0}
+  else if(c==='E'){const g=cx.createLinearGradient(0,Y,0,Y+s);g.addColorStop(0,'#3cff9a00');g.addColorStop(1,'#3cff9a99');cx.fillStyle=g;cx.fillRect(X+s*.1,Y-s*.4,s*.8,s*1.4);cx.strokeStyle='#3cff9a';cx.lineWidth=2;cx.strokeRect(X+s*.1,Y-s*.4,s*.8,s*1.4);cx.fillStyle='#bfffe0';cx.font=`bold ${s*.45}px system-ui`;cx.textAlign='center';cx.fillText('EXIT',X+s/2,Y+s*.55+Math.sin(t*3)*2)}
+  else if('><vA'.includes(c)&&c){cx.fillStyle='#3a2030';cx.fillRect(X+s*.15,Y+s*.15,s*.7,s*.7);cx.fillStyle='#ff3355';cx.beginPath();cx.arc(X+s/2,Y+s/2,s*.2,0,6.28);cx.fill()}}
+ // beams
+ for(const b of L.beams){cx.strokeStyle='#ff335588';cx.lineWidth=s*.22;cx.beginPath();cx.moveTo(OX+b[0]*s,OY+b[1]*s);cx.lineTo(OX+b[2]*s,OY+b[3]*s);cx.stroke();cx.strokeStyle='#ffd0d8';cx.lineWidth=Math.max(1,s*.06);cx.stroke()}
+ // platforms
+ for(const q of L.plats){cx.fillStyle='#8a6cff';rr(OX+q.x*s,OY+q.y*s,q.w*s,q.h*s,s*.12);cx.fillStyle='#c9b8ff';cx.fillRect(OX+q.x*s+3,OY+q.y*s+2,q.w*s-6,2)}
+ // portals
+ for(const k of ['b','o'])if(L.portals[k])drawPortal(L.portals[k],t);
+ // cubes
+ for(const c of L.cubes){const X=OX+(c.x-c.hw)*s,Y=OY+(c.y-c.hh)*s,w=c.hw*2*s;cx.fillStyle='#8a94a6';rr(X,Y,w,w,s*.1);cx.fillStyle='#c6cedb';cx.fillRect(X+w*.15,Y+w*.15,w*.7,w*.7);cx.fillStyle='#ff9ad1';cx.beginPath();cx.arc(X+w/2,Y+w/2,w*.18,0,6.28);cx.fill()}
+ // player
+ const p=L.p;if(!L.dead){const X=OX+p.x*s,Y=OY+p.y*s;cx.save();cx.translate(X,Y);cx.scale(p.face,1);
+  cx.fillStyle='#e8eefc';rr(-p.hw*s,-p.hh*s,p.hw*2*s,p.hh*2*s*.75,s*.15);cx.fillStyle='#2b3342';cx.fillRect(-p.hw*s*.2,-p.hh*s*.7,p.hw*s*1.1,p.hh*s*.35);cx.fillStyle='#4cc3ff';cx.fillRect(p.hw*s*.35,-p.hh*s*.62,p.hw*s*.5,p.hh*s*.18);
+  const leg=Math.sin(L.t*16)*(p.gr&&Math.abs(p.vx)>.5?1:0);cx.fillStyle='#9aa6bb';cx.fillRect(-p.hw*s*.7,p.hh*s*.45,p.hw*s*.5,p.hh*s*.55+leg*2);cx.fillRect(p.hw*s*.2,p.hh*s*.45,p.hw*s*.5,p.hh*s*.55-leg*2);cx.restore();
+  // gun & aim line
+  if(!auto&&!touch){const a=Math.atan2(aim.y-p.y,aim.x-p.x);cx.strokeStyle=(selCol==='b'?'#4cc3ff':'#ff9a2e')+'40';cx.setLineDash([4,6]);cx.lineWidth=1;cx.beginPath();cx.moveTo(X,Y);cx.lineTo(X+Math.cos(a)*s*3,Y+Math.sin(a)*s*3);cx.stroke();cx.setLineDash([]);cx.fillStyle='#ccd';cx.save();cx.translate(X,Y);cx.rotate(a);cx.fillRect(0,-s*.07,s*.5,s*.14);cx.restore()}}
+ for(const sh of L.shots){cx.globalAlpha=sh.t*4;cx.strokeStyle=sh.c==='b'?'#4cc3ff':'#ff9a2e';cx.lineWidth=2;cx.beginPath();cx.moveTo(OX+sh.x0*s,OY+sh.y0*s);cx.lineTo(OX+sh.x1*s,OY+sh.y1*s);cx.stroke()}cx.globalAlpha=1;
+ for(const q of L.parts){cx.globalAlpha=Math.min(1,q.t*3);cx.fillStyle=q.c;cx.fillRect(OX+q.x*s-1.5,OY+q.y*s-1.5,3,3)}cx.globalAlpha=1;
+ if(!touch){cx.strokeStyle='#fff8';cx.lineWidth=1.5;const X=OX+aim.x*s,Y=OY+aim.y*s;cx.beginPath();cx.arc(X,Y,6,0,6.28);cx.moveTo(X-10,Y);cx.lineTo(X-3,Y);cx.moveTo(X+3,Y);cx.lineTo(X+10,Y);cx.stroke()}
+ // portal status
+ cx.fillStyle=L.portals.b?'#4cc3ff':'#4cc3ff44';cx.beginPath();cx.arc(OX+12,OY+ROWS*s+0-8,0,0,0);cx.fill();
+ cx.restore()}
+let tp=[];for(let i=0;i<70;i++)tp.push({x:Math.random(),y:Math.random(),s:Math.random()*.5+.2});
+function drawTitleBg(t){for(const q of tp){q.y-=q.s*.002;if(q.y<0)q.y=1;cx.fillStyle=q.x<.5?'#4cc3ff55':'#ff9a2e55';cx.fillRect(q.x*W,q.y*H,3,3)}
+ for(const [px,c1] of [[.18,'#4cc3ff'],[.82,'#ff9a2e']]){cx.save();cx.translate(W*px,H*.5);cx.shadowColor=c1;cx.shadowBlur=40;cx.strokeStyle=c1;cx.lineWidth=6;cx.beginPath();cx.ellipse(0,0,Math.min(W,H)*.07,Math.min(W,H)*.22+Math.sin(t*2)*6,0,0,6.28);cx.stroke();cx.restore()}}
+// ---------- screens ----------
+function buildGrid(){const g=$('grid');g.innerHTML='';LV.forEach((l,i)=>{const b=document.createElement('button');b.className=done[i]?'done':'';b.innerHTML=(i+1)+(done[i]?' ✓':'')+'<small>'+l.name+'</small>';b.onclick=()=>{S.grab();startLevel(i)};g.appendChild(b)})}
+function show(id){['title','sel','win'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
+function startLevel(i){ac();show(null);load(i)}
+$('playBtn').onclick=()=>{let i=0;while(done[i]&&i<LV.length-1)i++;startLevel(i)};
+$('selBtn').onclick=()=>{buildGrid();show('sel');state='menu'};$('levelsBtn').onclick=()=>{buildGrid();show('sel');state='menu'};
+$('backBtn').onclick=()=>{if(L){show(null);state='play'}else show('title')};
+$('resetBtn').onclick=()=>{if(L){show(null);load(cur)}};
+$('nextBtn').onclick=()=>startLevel(Math.min(LV.length-1,cur+1));$('wSelBtn').onclick=()=>{buildGrid();show('sel')};
+$('howto').innerHTML=touch?'Move ◀ ▶ · Jump ⤒ · Grab ✋<br>Tap the level to fire — shots alternate Blue / Orange (or pick a colour).<br>Tip: turn your phone sideways for a bigger view.':'Move: A / D · Jump: W / Space · Grab cube: E<br>Aim with the mouse · Left click = Blue · Right click = Orange · R = restart';
+layout();
+let last=performance.now();function loop(now){const dt=Math.min(.033,(now-last)/1000);last=now;if(!auto){update(dt)}draw(now/1000);requestAnimationFrame(loop)}requestAnimationFrame(loop);
+// automation hooks for testing
+window.PG={load:i=>{load(i)},step(n,dt=1/120){for(let i=0;i<n;i++)update(dt)},get L(){return L},inp,keys,set auto(v){auto=v},fire,LV};
+})();
+</script></body></html>

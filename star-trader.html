@@ -1,0 +1,271 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b14"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon.svg"><link rel="apple-touch-icon" href="./icon.svg">
+<title>Star Trader</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#03040c;color:#dfe8ff;font-family:system-ui,Segoe UI,Arial,sans-serif;overflow:hidden;user-select:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:95;display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 12px;border-radius:999px;background:rgba(8,8,16,.82);color:#ffe14d;border:1px solid rgba(255,225,77,.55);font:700 12px/1 ui-monospace,monospace;letter-spacing:.04em;text-decoration:none;touch-action:manipulation}a.back:focus-visible{outline:2px solid #ffe14d;outline-offset:2px}
+#mute{position:fixed;top:8px;right:8px;z-index:60;background:#0b1630cc;border:1px solid #2d4f86;color:#9fd0ff;border-radius:8px;padding:0 12px;min-height:40px;font-size:14px;cursor:pointer}
+#hud{position:fixed;top:56px;left:8px;right:8px;z-index:20;display:flex;flex-wrap:wrap;gap:6px;pointer-events:none;font-size:13px}
+#hud span{background:#0b1630cc;border:1px solid #23406e;border-radius:6px;padding:3px 8px}
+.panel{position:fixed;z-index:30;left:50%;transform:translateX(-50%);bottom:8px;width:min(720px,calc(100% - 16px));max-height:calc(100% - 100px);overflow:auto;background:#0a1226ee;border:1px solid #2d4f86;border-radius:12px;padding:10px;box-shadow:0 0 30px #1a4aa055}
+.hidden{display:none!important}
+h2{margin:4px 0 8px;font-size:18px;color:#ffd36e}
+h3{margin:8px 0 4px;font-size:15px;color:#8fd3ff}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+button{font:inherit;background:#16305e;color:#e6f0ff;border:1px solid #3a6bb5;border-radius:7px;padding:6px 10px;cursor:pointer;font-size:14px}
+button:hover{background:#1f4282}button:disabled{opacity:.4;cursor:default}
+button.on{background:#d79b28;border-color:#ffd36e;color:#1a1000}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:4px 3px;border-bottom:1px solid #1c2c50;text-align:left}
+th{color:#8fa9d6;font-weight:600}
+td button{padding:4px 7px;font-size:13px;min-width:34px}
+.up{color:#ff7b7b}.dn{color:#7bffa4}.muted{color:#8fa9d6;font-size:12px}
+#title{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;background:radial-gradient(ellipse at center,#0d1a40cc,#02030aee)}
+#title h1{font-size:clamp(38px,10vw,84px);margin:0;letter-spacing:4px;background:linear-gradient(#fff3c4,#ffb03a 60%,#c0500a);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 18px #ff9a2a88)}
+#title p{max-width:560px;color:#b8c8ee;line-height:1.45}
+#title button{font-size:18px;padding:10px 22px;margin:5px}
+#toast{position:fixed;z-index:45;top:84px;left:50%;transform:translateX(-50%);background:#132a55f0;border:1px solid #ffd36e;color:#fff2cc;border-radius:8px;padding:8px 14px;font-size:14px;max-width:90%;text-align:center;transition:opacity .4s;pointer-events:none}
+#modal{position:fixed;inset:0;z-index:46;display:flex;align-items:center;justify-content:center;background:#000a}
+#modal .box{background:#0b1430;border:1px solid #ffd36e;border-radius:12px;padding:16px;width:min(420px,92%);text-align:center}
+#modal .box p{line-height:1.4}
+#combatHud{position:fixed;z-index:25;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:8px}
+#combatHud button{font-size:16px;padding:10px 16px}
+@media(max-width:480px){td,th{padding:3px 1px;font-size:12px}td button{padding:3px 4px;min-width:26px;font-size:12px}.panel{padding:8px}}
+@media(max-height:520px){#title{padding:52px 12px 12px}#title h1{font-size:36px}#title p{margin:6px 0}#title button{font-size:16px;padding:8px 14px;margin:3px}}
+</style></head><body>
+<canvas id="c"></canvas>
+<a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a>
+<button id="mute">🔊</button>
+<div id="hud" class="hidden"></div>
+<div id="toast" style="opacity:0"></div>
+<div id="panel" class="panel hidden"></div>
+<div id="combatHud" class="hidden"><button id="fleeBtn">🚀 Flee</button></div>
+<div id="modal" class="hidden"><div class="box" id="mbox"></div></div>
+<div id="title">
+<h1>STAR TRADER</h1>
+<p>Buy low, sell high across 14 star systems. Haul contracts, upgrade your ship, outgun pirates and build a fortune of <b>₵250,000 net worth</b>.</p>
+<div><button id="newBtn">New Game</button><button id="contBtn">Continue</button></div>
+<p class="muted">Tap a star on the map to plot a jump. Dock to trade. In combat: steer with the mouse/touch (hold to thrust) or arrow keys/WASD + Space.</p>
+</div>
+<script>
+(()=>{
+const cv=document.getElementById('c'),cx=cv.getContext('2d');
+let W=0,H=0,DPR=1;
+function resize(){DPR=Math.min(2,window.devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;cx.setTransform(DPR,0,0,DPR,0,0);}
+addEventListener('resize',resize);resize();
+const $=id=>document.getElementById(id);
+// ---------- storage ----------
+const KEY='startrader_save_v1';
+function saveHub(){if(!G)return;const n=Math.floor(netWorth())||0;if(!(n>0))return;try{const prev=+localStorage.getItem('arcade-trader-best')||0;if(n>prev)localStorage.setItem('arcade-trader-best',String(n))}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(G));}catch(e){}saveHub()}
+function load(){try{const s=localStorage.getItem(KEY);return s?JSON.parse(s):null;}catch(e){return null;}}
+function getPref(k,d){try{const v=localStorage.getItem(k);return v===null?d:v;}catch(e){return d;}}
+function setPref(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+// ---------- audio ----------
+let AC=null,muted=getPref('startrader_mute','0')==='1';
+function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}if(AC&&AC.state==='suspended'){const p=AC.resume();if(p&&p.catch)p.catch(()=>{})}return AC;}
+function tone(f,d=.12,type='square',v=.08,slide=0){if(muted)return;const a=ac();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.setValueAtTime(f,a.currentTime);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(20,f+slide),a.currentTime+d);g.gain.setValueAtTime(v,a.currentTime);g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+d);o.connect(g).connect(a.destination);o.start();o.stop(a.currentTime+d);}
+function noise(d=.3,v=.15){if(muted)return;const a=ac();if(!a)return;const b=a.createBuffer(1,a.sampleRate*d,a.sampleRate),ch=b.getChannelData(0);for(let i=0;i<ch.length;i++)ch[i]=(Math.random()*2-1)*(1-i/ch.length);const s=a.createBufferSource(),g=a.createGain();s.buffer=b;g.gain.value=v;s.connect(g).connect(a.destination);s.start();}
+const SFX={click:()=>tone(660,.05,'square',.04),buy:()=>{tone(520,.07,'triangle',.07);setTimeout(()=>tone(780,.08,'triangle',.07),60)},sell:()=>{tone(880,.07,'triangle',.07);setTimeout(()=>tone(1320,.1,'triangle',.06),60)},jump:()=>{tone(120,.7,'sawtooth',.06,900);},laser:()=>tone(1400,.08,'square',.03,-900),hit:()=>noise(.15,.12),boom:()=>{noise(.6,.25);tone(90,.5,'sawtooth',.08,-60)},bad:()=>tone(160,.25,'sawtooth',.07,-60),good:()=>{[523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,.15,'triangle',.07),i*90))}};
+function updMute(){$('mute').textContent=muted?'🔇':'🔊';}updMute();
+$('mute').onclick=()=>{muted=!muted;setPref('startrader_mute',muted?'1':'0');updMute();if(!muted)SFX.click();};
+// ---------- data ----------
+const GOODS=[{n:'Food',b:22},{n:'Water',b:14},{n:'Textiles',b:40},{n:'Ore',b:60},{n:'Medicine',b:180},{n:'Machinery',b:240},{n:'Electronics',b:320},{n:'Luxuries',b:520},{n:'Weapons',b:700,ill:1}];
+// economy multipliers per good [agri, mining, industrial, hightech, rich, frontier]
+const ECON={Agricultural:[.55,.6,.8,1.4,1.25,1.2,1.25,1.1,1.1],Mining:[1.4,1.3,1.1,.5,1.1,1.0,1.15,1.2,1.0],Industrial:[1.2,1.1,.7,1.3,1.0,.6,.95,1.1,.85],HighTech:[1.3,1.2,1.1,1.25,.65,1.1,.55,1.0,1.1],Wealthy:[1.3,1.4,1.2,1.1,1.0,1.2,1.15,.7,1.3],Frontier:[1.5,1.5,1.3,1.0,1.6,1.4,1.4,1.5,1.6]};
+const SYSN=['Sol Prime','Vega','Altair','Kepler','Nyx','Orion Gate','Helios','Tarsis','Cygnus','Draco','Ember','Lyra','Zephyr','Obsidian'];
+const ECONS=['Wealthy','Agricultural','Industrial','HighTech','Frontier','Industrial','Agricultural','Mining','HighTech','Frontier','Mining','Wealthy','Agricultural','Mining'];
+const POS=[[.5,.5],[.3,.32],[.68,.3],[.2,.62],[.85,.15],[.78,.55],[.42,.78],[.1,.25],[.6,.12],[.92,.82],[.25,.9],[.62,.7],[.38,.08],[.1,.85]];
+const DANGER=[0,1,1,1,3,1,1,2,1,3,2,0,1,3];
+const HULLS=[{n:'Sparrow',cost:0,cargo:20,fuel:12,hull:60,slots:2,speed:1},{n:'Mule',cost:18000,cargo:50,fuel:14,hull:90,slots:3,speed:.9},{n:'Falcon',cost:45000,cargo:40,fuel:18,hull:130,slots:4,speed:1.25},{n:'Leviathan',cost:110000,cargo:110,fuel:20,hull:220,slots:5,speed:1}];
+const UPG=[{id:'cargo',n:'Cargo Pods +15',cost:3500,max:4},{id:'tank',n:'Fuel Tank +4',cost:2500,max:3},{id:'laser',n:'Laser Power',cost:4000,max:4},{id:'shield',n:'Shield Gen',cost:5000,max:4},{id:'engine',n:'Engine (flee)',cost:3000,max:3}];
+const GOAL=250000;
+let G=null;
+function rnd(a,b){return a+Math.random()*(b-a);}
+function ri(a,b){return Math.floor(rnd(a,b+1));}
+function newGame(){
+ G={day:1,cr:1500,sys:0,hull:0,up:{cargo:0,tank:0,laser:0,shield:0,engine:0},fuel:12,hp:60,cargo:GOODS.map(()=>0),paid:GOODS.map(()=>0),systems:[],missions:[],board:[],kills:0,won:false,ev:[]};
+ for(let i=0;i<SYSN.length;i++){const s={n:SYSN[i],e:ECONS[i],x:POS[i][0],y:POS[i][1],d:DANGER[i],st:[],tg:[],mod:GOODS.map(()=>1),vis:i===0};
+  GOODS.forEach((g,k)=>{const m=ECON[s.e][k];const t=Math.round(120/m);s.tg.push(t);s.st.push(Math.round(t*rnd(.7,1.3)));});
+  if(s.e==='Wealthy'&&i===0){s.st[8]=0;s.tg[8]=0;} G.systems.push(s);}
+ G.systems[0].tg[8]=0;G.systems[0].st[8]=0;G.systems[11].tg[8]=0;G.systems[11].st[8]=0;
+ genBoard();save();
+}
+const ship=()=>HULLS[G.hull];
+const maxCargo=()=>ship().cargo+G.up.cargo*15;
+const maxFuel=()=>ship().fuel+G.up.tank*4;
+const maxHp=()=>ship().hull+G.up.shield*25;
+const used=()=>G.cargo.reduce((a,b)=>a+b,0)+G.missions.reduce((a,m)=>a+(m.type==='haul'?m.q:0),0);
+function price(s,k){const sy=G.systems[s];if(sy.tg[k]===0)return 0;const base=GOODS[k].b*ECON[sy.e][k]*sy.mod[k];const r=(sy.tg[k]-sy.st[k])/sy.tg[k];return Math.max(2,Math.round(base*(1+r*.6)));}
+function sellPrice(s,k){return Math.round(price(s,k)*.93);}
+function dist(a,b){const A=G.systems[a],B=G.systems[b];return Math.hypot(A.x-B.x,A.y-B.y)*20;}
+function fuelCost(a,b){return Math.max(1,Math.ceil(dist(a,b)/ship().speed));}
+function netWorth(){let v=G.cr+HULLS[G.hull].cost*.6;G.cargo.forEach((q,k)=>{v+=q*GOODS[k].b});for(const k in G.up)for(let i=0;i<G.up[k];i++)v+=UPG.find(u=>u.id===k).cost*.5;return Math.round(v);}
+function genBoard(){G.board=[];const n=ri(3,4);for(let i=0;i<n;i++){let t;do{t=ri(0,SYSN.length-1)}while(t===G.sys);const d=dist(G.sys,t);
+ const kind=Math.random();
+ if(kind<.5){const q=ri(5,Math.min(25,5+G.day));G.board.push({type:'haul',to:t,q,rew:Math.round(q*(40+d*14)*(1+G.systems[t].d*.3)),dl:G.day+Math.ceil(d/3)+ri(3,6),txt:`Haul ${q}t sealed freight to ${SYSN[t]}`});}
+ else if(kind<.8){const k=ri(0,7);const q=ri(4,15);G.board.push({type:'supply',to:t,k,q,rew:Math.round(q*GOODS[k].b*rnd(1.6,2.3)),dl:G.day+Math.ceil(d/3)+ri(4,8),txt:`Deliver ${q}t ${GOODS[k].n} to ${SYSN[t]}`});}
+ else{G.board.push({type:'bounty',to:t,rew:ri(2500,6000)+G.day*50,dl:G.day+Math.ceil(d/3)+ri(4,8),txt:`Bounty: destroy pirate raider near ${SYSN[t]}`});}}}
+// ---------- UI ----------
+let tab='market',mode='title',sel=-1,travel=null;
+function toast(t){const e=$('toast');e.textContent=t;e.style.opacity=1;clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.opacity=0,2600);}
+function modal(html,btns){$('mbox').innerHTML=html+'<div style="margin-top:12px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap">'+btns.map((b,i)=>`<button data-i="${i}">${b[0]}</button>`).join('')+'</div>';$('modal').classList.remove('hidden');$('mbox').querySelectorAll('button').forEach(el=>el.onclick=()=>{SFX.click();$('modal').classList.add('hidden');btns[+el.dataset.i][1]();});}
+function hud(){if(!G)return;$('hud').innerHTML=`<span>📅 Day ${G.day}</span><span>₵ ${G.cr.toLocaleString()}</span><span>⛽ ${G.fuel}/${maxFuel()}</span><span>🛡 ${Math.ceil(G.hp)}/${maxHp()}</span><span>📦 ${used()}/${maxCargo()}</span><span>💎 ${netWorth().toLocaleString()} / ${GOAL.toLocaleString()}</span>`;}
+function render(){hud();if(mode!=='dock'&&mode!=='map'){$('panel').classList.add('hidden');return;}
+ const p=$('panel');p.classList.remove('hidden');const s=G.systems[G.sys];
+ if(mode==='map'){
+  if(sel<0||sel===G.sys){p.innerHTML=`<h2>Galaxy Map</h2><div class="muted">Tap a star to plot a jump. Red rings = pirate danger.</div><div style="margin-top:6px"><button id="dockB">⬅ Back to ${s.n}</button></div>`;$('dockB').onclick=()=>{SFX.click();mode='dock';render();};return;}
+  const t=G.systems[sel],fc=fuelCost(G.sys,sel),days=Math.max(1,Math.round(dist(G.sys,sel)/4/ship().speed));
+  p.innerHTML=`<h2>${t.n}</h2><div class="muted">${t.e} economy · Danger ${'☠'.repeat(t.d)||'safe'} · ${fc} fuel · ${days} day(s)</div>${t.vis?'<div class="muted">Last known: '+GOODS.map((g,k)=>price(sel,k)?g.n+' '+price(sel,k):'').filter(x=>x).slice(0,9).join(' · ')+'</div>':'<div class="muted">Unexplored — prices unknown.</div>'}<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><button id="goB" ${fc>G.fuel?'disabled':''}>🚀 Jump</button><button id="dockB">Cancel</button></div>${fc>G.fuel?'<div class="up">Not enough fuel.</div>':''}`;
+  $('goB').onclick=()=>startJump(sel,fc,days);$('dockB').onclick=()=>{SFX.click();mode='dock';sel=-1;render();};return;}
+ let h=`<h2>Docked: ${s.n} <span class="muted">(${s.e})</span></h2><div class="tabs">`+['market','missions','shipyard','status'].map(t=>`<button class="${t===tab?'on':''}" data-t="${t}">${t[0].toUpperCase()+t.slice(1)}</button>`).join('')+`<button id="mapB">🌌 Map</button></div>`;
+ if(tab==='market'){h+='<table><tr><th>Good</th><th>Buy</th><th>Sell</th><th>Stock</th><th>Hold</th><th></th></tr>';
+  GOODS.forEach((g,k)=>{const pr=price(G.sys,k);if(!pr){h+=`<tr><td>${g.n}</td><td colspan=5 class="muted">Banned here</td></tr>`;return;}const sp=sellPrice(G.sys,k),cls=pr>g.b*1.1?'up':pr<g.b*.9?'dn':'';
+   h+=`<tr><td>${g.n}${g.ill?' ⚠':''}</td><td class="${cls}">${pr}</td><td>${sp}</td><td>${s.st[k]}</td><td>${G.cargo[k]}${G.cargo[k]?'<div class="muted">@'+Math.round(G.paid[k])+'</div>':''}</td><td style="white-space:nowrap"><button data-b="${k}">+1</button><button data-bm="${k}">Max</button> <button data-s="${k}" ${G.cargo[k]?'':'disabled'}>-1</button><button data-sa="${k}" ${G.cargo[k]?'':'disabled'}>All</button></td></tr>`;});
+  const fp=8+s.d*2;h+=`</table><div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><button id="fuelB" ${G.fuel>=maxFuel()?'disabled':''}>⛽ Refuel (₵${fp}/unit)</button><button id="repB" ${G.hp>=maxHp()?'disabled':''}>🔧 Repair (₵${12}/pt)</button><span class="muted">Green = cheap, red = pricey. Buying raises prices; selling lowers them.</span></div>`;}
+ else if(tab==='missions'){h+='<h3>Active contracts</h3>'+(G.missions.length?G.missions.map((m,i)=>`<div>• ${m.txt} — ₵${m.rew.toLocaleString()} <span class="muted">(due day ${m.dl})</span>${m.type!=='bounty'&&m.to===G.sys?` <button data-done="${i}">Complete</button>`:''}${m.type==='bounty'&&m.killed?' ✅':''}</div>`).join(''):'<div class="muted">None</div>');
+  h+='<h3>Contract board</h3>'+(G.board.length?G.board.map((m,i)=>`<div style="margin:4px 0">• ${m.txt} — <b>₵${m.rew.toLocaleString()}</b> <span class="muted">(due day ${m.dl})</span> <button data-acc="${i}">Accept</button></div>`).join(''):'<div class="muted">No contracts today.</div>');}
+ else if(tab==='shipyard'){const sl=ship().slots;const tot=Object.values(G.up).reduce((a,b)=>a+b,0);
+  h+=`<h3>Upgrades <span class="muted">(${tot}/${sl*2} capacity)</span></h3><table>`;UPG.forEach(u=>{const lv=G.up[u.id],c=Math.round(u.cost*(1+lv*.6));h+=`<tr><td>${u.n}</td><td>Lv ${lv}/${u.max}</td><td>₵${c.toLocaleString()}</td><td><button data-u="${u.id}" ${lv>=u.max||G.cr<c||tot>=sl*2?'disabled':''}>Buy</button></td></tr>`});
+  h+='</table><h3>Ships</h3><table><tr><th>Ship</th><th>Cargo</th><th>Fuel</th><th>Hull</th><th>Slots</th><th>Price</th><th></th></tr>';HULLS.forEach((sh,i)=>{const tr=Math.round(HULLS[G.hull].cost*.6);h+=`<tr><td>${sh.n}${i===G.hull?' (yours)':''}</td><td>${sh.cargo}</td><td>${sh.fuel}</td><td>${sh.hull}</td><td>${sh.slots}</td><td>₵${sh.cost.toLocaleString()}</td><td>${i>G.hull?`<button data-sh="${i}" ${G.cr+tr<sh.cost?'disabled':''}>Buy</button>`:''}</td></tr>`});h+='</table><div class="muted">Trading in your old hull returns 60% of its price. Upgrades transfer.</div>';}
+ else{h+=`<div>Ship: <b>${ship().n}</b> · Pirates destroyed: ${G.kills}</div><div>Net worth: <b>₵${netWorth().toLocaleString()}</b> — goal ₵${GOAL.toLocaleString()}</div><div style="background:#1c2c50;border-radius:6px;height:12px;margin:6px 0"><div style="height:12px;border-radius:6px;background:linear-gradient(90deg,#ffb03a,#ffe17a);width:${Math.min(100,netWorth()/GOAL*100)}%"></div></div><h3>News</h3>${G.ev.slice(-5).reverse().map(e=>'<div class="muted">'+e+'</div>').join('')||'<div class="muted">Quiet times.</div>'}<div style="margin-top:8px"><button id="restartB">Restart game</button></div>`;}
+ p.innerHTML=h;
+ p.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{SFX.click();tab=b.dataset.t;render();});
+ $('mapB').onclick=()=>{SFX.click();mode='map';sel=-1;render();};
+ p.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>buy(+b.dataset.b,1));
+ p.querySelectorAll('[data-bm]').forEach(b=>b.onclick=()=>buy(+b.dataset.bm,999));
+ p.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>sell(+b.dataset.s,1));
+ p.querySelectorAll('[data-sa]').forEach(b=>b.onclick=()=>sell(+b.dataset.sa,999));
+ p.querySelectorAll('[data-acc]').forEach(b=>b.onclick=()=>accept(+b.dataset.acc));
+ p.querySelectorAll('[data-done]').forEach(b=>b.onclick=()=>complete(+b.dataset.done));
+ p.querySelectorAll('[data-u]').forEach(b=>b.onclick=()=>{const u=UPG.find(x=>x.id===b.dataset.u),c=Math.round(u.cost*(1+G.up[u.id]*.6));G.cr-=c;G.up[u.id]++;if(u.id==='shield')G.hp+=25;if(u.id==='tank')G.fuel+=4;SFX.buy();toast(u.n+' installed');save();render();});
+ p.querySelectorAll('[data-sh]').forEach(b=>b.onclick=()=>{const i=+b.dataset.sh,c=HULLS[i].cost-Math.round(HULLS[G.hull].cost*.6);if(used()>HULLS[i].cargo+G.up.cargo*15){toast('Too much cargo for that hull');return;}G.cr-=c;G.hull=i;G.hp=maxHp();G.fuel=maxFuel();SFX.good();toast('Welcome aboard the '+HULLS[i].n+'!');save();render();checkWin();});
+ const fb=$('fuelB');if(fb)fb.onclick=()=>{const fp=8+s.d*2;const n=Math.min(maxFuel()-G.fuel,Math.floor(G.cr/fp));if(n<=0){SFX.bad();return;}G.fuel+=n;G.cr-=n*fp;SFX.buy();save();render();};
+ const rb=$('repB');if(rb)rb.onclick=()=>{const n=Math.min(Math.ceil(maxHp()-G.hp),Math.floor(G.cr/12));if(n<=0){SFX.bad();return;}G.hp=Math.min(maxHp(),G.hp+n);G.cr-=n*12;SFX.buy();save();render();};
+ const rs=$('restartB');if(rs)rs.onclick=()=>modal('<h2>Restart?</h2><p>Your current career will be lost.</p>',[['Yes, restart',()=>{newGame();render();}],['Cancel',()=>{}]]);
+}
+function buy(k,n){const s=G.systems[G.sys];let c=0;while(c<n&&s.st[k]>0&&used()<maxCargo()&&G.cr>=price(G.sys,k)){const p=price(G.sys,k);G.paid[k]=(G.paid[k]*G.cargo[k]+p)/(G.cargo[k]+1);G.cr-=p;s.st[k]--;G.cargo[k]++;c++;}
+ if(c){SFX.buy();}else{SFX.bad();toast(used()>=maxCargo()?'Cargo hold full':s.st[k]<=0?'Out of stock':'Not enough credits');}save();render();}
+function sell(k,n){const s=G.systems[G.sys];let c=0,earn=0;while(c<n&&G.cargo[k]>0){const p=sellPrice(G.sys,k);G.cr+=p;earn+=p;s.st[k]++;G.cargo[k]--;c++;}
+ if(G.cargo[k]===0)G.paid[k]=0;if(c){SFX.sell();toast(`Sold ${c}t ${GOODS[k].n} for ₵${earn.toLocaleString()}`);}save();render();checkWin();}
+function accept(i){const m=G.board[i];if(G.missions.length>=4){toast('Max 4 active contracts');SFX.bad();return;}if(m.type==='haul'&&used()+m.q>maxCargo()){toast('Not enough cargo space');SFX.bad();return;}G.missions.push(m);G.board.splice(i,1);SFX.buy();save();render();}
+function complete(i){const m=G.missions[i];if(m.type==='supply'){if(G.cargo[m.k]<m.q){toast(`Need ${m.q}t ${GOODS[m.k].n}`);SFX.bad();return;}G.cargo[m.k]-=m.q;}
+ G.cr+=m.rew;G.missions.splice(i,1);SFX.good();toast(`Contract complete! +₵${m.rew.toLocaleString()}`);save();render();checkWin();}
+function checkWin(){if(!G.won&&netWorth()>=GOAL){G.won=true;save();SFX.good();modal(`<h2>🏆 Trade Baron!</h2><p>You reached ₵${GOAL.toLocaleString()} net worth on day ${G.day}. The galaxy salutes you. Keep flying as long as you like.</p>`,[['Keep trading',()=>{}]]);}}
+// ---------- simulation ----------
+function passDays(n){for(let d=0;d<n;d++){G.day++;G.systems.forEach(s=>{s.st.forEach((v,k)=>{s.st[k]=Math.round(v+(s.tg[k]-v)*.12+rnd(-2,2));if(s.st[k]<0)s.st[k]=0;});s.mod=s.mod.map(m=>1+(m-1)*.9);});}
+ // expire missions
+ const exp=G.missions.filter(m=>m.dl<G.day);if(exp.length){G.missions=G.missions.filter(m=>m.dl>=G.day);toast(`${exp.length} contract(s) expired`);G.cr=Math.max(0,G.cr-exp.length*300);}}
+const EVENTS=[['Famine on {s}! Food prices soar.',0,2.2],['Mining strike at {s} — ore scarce.',3,2],['Plague outbreak at {s}! Medicine in demand.',4,2.5],['{s} tech boom: electronics wanted.',6,1.8],['Bumper harvest at {s}: food is cheap.',0,.45],['Ore glut at {s}.',3,.5],['War rumors near {s}: weapons demand spikes.',8,2.2],['{s} festival season: luxuries in demand.',7,1.9],['Drought on {s}: water scarce.',1,2.4]];
+function randomEvent(){if(Math.random()<.45){const e=EVENTS[ri(0,EVENTS.length-1)],s=ri(0,SYSN.length-1);if(G.systems[s].tg[e[1]]===0)return;G.systems[s].mod[e[1]]=e[2];const t=e[0].replace('{s}',SYSN[s]);G.ev.push('Day '+G.day+': '+t);if(G.ev.length>20)G.ev.shift();toast('📰 '+t);}}
+function startJump(to,fc,days){SFX.jump();G.fuel-=fc;mode='travel';travel={from:G.sys,to,t:0,days,enc:false};render();}
+function arrive(){const to=travel.to;G.sys=to;passDays(travel.days);G.systems[to].vis=true;
+ // customs
+ if(G.cargo[8]>0&&G.systems[to].tg[8]===0&&Math.random()<.5){const fine=G.cargo[8]*400;G.cargo[8]=0;G.cr=Math.max(0,G.cr-fine);G.ev.push('Day '+G.day+': Customs seized your weapons.');modal(`<h2>🚨 Customs!</h2><p>${SYSN[to]} patrols seized your weapons and fined you ₵${fine.toLocaleString()}.</p>`,[['Ugh',()=>{}]]);SFX.bad();}
+ randomEvent();genBoard();
+ // bounty check
+ travel=null;mode='dock';tab='market';sel=-1;save();render();checkWin();
+ if(G.cr<50&&used()===0&&G.fuel===0){modal('<h2>Stranded</h2><p>The Guild tows you and lends ₵500 of fuel credit.</p>',[['Thanks',()=>{G.fuel=3;G.cr+=200;save();render();}]]);}
+}
+function encounter(){const d=G.systems[travel.to].d+G.systems[travel.from].d;const bounty=G.missions.find(m=>m.type==='bounty'&&m.to===travel.to&&!m.killed);
+ const ch=bounty?1:.08+d*.07;if(Math.random()>ch){
+  if(Math.random()<.18){const r=Math.random();if(r<.4){const q=Math.min(ri(2,8),maxCargo()-used());const k=ri(0,6);if(q>0){G.cargo[k]+=q;toast(`Found a derelict pod: +${q}t ${GOODS[k].n}`);SFX.good();}}else if(r<.7){G.fuel=Math.min(maxFuel(),G.fuel+2);toast('A friendly tanker shares 2 fuel');SFX.good();}else{G.hp=Math.max(1,G.hp-10);toast('Micrometeor storm! Hull -10');SFX.hit();}}return;}
+ mode='paused';const lvl=1+Math.floor(G.day/25)+(bounty?1:0);const demand=Math.round(200+netWorth()*.03);
+ modal(`<h2>☠ Pirates!</h2><p>${bounty?'You found your bounty target!':'A pirate raider intercepts you.'} "Hand over ₵${demand.toLocaleString()} or be scrap!"</p>`,[['⚔ Fight',()=>startCombat(lvl,bounty)],['🚀 Flee',()=>tryFlee(lvl,bounty)],[`Pay ₵${demand}`,()=>{if(G.cr>=demand){G.cr-=demand;toast('They let you pass.');mode='travel';}else{toast("You can't afford it!");startCombat(lvl,bounty);}}]]);}
+function tryFlee(lvl,bounty){const p=.35+G.up.engine*.15+(ship().speed-1)*.6;if(Math.random()<p){toast('You escaped!');SFX.jump();mode='travel';}else{toast('They caught you — fight!');SFX.bad();startCombat(lvl,bounty);}}
+// ---------- combat ----------
+let C=null;const keys={};
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase()))e.preventDefault();});
+addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+let ptr={x:0,y:0,down:false};
+cv.addEventListener('pointerdown',e=>{ptr.down=true;ptr.x=e.clientX;ptr.y=e.clientY;ac();if(mode==='map')mapClick(e.clientX,e.clientY);});
+cv.addEventListener('pointermove',e=>{ptr.x=e.clientX;ptr.y=e.clientY;});
+addEventListener('pointerup',()=>ptr.down=false);
+function startCombat(lvl,bounty){mode='combat';$('combatHud').classList.remove('hidden');
+ const n=bounty?1+Math.min(2,Math.floor(lvl/2)):Math.min(3,1+Math.floor(Math.random()*lvl));
+ C={p:{x:0,y:0,vx:0,vy:0,a:-Math.PI/2,cd:0},en:[],sh:[],fx:[],bounty,lvl,t:0};
+ for(let i=0;i<n;i++){const a=rnd(0,6.28);C.en.push({x:Math.cos(a)*350,y:Math.sin(a)*350,vx:0,vy:0,a:0,hp:30+lvl*15+(bounty&&i===0?60:0),max:30+lvl*15+(bounty&&i===0?60:0),cd:rnd(.5,1.5),boss:bounty&&i===0});}
+ render();}
+$('fleeBtn').onclick=()=>{if(!C)return;const far=C.en.every(e=>Math.hypot(e.x-C.p.x,e.y-C.p.y)>420);if(far){endCombat(false,true);}else if(Math.random()<.2+G.up.engine*.12){endCombat(false,true);}else{toast('Too close — get distance first!');SFX.bad();}};
+function endCombat(win,fled){$('combatHud').classList.add('hidden');
+ if(win){const loot=ri(300,900)*C.lvl;G.cr+=loot;G.kills++;if(C.bounty){C.bounty.killed=true;G.cr+=C.bounty.rew;G.missions=G.missions.filter(m=>m!==C.bounty);toast(`Bounty claimed! +₵${(C.bounty.rew+loot).toLocaleString()}`);}else toast(`Pirates destroyed! Salvage ₵${loot}`);SFX.good();}
+ else if(fled){toast('You broke away!');SFX.jump();}
+ C=null;mode='travel';save();hud();}
+function shoot(o,friendly,dmg){C.sh.push({x:o.x+Math.cos(o.a)*16,y:o.y+Math.sin(o.a)*16,vx:Math.cos(o.a)*560+o.vx,vy:Math.sin(o.a)*560+o.vy,f:friendly,d:dmg,t:1.1});}
+function burst(x,y,c,n=14){for(let i=0;i<n;i++){const a=rnd(0,6.28),s=rnd(40,220);C.fx.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,t:rnd(.3,.8),c});}}
+function combatStep(dt){const p=C.p;C.t+=dt;let turn=0,thrust=0,fire=false;
+ if(keys['arrowleft']||keys['a'])turn=-1;if(keys['arrowright']||keys['d'])turn=1;if(keys['arrowup']||keys['w'])thrust=1;if(keys['arrowdown']||keys['s'])thrust=-.5;if(keys[' '])fire=true;
+ if(ptr.down){const tx=ptr.x-W/2+p.x-p.x,ty=ptr.y-H/2;const ta=Math.atan2(ty,tx);let da=((ta-p.a+Math.PI*3)%(Math.PI*2))-Math.PI;turn=Math.max(-1,Math.min(1,da*3));if(Math.hypot(tx,ty)>60)thrust=1;}
+ // auto fire when enemy in cone (helps touch)
+ C.en.forEach(e=>{const a=Math.atan2(e.y-p.y,e.x-p.x);let da=Math.abs(((a-p.a+Math.PI*3)%(Math.PI*2))-Math.PI);if(da<.18&&Math.hypot(e.x-p.x,e.y-p.y)<520)fire=true;});
+ const sp=ship().speed;p.a+=turn*4*dt;p.vx+=Math.cos(p.a)*thrust*320*sp*dt;p.vy+=Math.sin(p.a)*thrust*320*sp*dt;p.vx*=1-1.2*dt;p.vy*=1-1.2*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;
+ p.cd-=dt;if(fire&&p.cd<=0){shoot(p,true,10+G.up.laser*6);p.cd=.22;SFX.laser();}
+ C.en.forEach(e=>{const dx=p.x-e.x,dy=p.y-e.y,d=Math.hypot(dx,dy);const ta=Math.atan2(dy,dx)+(d<160?1.2:0);let da=((ta-e.a+Math.PI*3)%(Math.PI*2))-Math.PI;e.a+=Math.max(-1,Math.min(1,da*2))*(2.2+C.lvl*.2)*dt;
+  const acc=d>200?240:90;e.vx+=Math.cos(e.a)*acc*dt;e.vy+=Math.sin(e.a)*acc*dt;e.vx*=1-1.1*dt;e.vy*=1-1.1*dt;e.x+=e.vx*dt;e.y+=e.vy*dt;e.cd-=dt;
+  if(e.cd<=0&&Math.abs(da)<.3&&d<480){shoot(e,false,5+C.lvl*2+(e.boss?4:0));e.cd=rnd(.6,1.1)/(1+C.lvl*.1);}});
+ C.sh.forEach(s=>{s.x+=s.vx*dt;s.y+=s.vy*dt;s.t-=dt;if(s.f){C.en.forEach(e=>{if(s.t>0&&Math.hypot(s.x-e.x,s.y-e.y)<(e.boss?22:16)){e.hp-=s.d;s.t=0;burst(s.x,s.y,'#ffcc66',5);SFX.hit();}});}else if(s.t>0&&Math.hypot(s.x-p.x,s.y-p.y)<15){G.hp-=s.d;s.t=0;burst(s.x,s.y,'#66ccff',6);SFX.hit();}});
+ C.sh=C.sh.filter(s=>s.t>0);
+ C.en=C.en.filter(e=>{if(e.hp<=0){burst(e.x,e.y,'#ff7a2a',30);SFX.boom();return false;}return true;});
+ C.fx.forEach(f=>{f.x+=f.vx*dt;f.y+=f.vy*dt;f.t-=dt;});C.fx=C.fx.filter(f=>f.t>0);
+ if(G.hp<=0){burst(p.x,p.y,'#66ccff',40);SFX.boom();$('combatHud').classList.add('hidden');const lost=Math.round(G.cr*.3);G.cr-=lost;G.cargo=G.cargo.map(()=>0);G.hp=Math.round(maxHp()*.3);C=null;mode='paused';
+  modal(`<h2>💥 Ship disabled</h2><p>Pirates looted your hold and ₵${lost.toLocaleString()}. Your insurer patches the hull and tows you on.</p>`,[['Continue',()=>{mode='travel';save();}]]);return;}
+ if(!C.en.length)endCombat(true);
+ hud();}
+// ---------- drawing ----------
+const stars=[];for(let i=0;i<260;i++)stars.push({x:Math.random(),y:Math.random(),z:Math.random()*.9+.1});
+function bg(t,ox=0,oy=0){const g=cx.createRadialGradient(W*.6,H*.4,0,W*.6,H*.4,Math.max(W,H));g.addColorStop(0,'#0d1640');g.addColorStop(.5,'#060a20');g.addColorStop(1,'#020308');cx.fillStyle=g;cx.fillRect(0,0,W,H);
+ cx.globalAlpha=.25;const n1=cx.createRadialGradient(W*.25,H*.7,0,W*.25,H*.7,W*.5);n1.addColorStop(0,'#7a2a8a');n1.addColorStop(1,'transparent');cx.fillStyle=n1;cx.fillRect(0,0,W,H);
+ const n2=cx.createRadialGradient(W*.8,H*.2,0,W*.8,H*.2,W*.4);n2.addColorStop(0,'#1a6a9a');n2.addColorStop(1,'transparent');cx.fillStyle=n2;cx.fillRect(0,0,W,H);cx.globalAlpha=1;
+ stars.forEach(s=>{let x=((s.x*W-ox*s.z)%W+W)%W,y=((s.y*H-oy*s.z)%H+H)%H;cx.fillStyle=`rgba(255,255,255,${.3+s.z*.7*(.7+.3*Math.sin(t*2+s.x*50))})`;cx.fillRect(x,y,s.z*2,s.z*2);});}
+function mapRect(){const top=90,bottom=mode==='map'?Math.min(H*.42,220):60;return{x:30,y:top,w:W-60,h:Math.max(120,H-top-bottom)};}
+function sysXY(i){const r=mapRect(),s=G.systems[i];return[r.x+s.x*r.w,r.y+s.y*r.h];}
+const ECOL={Agricultural:'#7dff8a',Mining:'#d09a6a',Industrial:'#ff9a4a',HighTech:'#6ad9ff',Wealthy:'#ffe36a',Frontier:'#ff6a9a'};
+function mapClick(x,y){let best=-1,bd=40;G.systems.forEach((s,i)=>{const[px,py]=sysXY(i);const d=Math.hypot(px-x,py-y);if(d<bd){bd=d;best=i;}});if(best>=0){sel=best;SFX.click();render();}}
+function drawMap(t){const r=mapRect();
+ // lanes
+ cx.strokeStyle='#2a4a8a33';cx.lineWidth=1;for(let i=0;i<G.systems.length;i++)for(let j=i+1;j<G.systems.length;j++){if(dist(i,j)<7){const[a,b]=sysXY(i),[c,d]=sysXY(j);cx.beginPath();cx.moveTo(a,b);cx.lineTo(c,d);cx.stroke();}}
+ // range circle
+ const[hx,hy]=sysXY(G.sys);
+ if(mode==='map'||mode==='dock'){cx.strokeStyle='#ffd36e44';cx.setLineDash([4,6]);cx.beginPath();cx.ellipse(hx,hy,G.fuel*ship().speed/20*r.w,G.fuel*ship().speed/20*r.h,0,0,6.28);cx.stroke();cx.setLineDash([]);}
+ if(sel>=0&&mode==='map'){const[sx,sy]=sysXY(sel);cx.strokeStyle='#ffd36e';cx.lineWidth=2;cx.setLineDash([8,6]);cx.lineDashOffset=-t*30;cx.beginPath();cx.moveTo(hx,hy);cx.lineTo(sx,sy);cx.stroke();cx.setLineDash([]);cx.lineWidth=1;}
+ const ms=new Set(G.missions.map(m=>m.to));
+ G.systems.forEach((s,i)=>{const[x,y]=sysXY(i),col=ECOL[s.e],rad=6+(i===0?3:0);
+  const gl=cx.createRadialGradient(x,y,0,x,y,rad*4);gl.addColorStop(0,col);gl.addColorStop(.25,col+'88');gl.addColorStop(1,'transparent');cx.fillStyle=gl;cx.beginPath();cx.arc(x,y,rad*4,0,6.28);cx.fill();
+  cx.fillStyle='#fff';cx.beginPath();cx.arc(x,y,rad*.6,0,6.28);cx.fill();
+  if(s.d>=2){cx.strokeStyle=`rgba(255,60,60,${.3+.2*Math.sin(t*3)})`;cx.beginPath();cx.arc(x,y,rad*2.2,0,6.28);cx.stroke();}
+  if(ms.has(i)){cx.fillStyle='#ffd36e';cx.font='14px sans-serif';cx.fillText('★',x+rad+2,y-rad);}
+  cx.fillStyle=i===sel?'#ffd36e':s.vis?'#dfe8ff':'#7f8fb0';cx.font=(W<500?'11px ':'13px ')+'system-ui';cx.textAlign='center';cx.fillText(s.n,x,y+rad+14);cx.textAlign='left';});
+ // ship marker
+ let sx=hx,sy=hy;if(travel){const[a,b]=sysXY(travel.from),[c,d]=sysXY(travel.to);const k=Math.min(1,travel.t);sx=a+(c-a)*k;sy=b+(d-b)*k;cx.strokeStyle='#6ad9ff88';cx.beginPath();cx.moveTo(a,b);cx.lineTo(sx,sy);cx.stroke();}
+ cx.save();cx.translate(sx,sy);cx.rotate(t*2);cx.strokeStyle='#6ad9ff';cx.lineWidth=2;cx.beginPath();cx.arc(0,0,12,0,4);cx.stroke();cx.restore();cx.lineWidth=1;
+ if(travel){cx.fillStyle='#9fd0ff';cx.font='15px system-ui';cx.textAlign='center';cx.fillText('Jumping to '+SYSN[travel.to]+'…',W/2,H-30);cx.textAlign='left';}
+}
+function drawShip(x,y,a,col,sz,thr){cx.save();cx.translate(x,y);cx.rotate(a);if(thr){cx.fillStyle=`rgba(255,${150+Math.random()*100|0},60,.9)`;cx.beginPath();cx.moveTo(-sz*.8,-sz*.3);cx.lineTo(-sz*(1.3+Math.random()*.5),0);cx.lineTo(-sz*.8,sz*.3);cx.fill();}
+ cx.fillStyle=col;cx.strokeStyle='#fff';cx.lineWidth=1.5;cx.beginPath();cx.moveTo(sz,0);cx.lineTo(-sz*.8,-sz*.7);cx.lineTo(-sz*.4,0);cx.lineTo(-sz*.8,sz*.7);cx.closePath();cx.fill();cx.stroke();cx.restore();}
+function drawCombat(t){const p=C.p;bg(t,p.x,p.y);cx.save();cx.translate(W/2-p.x,H/2-p.y);
+ C.sh.forEach(s=>{cx.strokeStyle=s.f?'#7affd2':'#ff5a5a';cx.lineWidth=3;cx.beginPath();cx.moveTo(s.x,s.y);cx.lineTo(s.x-s.vx*.03,s.y-s.vy*.03);cx.stroke();});
+ C.fx.forEach(f=>{cx.globalAlpha=Math.min(1,f.t*2);cx.fillStyle=f.c;cx.fillRect(f.x-2,f.y-2,4,4);});cx.globalAlpha=1;
+ C.en.forEach(e=>{drawShip(e.x,e.y,e.a,e.boss?'#c0303a':'#8a2a3a',e.boss?20:14,true);cx.fillStyle='#300';cx.fillRect(e.x-18,e.y-28,36,4);cx.fillStyle='#ff5050';cx.fillRect(e.x-18,e.y-28,36*e.hp/e.max,4);});
+ drawShip(p.x,p.y,p.a,'#2a7ad0',15,ptr.down||keys['w']||keys['arrowup']);
+ if(G.up.shield){cx.strokeStyle=`rgba(100,200,255,${.2+.1*Math.sin(t*6)})`;cx.beginPath();cx.arc(p.x,p.y,22,0,6.28);cx.stroke();}
+ cx.restore();
+ // radar arrows
+ C.en.forEach(e=>{const dx=e.x-p.x,dy=e.y-p.y,d=Math.hypot(dx,dy);if(d>Math.min(W,H)/2-20){const a=Math.atan2(dy,dx),rr=Math.min(W,H)/2-30;cx.save();cx.translate(W/2+Math.cos(a)*rr,H/2+Math.sin(a)*rr);cx.rotate(a);cx.fillStyle='#ff5a5a';cx.beginPath();cx.moveTo(10,0);cx.lineTo(-6,-6);cx.lineTo(-6,6);cx.fill();cx.restore();}});
+ cx.fillStyle='#ffd36e';cx.font='14px system-ui';cx.textAlign='center';cx.fillText(`Pirates: ${C.en.length}  ·  ${'ontouchstart' in window?'Touch & hold to steer — auto-fire':'Mouse/WASD steer · Space fire'}`,W/2,H-62);cx.textAlign='left';}
+let last=performance.now();
+function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;const t=now/1000;
+ if(mode==='combat'&&C){combatStep(dt);if(C)drawCombat(t);}
+ else{bg(t,t*6,0);if(G&&mode!=='title')drawMap(t);
+  if(mode==='travel'&&travel){const prev=travel.t;travel.t+=dt/(.9+travel.days*.25);if(prev<.5&&travel.t>=.5&&!travel.enc){travel.enc=true;encounter();}if(travel&&travel.t>=1&&mode==='travel')arrive();}}
+ requestAnimationFrame(loop);}
+requestAnimationFrame(loop);
+function begin(){ac();SFX.good();$('title').classList.add('hidden');$('hud').classList.remove('hidden');mode='dock';tab='market';render();}
+$('newBtn').onclick=()=>{newGame();begin();toast('Welcome, Captain. Start by buying cheap goods and selling where they are scarce.');};
+const sv=load();if(!sv)$('contBtn').disabled=true;
+$('contBtn').onclick=()=>{G=load();if(!G){newGame();}begin();};
+window.__ST={get G(){return G},get mode(){return mode},price,netWorth,startCombat,fuelCost};
+})();
+</script></body></html>

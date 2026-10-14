@@ -298,6 +298,12 @@ h1 span{color:#ff6b6b}
 .pwd{background:linear-gradient(#4a90d8,#f4fbff 58%)}
 .pwd i{position:absolute;left:12%;bottom:30%;width:76%;height:10px;border-radius:5px;background:#fff;transform:rotate(-14deg)}
 .pwd b{position:absolute;left:40%;bottom:40%;width:26px;height:8px;border-radius:4px;background:#e8402a;transform:rotate(-14deg)}
+.str{background:radial-gradient(circle at 50% 42%,#1a2a55,#050814 70%)}
+.str i{position:absolute;left:18%;top:46%;width:48%;height:8px;border-radius:6px;background:#ffd36e;box-shadow:18px -10px 0 -2px #8fd3ff}
+.str b{position:absolute;right:16%;top:38%;width:0;height:0;border-top:8px solid transparent;border-bottom:8px solid transparent;border-left:16px solid #ffb03a}
+.phg{background:#0b101b}
+.phg i{position:absolute;left:24%;top:26%;width:16px;height:48px;border-radius:50%;border:3px solid #4cc3ff;box-shadow:0 0 12px #4cc3ff}
+.phg b{position:absolute;right:24%;top:26%;width:16px;height:48px;border-radius:50%;border:3px solid #ff9a2e;box-shadow:0 0 12px #ff9a2e}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -360,7 +366,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Sixty-two browser games. Best scores stay on this device.</p>
+<p class="lede">Sixty-four browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -632,6 +638,14 @@ a.card[hidden]{display:none}
 <a class="card" href="./powder-rush.html" data-cat="Sports" data-key="arcade-powder-best" data-name="Powder Rush">
 <div class="thumb pwd" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Sports</p><h2>Powder Rush</h2><p>Shred the mountain and outrun the avalanche. Best is your score.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./star-trader.html" data-cat="Strategy" data-key="arcade-trader-best" data-name="Star Trader">
+<div class="thumb str" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Strategy</p><h2>Star Trader</h2><p>Haul cargo across the stars. Best is your net worth.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./phase-gate.html" data-cat="Puzzle" data-key="arcade-phase-best" data-name="Phase Gate">
+<div class="thumb phg" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Puzzle</p><h2>Phase Gate</h2><p>Link portals through 22 chambers. Best is chambers cleared.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

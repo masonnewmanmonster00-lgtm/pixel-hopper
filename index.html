@@ -307,6 +307,9 @@ h1 span{color:#ff6b6b}
 .brg{background:linear-gradient(#f6e6c8 42%,#8a4b2a)}
 .brg i{position:absolute;left:30%;bottom:24%;width:40%;height:10px;border-radius:8px;background:#e0a050;box-shadow:0 -7px 0 #6b3a1f,0 -12px 0 #5cc84a,0 -17px 0 #e63946,0 -24px 0 #e0a050}
 .brg b{position:absolute;left:46%;top:16%;width:10px;height:10px;border-radius:50%;background:#ffb627}
+.jig{background:#241a3e}
+.jig i{position:absolute;left:18%;top:24%;width:18%;height:22%;background:#ff9a3c;box-shadow:22px 0 0 #4a90d9,44px 0 0 #6bbf4a,0 26px 0 #c2407a,22px 26px 0 #ffd76b,44px 26px 0 #7a5cff}
+.jig b{position:absolute;right:16%;bottom:18%;width:14px;height:14px;background:#fff;border-radius:3px}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -369,7 +372,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Sixty-five browser games. Best scores stay on this device.</p>
+<p class="lede">Sixty-six browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -653,6 +656,10 @@ a.card[hidden]{display:none}
 <a class="card" href="./burger-rush.html" data-cat="Casual" data-key="arcade-burger-best" data-name="Burger Rush">
 <div class="thumb brg" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Casual</p><h2>Burger Rush</h2><p>Stack orders before customers storm off. Best is your shift earnings.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./jigsaw.html" data-cat="Puzzle" data-key="arcade-jigsaw-best" data-name="Jigsaw Studio">
+<div class="thumb jig" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Puzzle</p><h2>Jigsaw Studio</h2><p>Fit the pieces. Best is your fastest clear.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

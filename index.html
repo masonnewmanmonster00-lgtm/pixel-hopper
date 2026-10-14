@@ -391,6 +391,9 @@ h1 span{color:#ff6b6b}
 .hxs{background:#231a4a}
 .hxs i{position:absolute;left:22%;top:28%;width:36px;height:32px;background:#5be37a;clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)}
 .hxs b{position:absolute;left:48%;top:46%;width:28px;height:24px;background:#ff5a6e;clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)}
+.pkj{background:#3b7d3a}
+.pkj i{position:absolute;left:16%;top:36%;width:46px;height:22px;border-radius:7px;background:#e74c3c;box-shadow:inset 0 -4px 0 rgba(0,0,0,.2)}
+.pkj b{position:absolute;left:46%;top:52%;width:36px;height:18px;border-radius:6px;background:#3498db}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -453,7 +456,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Ninety-three browser games. Best scores stay on this device.</p>
+<p class="lede">Ninety-four browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -850,6 +853,10 @@ a.card[hidden]{display:none}
 <a class="card" href="./hexstack.html" data-cat="Puzzle" data-key="arcade-hex-best" data-name="Hex Stack">
 <div class="thumb hxs" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Puzzle</p><h2>Hex Stack</h2><p>Stack matching colors until they clear. Best is your endless score.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./parkingjam.html" data-cat="Puzzle" data-key="arcade-park-best" data-name="Parking Jam">
+<div class="thumb pkj" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Puzzle</p><h2>Parking Jam</h2><p>Slide the cars and clear the lot. Best is your total stars.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

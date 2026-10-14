@@ -260,6 +260,9 @@ h1 span{color:#ff6b6b}
 .jmj{background:#0f4434}
 .jmj i{position:absolute;left:28%;top:26%;width:24%;height:42%;border-radius:3px;background:#fffdf5;box-shadow:7px 6px 0 #b88a3e}
 .jmj b{position:absolute;left:54%;top:34%;width:18%;height:34%;border-radius:3px;background:#fffdf5}
+.tt{background:#0c2340}
+.tt i{position:absolute;left:16%;top:46%;width:68%;height:16%;border-radius:3px;background:#1a5fb4;box-shadow:inset 0 0 0 2px #fff}
+.tt b{position:absolute;left:46%;top:30%;width:12px;height:12px;border-radius:50%;background:#fff}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -322,7 +325,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Fifty browser games. Best scores stay on this device.</p>
+<p class="lede">Fifty-one browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -545,6 +548,10 @@ a.card[hidden]{display:none}
 <a class="card" href="./mahjong.html" data-cat="Puzzle" data-key="arcade-mahjong-best" data-name="Jade Mahjong">
 <div class="thumb jmj" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Puzzle</p><h2>Jade Mahjong</h2><p>Match free tiles on a solvable board. Best is your fastest clear.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./table-tennis.html" data-cat="Sports" data-key="arcade-tt-best" data-name="Table Tennis">
+<div class="thumb tt" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Sports</p><h2>Table Tennis</h2><p>First to 11 against the CPU. Wins are saved.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

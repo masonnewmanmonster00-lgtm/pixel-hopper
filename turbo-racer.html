@@ -1,0 +1,66 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#0b0b14"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon.svg"><link rel="apple-touch-icon" href="./icon.svg"><title>Turbo Racer</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#111;overflow:hidden;touch-action:none;font-family:sans-serif}
+canvas{display:block;margin:0 auto;background:#2a2;touch-action:none;max-width:100vw;max-height:100dvh}
+.b{position:fixed;z-index:40;bottom:max(16px,env(safe-area-inset-bottom));width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.25);color:#fff;font-size:32px;display:flex;align-items:center;justify-content:center;user-select:none;touch-action:none}
+#L{left:max(16px,env(safe-area-inset-left))}#R{left:max(110px,calc(env(safe-area-inset-left) + 110px))}#G{right:max(16px,env(safe-area-inset-right))}
+#P{position:fixed;z-index:40;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));width:44px;height:44px;border-radius:8px;background:rgba(255,255,255,.3);color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center;user-select:none;touch-action:none}
+a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:80;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 12px;border-radius:999px;background:rgba(8,8,16,.82);color:#ffe14d;border:1px solid rgba(255,225,77,.55);font:700 12px/1 ui-monospace,monospace;letter-spacing:.04em;text-decoration:none;touch-action:manipulation}
+a.back:focus-visible{outline:2px solid #ffe14d;outline-offset:2px}
+</style></head>
+<body>
+<a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a>
+<canvas id="c" tabindex="0"></canvas><div class="b" id="L">◀</div><div class="b" id="R">▶</div><div class="b" id="G">⚡</div><div id="P">II</div>
+<script>
+"use strict";
+const c=document.getElementById('c'),x=c.getContext('2d');let W,H;
+function rs(){H=innerHeight;W=Math.min(innerWidth,H*0.75);c.width=W;c.height=H}rs();addEventListener('resize',rs);
+let phone=false;
+try{phone=matchMedia('(pointer:coarse)').matches||(navigator.maxTouchPoints>0&&matchMedia('(hover:none)').matches)}catch(e){}
+function showPads(on){phone=on;['L','R','G'].forEach(i=>{document.getElementById(i).style.display=on?'flex':'none'})}
+showPads(phone);
+const k={};
+addEventListener('keydown',e=>{
+ if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();
+ k[e.key]=1;
+ if(e.repeat)return;
+ if(e.key==='p'||e.key==='P'||e.key==='Escape')tp();
+ if(e.key==='Enter'||e.key===' ')st();
+});
+addEventListener('keyup',e=>{k[e.key]=0});
+function hold(id,name){const el=document.getElementById(id);
+ const down=e=>{if(e.pointerType==='mouse'&&e.button!==0)return;e.preventDefault();e.stopPropagation();showPads(true);try{el.setPointerCapture(e.pointerId)}catch(_){}k[name]=1;if(state!=='play')st()};
+ const up=e=>{if(e.pointerId!=null)k[name]=0};
+ el.addEventListener('pointerdown',down);
+ el.addEventListener('pointerup',up);
+ el.addEventListener('pointercancel',up);
+}
+hold('L','ArrowLeft');hold('R','ArrowRight');hold('G','ArrowUp');
+document.getElementById('P').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();tp()});
+c.addEventListener('pointerdown',e=>{if(e.pointerType==='touch')showPads(true);if(state!=='play')st()});
+let state='title',paused=false,best=0,p,cars,sc,sp,off,t;
+try{best=+localStorage.getItem('arcade-racer-best')||0}catch(e){}
+function saveBest(n){const v=Math.floor(n);if(v>best){best=v;try{localStorage.setItem('arcade-racer-best',String(best))}catch(e){}}}
+function reset(){p={x:.5};cars=[];sc=0;sp=6;off=0;t=0}reset();
+function st(){if(state!=='play'){reset();state='play';paused=false}}
+function tp(){if(state==='play')paused=!paused}
+const cols=['#e33','#33e','#ee3','#e3e','#3ee','#f80'];
+function car(cx,cy,w,h,col){x.fillStyle=col;x.fillRect(cx-w/2,cy-h/2,w,h);x.fillStyle='#9cf';x.fillRect(cx-w/2+4,cy-h/2+h*.2,w-8,h*.2);x.fillStyle='#111';[[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>x.fillRect(cx+a*w/2-(a>0?0:4),cy+b*h*.3-6,4,12))}
+function loop(){requestAnimationFrame(loop);const rw=W*.8,rx=W*.1,lw=rw/3,cw=lw*.55,ch=cw*1.8;
+if(state==='play'&&!paused){t++;const boost=k.ArrowUp||k.w?1.6:1;sp=Math.min(6+t/400,18)*boost;off=(off+sp)%60;sc+=sp/10;
+if(k.ArrowLeft||k.a)p.x-=.012;if(k.ArrowRight||k.d)p.x+=.012;p.x=Math.max(.1,Math.min(.9,p.x));
+if(Math.random()<.02+t/60000){const ln=Math.floor(Math.random()*3);if(!cars.some(o=>o.y<ch*2&&o.l===ln))cars.push({l:ln,y:-ch,v:2+Math.random()*3,c:cols[Math.random()*6|0]})}
+cars.forEach(o=>o.y+=sp-o.v);cars=cars.filter(o=>o.y<H+ch);
+const px=rx+p.x*rw,py=H-ch*1.2;for(const o of cars){const ox=rx+lw*(o.l+.5);if(Math.abs(ox-px)<cw*.9&&Math.abs(o.y-py)<ch*.9){state='over';saveBest(sc)}}}
+x.fillStyle='#2a2';x.fillRect(0,0,W,H);x.fillStyle='#555';x.fillRect(rx,0,rw,H);x.fillStyle='#fff';
+for(let i=1;i<3;i++)for(let y=-60+off;y<H;y+=60)x.fillRect(rx+lw*i-3,y,6,30);
+x.fillStyle='#d22';for(let y=-60+off;y<H;y+=60){x.fillRect(rx-8,y,8,30);x.fillRect(rx+rw,y,8,30)}
+cars.forEach(o=>car(rx+lw*(o.l+.5),o.y,cw,ch,o.c));if(p)car(rx+p.x*rw,H-ch*1.2,cw,ch,'#fff');
+x.fillStyle='#fff';x.font='bold 20px sans-serif';x.textAlign='left';x.fillText('Score '+Math.floor(sc),78,36);x.fillText('Best '+best,78,60);
+x.textAlign='center';const msg=(a,b)=>{x.fillStyle='rgba(0,0,0,.6)';x.fillRect(0,H/2-70,W,140);x.fillStyle='#fff';x.font='bold 28px sans-serif';x.fillText(a,W/2,H/2-10);x.font='16px sans-serif';x.fillText(b,W/2,H/2+28)};
+if(state==='title')msg('TURBO RACER',phone?'Tap to start. ◀ ▶ steer, ⚡ boost':'Click or Enter. Arrows steer, Up boosts, P pause');
+if(state==='over')msg('CRASH! '+Math.floor(sc),phone?'Tap to restart':'Click or Enter to restart');
+if(paused)msg('PAUSED',phone?'Tap II to resume':'Press P to resume')}
+loop();
+</script></body></html>

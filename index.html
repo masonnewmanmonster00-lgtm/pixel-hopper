@@ -367,6 +367,9 @@ h1 span{color:#ff6b6b}
 .rvs{background:#1d6b3a}
 .rvs i{position:absolute;left:18%;top:32%;width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#555,#111)}
 .rvs b{position:absolute;left:52%;top:44%;width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#c8c8c8)}
+.cck{background:#6b3a1a}
+.cck i{position:absolute;left:30%;top:22%;width:0;height:0;border-left:22px solid transparent;border-right:22px solid transparent;border-bottom:40px solid #e8c48a}
+.cck b{position:absolute;left:24%;top:40%;width:14px;height:14px;border-radius:50%;background:#e53935;box-shadow:24px 16px 0 #1e88e5,12px 30px 0 #fdd835,36px 30px 0 #43a047}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -429,7 +432,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Eighty-five browser games. Best scores stay on this device.</p>
+<p class="lede">Eighty-six browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -794,6 +797,10 @@ a.card[hidden]{display:none}
 <a class="card" href="./reversi.html" data-cat="Board" data-key="arcade-reversi-best" data-name="Reversi">
 <div class="thumb rvs" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Board</p><h2>Reversi</h2><p>Outflank the discs against the CPU. Best is your wins.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./chinesecheckers.html" data-cat="Board" data-key="arcade-cc-best" data-name="Chinese Checkers">
+<div class="thumb cck" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Board</p><h2>Chinese Checkers</h2><p>Hop marbles across the star. Best is your wins.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

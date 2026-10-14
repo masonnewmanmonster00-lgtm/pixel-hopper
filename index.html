@@ -337,9 +337,12 @@ h1 span{color:#ff6b6b}
 .pic{background:#1b1d2e}
 .pic i{position:absolute;left:18%;top:22%;width:64%;height:56%;background:#2d3150}
 .pic b{position:absolute;left:26%;top:32%;width:14px;height:14px;background:#e8435a;box-shadow:16px 0 0 #e8435a,0 16px 0 #e8435a,16px 16px 0 #f5c518}
-.pip{background:linear-gradient(#0e1a30,#12304a)}
-.pip i{position:absolute;left:16%;top:40%;width:30%;height:10px;border-radius:5px;background:#46e6ff;box-shadow:24px 16px 0 #2fa8ff}
-.pip b{position:absolute;right:20%;top:26%;width:10px;height:38%;border-radius:5px;background:#5ef;box-shadow:-18px 22px 0 #ffd23f}
+.ppn{background:linear-gradient(#0e1a30,#12304a)}
+.ppn i{position:absolute;left:16%;top:40%;width:30%;height:10px;border-radius:5px;background:#46e6ff;box-shadow:24px 16px 0 #2fa8ff}
+.ppn b{position:absolute;right:20%;top:26%;width:10px;height:38%;border-radius:5px;background:#5ef;box-shadow:-18px 22px 0 #ffd23f}
+.lnd{background:linear-gradient(#000814 0 62%,#8a8a92 62%)}
+.lnd i{position:absolute;left:46%;bottom:34%;width:10px;height:16px;background:#e8e8ee;border-radius:4px 4px 1px 1px;box-shadow:0 10px 0 #ffd84a}
+.lnd b{position:absolute;left:24%;bottom:24%;width:52%;height:5px;border-radius:2px;background:#3f6}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -402,7 +405,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Seventy-six browser games. Best scores stay on this device.</p>
+<p class="lede">Seventy-seven browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -729,8 +732,12 @@ a.card[hidden]{display:none}
 <div class="meta"><p class="kicker">Puzzle</p><h2>Pixel Picross</h2><p>Fill the picture from the clues. Best is puzzles solved.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 <a class="card" href="./pipes.html" data-cat="Puzzle" data-key="arcade-pipes-best" data-name="Pipe Panic">
-<div class="thumb pip" aria-hidden="true"><i></i><b></b></div>
+<div class="thumb ppn" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Puzzle</p><h2>Pipe Panic</h2><p>Rotate the pipes and beat the flow. Best is your stars.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./lander.html" data-cat="Arcade" data-key="arcade-lander-best" data-name="Moon Lander">
+<div class="thumb lnd" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Arcade</p><h2>Moon Lander</h2><p>Land gently across 15 missions. Best is your stars.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

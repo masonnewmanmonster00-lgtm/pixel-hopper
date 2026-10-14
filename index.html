@@ -370,6 +370,12 @@ h1 span{color:#ff6b6b}
 .cck{background:#6b3a1a}
 .cck i{position:absolute;left:30%;top:22%;width:0;height:0;border-left:22px solid transparent;border-right:22px solid transparent;border-bottom:40px solid #e8c48a}
 .cck b{position:absolute;left:24%;top:40%;width:14px;height:14px;border-radius:50%;background:#e53935;box-shadow:24px 16px 0 #1e88e5,12px 30px 0 #fdd835,36px 30px 0 #43a047}
+.trr{background:#1a2744}
+.trr i{position:absolute;left:18%;top:30%;width:64%;height:42%;background:#3d7cff;clip-path:polygon(8% 45%,38% 12%,68% 38%,92% 18%,78% 78%,42% 92%,18% 62%)}
+.trr b{position:absolute;left:44%;top:40%;width:16px;height:16px;border-radius:4px;background:#ffd43b;box-shadow:0 0 0 3px #1a2744}
+.mtl{background:#f4efe4}
+.mtl i{position:absolute;left:14%;top:48%;width:72%;height:6px;background:#e23b32;border-radius:3px;transform:rotate(-8deg)}
+.mtl b{position:absolute;left:18%;top:36%;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px #222,34px 18px 0 #fff,34px 18px 0 3px #222,68px -2px 0 #fff,68px -2px 0 3px #222}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -432,7 +438,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Eighty-six browser games. Best scores stay on this device.</p>
+<p class="lede">Eighty-eight browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -801,6 +807,14 @@ a.card[hidden]{display:none}
 <a class="card" href="./chinesecheckers.html" data-cat="Board" data-key="arcade-cc-best" data-name="Chinese Checkers">
 <div class="thumb cck" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Board</p><h2>Chinese Checkers</h2><p>Hop marbles across the star. Best is your wins.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./territory.html" data-cat="Arcade" data-key="arcade-terr-best" data-name="Territory Rush">
+<div class="thumb trr" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Arcade</p><h2>Territory Rush</h2><p>Loop a trail and grab the land. Best is your peak percent.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./metro.html" data-cat="Puzzle" data-key="arcade-metro-best" data-name="Metro Lines">
+<div class="thumb mtl" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Puzzle</p><h2>Metro Lines</h2><p>Draw the lines and keep the city moving. Best is passengers.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

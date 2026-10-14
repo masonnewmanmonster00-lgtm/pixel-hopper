@@ -355,6 +355,9 @@ h1 span{color:#ff6b6b}
 .utt{background:#12122e}
 .utt i{position:absolute;left:22%;top:18%;width:56%;height:64%;background:linear-gradient(#8a6cff,#8a6cff) 50% 0/4px 100% no-repeat,linear-gradient(#8a6cff,#8a6cff) 0 50%/100% 4px no-repeat}
 .utt b{position:absolute;left:28%;top:26%;width:16px;height:16px;border:3px solid #3ff3ff;border-radius:50%;box-shadow:36px 28px 0 #ff4fd8}
+.yht{background:#0d4a2b}
+.yht i{position:absolute;left:18%;top:34%;width:22px;height:22px;border-radius:5px;background:#fff;box-shadow:30px 0 0 #fff,60px 10px 0 #fff}
+.yht b{position:absolute;left:24%;top:40%;width:6px;height:6px;border-radius:50%;background:#1b1b28;box-shadow:30px 10px 0 #c0182a,60px 4px 0 #1b1b28}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -417,7 +420,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Eighty-one browser games. Best scores stay on this device.</p>
+<p class="lede">Eighty-two browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -766,6 +769,10 @@ a.card[hidden]{display:none}
 <a class="card" href="./ultimatettt.html" data-cat="Board" data-key="arcade-uttt-best" data-name="Ultimate Tic-Tac-Toe">
 <div class="thumb utt" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Board</p><h2>Ultimate Tic-Tac-Toe</h2><p>Win the small boards to take the big one. Best is your wins.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./yacht.html" data-cat="Casual" data-key="arcade-yacht-best" data-name="Yacht Dice">
+<div class="thumb yht" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Casual</p><h2>Yacht Dice</h2><p>Roll for a yacht and fill the card. Best is your top score.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

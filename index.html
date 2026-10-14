@@ -209,6 +209,12 @@ h1 span{color:#ff6b6b}
 .twd{background:linear-gradient(#7ec8f0 0 46%,#1d6a62 46%)}
 .twd i{position:absolute;left:18%;top:58%;width:64px;height:6px;border-radius:4px;background:#e07a12;transform:rotate(-18deg)}
 .twd b{position:absolute;right:22%;top:40%;width:18px;height:10px;border-radius:10px 12px 6px 6px;background:#ffc93c}
+.pool{background:#0c5a30}
+.pool i{position:absolute;border-radius:50%}
+.pool i:nth-child(1){left:28%;top:38%;width:16px;height:16px;background:#f2c400}
+.pool i:nth-child(2){left:46%;top:46%;width:16px;height:16px;background:#1d4fd6}
+.pool i:nth-child(3){left:62%;top:36%;width:16px;height:16px;background:#d42a2a}
+.pool b{position:absolute;left:18%;top:52%;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px #5a3416}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -271,7 +277,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Thirty-seven browser games. Best scores stay on this device.</p>
+<p class="lede">Thirty-eight browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -441,6 +447,10 @@ a.card[hidden]{display:none}
 <a class="card" href="./fishing.html" data-cat="Casual" data-key="arcade-fish-best" data-name="Tidewater">
 <div class="thumb twd" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Casual</p><h2>Tidewater</h2><p>Cast, hook, and reel. Best is your lifetime earnings.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./pool.html" data-cat="Sports" data-key="arcade-pool-best" data-name="8-Ball Pool">
+<div class="thumb pool" aria-hidden="true"><b></b><i></i><i></i><i></i></div>
+<div class="meta"><p class="kicker">Sports</p><h2>8-Ball Pool</h2><p>Aim, pull back, and pocket the 8. Wins against the CPU are saved.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

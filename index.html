@@ -343,6 +343,9 @@ h1 span{color:#ff6b6b}
 .lnd{background:linear-gradient(#000814 0 62%,#8a8a92 62%)}
 .lnd i{position:absolute;left:46%;bottom:34%;width:10px;height:16px;background:#e8e8ee;border-radius:4px 4px 1px 1px;box-shadow:0 10px 0 #ffd84a}
 .lnd b{position:absolute;left:24%;bottom:24%;width:52%;height:5px;border-radius:2px;background:#3f6}
+.snl{background:#1d6b45}
+.snl i{position:absolute;left:18%;top:16%;width:64%;height:68%;background:#f6e7c1;border-radius:4px}
+.snl b{position:absolute;left:28%;top:30%;width:14%;height:40%;background:#2bb34a;border-radius:6px;box-shadow:26px 10px 0 #e63946}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -405,7 +408,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Seventy-seven browser games. Best scores stay on this device.</p>
+<p class="lede">Seventy-eight browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -738,6 +741,10 @@ a.card[hidden]{display:none}
 <a class="card" href="./lander.html" data-cat="Arcade" data-key="arcade-lander-best" data-name="Moon Lander">
 <div class="thumb lnd" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Arcade</p><h2>Moon Lander</h2><p>Land gently across 15 missions. Best is your stars.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./snakesladders.html" data-cat="Board" data-key="arcade-snl-best" data-name="Snakes & Ladders">
+<div class="thumb snl" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Board</p><h2>Snakes & Ladders</h2><p>Race to 100 against the CPU. Best is your wins.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

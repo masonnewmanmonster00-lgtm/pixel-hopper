@@ -415,6 +415,9 @@ h1 span{color:#ff6b6b}
 .crl{background:#dfe9f2}
 .crl i{position:absolute;left:18%;top:58%;width:64%;height:10px;border-radius:4px;background:#2f6fd0;box-shadow:inset 0 0 0 3px #f4f8fc}
 .crl b{position:absolute;left:42%;top:28%;width:18px;height:18px;border-radius:50%;background:#e03a3a;box-shadow:22px 8px 0 #f2c230}
+.vly{background:#f0b56a}
+.vly i{position:absolute;left:18%;top:62%;width:64%;height:8px;background:#1e9bd7;border-radius:2px}
+.vly b{position:absolute;left:46%;top:28%;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px #ffb21e}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -477,7 +480,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">One hundred one browser games. Best scores stay on this device.</p>
+<p class="lede">One hundred two browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -906,6 +909,10 @@ a.card[hidden]{display:none}
 <a class="card" href="./curling.html" data-cat="Sports" data-key="arcade-curl-best" data-name="Curling Cup">
 <div class="thumb crl" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Sports</p><h2>Curling Cup</h2><p>Slide the stones and sweep. Best is your biggest end.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./volley.html" data-cat="Sports" data-key="arcade-volley-best" data-name="Beach Volley">
+<div class="thumb vly" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Sports</p><h2>Beach Volley</h2><p>Bump, set, and spike on the sand. Best is your longest rally.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

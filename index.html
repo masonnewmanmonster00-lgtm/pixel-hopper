@@ -228,6 +228,17 @@ h1 span{color:#ff6b6b}
 .bowl{background:#2a0f45}
 .bowl i{position:absolute;left:22%;top:58%;width:56%;height:8px;border-radius:4px;background:#e3b06a}
 .bowl b{position:absolute;left:42%;top:34%;width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#9ef,#2a6ef0)}
+.sty{background:#070a22}
+.sty i{position:absolute;left:32%;top:28%;width:36%;height:36%;border-radius:50%;background:radial-gradient(circle at 32% 30%,#ffd9a0,#ff7b54 55%,#2a0f4a)}
+.sty b{position:absolute;left:18%;top:48%;width:64%;height:8px;border-radius:50%;border:3px solid #ffe0a8;transform:rotate(-14deg)}
+.crq{background:#1d1611}
+.crq i{position:absolute;width:22px;height:22px;border-radius:4px;background:#c9843a}
+.crq i:nth-child(1){left:22%;top:36%}
+.crq i:nth-child(2){left:48%;top:36%}
+.crq b{position:absolute;left:62%;top:58%;width:18px;height:18px;border-radius:50%;background:#ffcf73}
+.hol{background:#14080e}
+.hol b{position:absolute;left:28%;top:18%;width:44%;height:30%;background:#d9c7a4;clip-path:polygon(50% 0,100% 100%,0 100%)}
+.hol i{position:absolute;left:24%;top:42%;width:52%;height:38%;background:#3a2428;box-shadow:inset 0 -16px 0 #1a1012}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -290,7 +301,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Forty-one browser games. Best scores stay on this device.</p>
+<p class="lede">Forty-four browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -305,6 +316,7 @@ a.card[hidden]{display:none}
 <button type="button" class="chip" data-cat="Music" aria-pressed="false">Music</button>
 <button type="button" class="chip" data-cat="Sports" aria-pressed="false">Sports</button>
 <button type="button" class="chip" data-cat="Casual" aria-pressed="false">Casual</button>
+<button type="button" class="chip" data-cat="Horror" aria-pressed="false">Horror</button>
 </div>
 </div>
 </header>
@@ -476,6 +488,18 @@ a.card[hidden]{display:none}
 <a class="card" href="./bowling.html" data-cat="Sports" data-key="arcade-bowl-best" data-name="Neon Bowling">
 <div class="thumb bowl" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Sports</p><h2>Neon Bowling</h2><p>Line up, hook, and roll. Best is your highest game.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./star-tycoon.html" data-cat="Casual" data-key="arcade-tycoon-best" data-name="Star Tycoon">
+<div class="thumb sty" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Casual</p><h2>Star Tycoon</h2><p>Mine the planet and build an empire. Best is credits earned.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./crate-quest.html" data-cat="Puzzle" data-key="arcade-crateq-best" data-name="Crate Quest">
+<div class="thumb crq" aria-hidden="true"><i></i><i></i><b></b></div>
+<div class="meta"><p class="kicker">Puzzle</p><h2>Crate Quest</h2><p>Push every crate onto a target. Best is levels cleared.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./horror.html" data-cat="Horror" data-key="arcade-hollow-best" data-name="Hollow House">
+<div class="thumb hol" aria-hidden="true"><b></b><i></i></div>
+<div class="meta"><p class="kicker">Horror</p><h2>Hollow House</h2><p>Flashlight, five keys, and something that hunts by sound. Best is your fastest escape.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

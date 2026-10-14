@@ -117,7 +117,7 @@ document.querySelectorAll('.tb').forEach(b=>{const k=b.dataset.k;const on=e=>{e.
 function readHuman(map,f,useTouch){const i={};for(const c in map)if(keys[c])i[map[c]]=true;if(useTouch)for(const k in touchK)if(touchK[k])i[k]=true;f.inp=i}
 
 // ---------- AI ----------
-const AIP=[{react:30,block:.12,aggr:.35,spec:.15,combo:0,anti:0,err:.35},{react:14,block:.45,aggr:.55,spec:.45,combo:.45,anti:.3,err:.15},{react:5,block:.82,aggr:.72,spec:.8,combo:.9,anti:.75,err:.03}];
+const AIP=[{react:28,block:.1,aggr:.45,spec:.2,combo:0,anti:.1,err:.12},{react:14,block:.45,aggr:.55,spec:.45,combo:.45,anti:.3,err:.15},{react:5,block:.82,aggr:.72,spec:.8,combo:.9,anti:.75,err:.03}];
 function aiThink(f,o,lv){const A=AIP[lv];const ai=f.ai||(f.ai={t:0,plan:{},hold:0,press:null});const i={};const d=Math.abs(o.x-f.x),dir=Math.sign(o.x-f.x)||1;
  // combo continuation
  if(f.atk&&f.atkHit&&Math.random()<A.combo*.25){const ch=CHAIN[f.atk.key];if(ch){const n=ch.includes('sp')&&f.meter>=50&&Math.random()<.5?'s':ch[0]==='k'?'k':ch[0]==='ck'?'k':'p';i[n]=true;if(ch[0]==='ck'||ch[0]==='cp')i.d=true}}

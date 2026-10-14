@@ -274,6 +274,9 @@ h1 span{color:#ff6b6b}
 .puf{background:#7ec8f0}
 .puf i{position:absolute;left:18%;top:52%;width:64%;height:16%;border-radius:4px;background:#8a5a2b}
 .puf b{position:absolute;left:32%;top:28%;width:18px;height:18px;border-radius:50%;background:#e8473f}
+.pen{background:#1f6e2c}
+.pen i{position:absolute;left:22%;top:26%;width:56%;height:34%;border:3px solid #fff;border-bottom:none}
+.pen b{position:absolute;left:46%;top:64%;width:12px;height:12px;border-radius:50%;background:#fff}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -336,7 +339,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Fifty-four browser games. Best scores stay on this device.</p>
+<p class="lede">Fifty-five browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -575,6 +578,10 @@ a.card[hidden]{display:none}
 <a class="card" href="./puff-patrol.html" data-cat="Puzzle" data-key="arcade-puff-best" data-name="Puff Patrol">
 <div class="thumb puf" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Puzzle</p><h2>Puff Patrol</h2><p>Fling puffs and topple the forts. Best is stars earned.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./penalty-shootout.html" data-cat="Sports" data-key="arcade-penalty-best" data-name="Penalty Shootout">
+<div class="thumb pen" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Sports</p><h2>Penalty Shootout</h2><p>Five kicks each, then sudden death. Wins are saved.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

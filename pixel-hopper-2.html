@@ -84,13 +84,18 @@ addEventListener('keydown',e=>{if(['Space','ArrowUp','ArrowDown','ArrowLeft','Ar
  if(e.code==='KeyR'&&!fadeDir){ac();musicOn=true;fadeTo(startGame)}
  if(e.code==='Enter'||e.code==='Space')onStart()});
 addEventListener('keyup',e=>{keys[e.code]=false});
-addEventListener('blur',()=>{for(const k in keys)keys[k]=false;for(const k in TK)TK[k]=false;if(state==='play')state='pause'});
-let touchMode=false;const TK={L:false,R:false,J:false,S:false,P:false};
+addEventListener('blur',()=>{for(const k in keys)keys[k]=false;fingers.clear();for(const k in TK)TK[k]=false;if(state==='play')state='pause'});
+let touchMode=false;const TK={L:false,R:false,J:false,S:false,P:false};const fingers=new Map();
+try{if(matchMedia('(pointer:coarse)').matches||(navigator.maxTouchPoints>0&&matchMedia('(hover:none)').matches))touchMode=true}catch(e){}
 const BTN={L:{x:34,y:228,r:20},R:{x:84,y:228,r:20},S:{x:392,y:236,r:17},J:{x:442,y:220,r:23},P:{x:W-18,y:38,r:12}};
 function toCanvas(t){const r=cv.getBoundingClientRect();return{x:(t.clientX-r.left)/r.width*W,y:(t.clientY-r.top)/r.height*H}}
 function hitBtn(p,b){const dx=p.x-b.x,dy=p.y-b.y,rr=b.r+10;return dx*dx+dy*dy<rr*rr}
-function touches(e){e.preventDefault();touchMode=true;ac();musicOn=true;const prevP=TK.P;for(const k in TK)TK[k]=false;
- for(const t of e.touches){const p=toCanvas(t);for(const k in BTN)if(hitBtn(p,BTN[k]))TK[k]=true;if(p.x<120&&p.y>176){if(p.x<59)TK.L=true;else TK.R=true}}
+function fingerBtn(t){const p=toCanvas(t);for(const k in BTN)if(hitBtn(p,BTN[k]))return k;if(p.x<120&&p.y>176)return p.x<59?'L':'R';return null}
+function syncTK(){for(const k in TK)TK[k]=false;for(const hit of fingers.values())if(hit)TK[hit]=true}
+function touches(e){e.preventDefault();touchMode=true;ac();musicOn=true;const prevP=TK.P;const list=e.changedTouches||e.touches||[];
+ if(e.type==='touchend'||e.type==='touchcancel'){for(const t of list)fingers.delete(t.identifier)}
+ else{for(const t of list)fingers.set(t.identifier,fingerBtn(t))}
+ syncTK();
  if(e.type==='touchstart'){if(state==='pause'){state='play';SFX.pause()}else if(TK.P&&!prevP&&state==='play'){state='pause';SFX.pause()}else if(isMenu()||state==='tally')onStart()}}
 ['touchstart','touchmove','touchend','touchcancel'].forEach(ev=>cv.addEventListener(ev,touches,{passive:false}));
 document.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
@@ -307,7 +312,9 @@ function titleScreen(){ambDraw();const bob=Math.sin(frame*.06)*5;panel(W/2-172,2
  rect(0,H-36,W,36,'#3cba4e');rect(0,H-36,W,2,'#e7ffc8');
  for(let i=0;i<W;i+=4)if((i+(frame>>1))%12<2)rect(i,H-38,1,2,'#7CDB6A');
  rect(0,H-32,W,32,'#8d5a32');rect(0,H-32,W,2,'#5c3a22');drawPlayer();pl=sv;
- txt('Arrows or A D    Space jump    Shift run',W/2,158,10,'#fff');txt('P pause    M mute    R restart',W/2,174,10,'#ccc');txt('BEST '+best,W/2,196,12,'#9fd3ff');
+ if(touchMode){txt('Left    Right       JUMP    RUN',W/2,158,11,'#fff');txt('II pauses',W/2,174,10,'#ccc')}
+ else{txt('Arrows or A D    Space jump    Shift run',W/2,158,10,'#fff');txt('P pause    M mute    R restart',W/2,174,10,'#ccc')}
+ txt('BEST '+best,W/2,196,12,'#9fd3ff');
  if((frame%48)<32)txt(touchMode?'Tap to start':'Click or press Enter',W/2,222,13,'#ffe14d')}
 let last=performance.now(),accum=0;
 function loop(t){requestAnimationFrame(loop);try{accum+=Math.min(80,t-last);last=t;let n=0;while(accum>=1000/60&&n++<4){update();accum-=1000/60}draw()}catch(e){console.error(e)}}

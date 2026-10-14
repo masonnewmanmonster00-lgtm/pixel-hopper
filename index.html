@@ -160,6 +160,12 @@ h1 span{color:#ff6b6b}
 .mole{background:linear-gradient(#6ec6ff 0 28%,#4f9a35 28%)}
 .mole i{position:absolute;left:38%;bottom:18%;width:36px;height:28px;border-radius:18px 18px 8px 8px;background:#8b5a2b}
 .mole b{position:absolute;left:46%;bottom:38%;width:10px;height:10px;border-radius:50%;background:#111}
+.chess{background:#ecd9b0}
+.chess i{position:absolute;width:18%;height:22%;background:#a87a50}
+.chess i:nth-child(1){left:28%;top:22%}
+.chess i:nth-child(2){left:46%;top:44%}
+.chess i:nth-child(3){left:64%;top:22%}
+.chess b{position:absolute;left:44%;top:46%;width:14px;height:16px;border-radius:8px 8px 3px 3px;background:#16131f}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -222,7 +228,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Twenty-six browser games. Best scores stay on this device.</p>
+<p class="lede">Twenty-seven browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -342,6 +348,10 @@ a.card[hidden]{display:none}
 <a class="card" href="./connect-four.html" data-cat="Board" data-key="arcade-c4-best" data-name="Connect Four">
 <div class="thumb c4" aria-hidden="true"><i></i><i></i><i></i></div>
 <div class="meta"><p class="kicker">Board</p><h2>Connect Four</h2><p>Drop discs and connect four. Wins against the CPU are saved.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./chess.html" data-cat="Board" data-key="arcade-chess-best" data-name="Royal Chess">
+<div class="thumb chess" aria-hidden="true"><i></i><i></i><i></i><b></b></div>
+<div class="meta"><p class="kicker">Board</p><h2>Royal Chess</h2><p>Play a full game against the computer or a friend. Wins are saved.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 <a class="card" href="./whack-a-mole.html" data-cat="Arcade" data-key="arcade-mole-best" data-name="Whack-a-Mole">
 <div class="thumb mole" aria-hidden="true"><i></i><b></b></div>

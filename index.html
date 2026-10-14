@@ -263,6 +263,9 @@ h1 span{color:#ff6b6b}
 .tt{background:#0c2340}
 .tt i{position:absolute;left:16%;top:46%;width:68%;height:16%;border-radius:3px;background:#1a5fb4;box-shadow:inset 0 0 0 2px #fff}
 .tt b{position:absolute;left:46%;top:30%;width:12px;height:12px;border-radius:50%;background:#fff}
+.rh{background:#7ac74f}
+.rh i{position:absolute;left:10%;top:58%;width:80%;height:10%;background:#4a4e57}
+.rh b{position:absolute;left:44%;top:30%;width:14px;height:16px;border-radius:3px;background:#fff;box-shadow:0 -5px 0 #e63946}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -325,7 +328,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Fifty-one browser games. Best scores stay on this device.</p>
+<p class="lede">Fifty-two browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -552,6 +555,10 @@ a.card[hidden]{display:none}
 <a class="card" href="./table-tennis.html" data-cat="Sports" data-key="arcade-tt-best" data-name="Table Tennis">
 <div class="thumb tt" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Sports</p><h2>Table Tennis</h2><p>First to 11 against the CPU. Wins are saved.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./road-hopper.html" data-cat="Arcade" data-key="arcade-road-best" data-name="Road Hopper">
+<div class="thumb rh" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Arcade</p><h2>Road Hopper</h2><p>Hop the roads, rivers, and tracks. Best is your furthest row.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

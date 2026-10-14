@@ -110,6 +110,12 @@ h1 span{color:#ff6b6b}
 .td i:nth-child(1){left:0;right:0;top:46%;height:16px}
 .td i:nth-child(2){left:62%;top:46%;bottom:0;width:16px}
 .td b{position:absolute;left:28%;top:28%;width:22px;height:22px;border-radius:50%;background:#4af;box-shadow:8px 0 0 #4af}
+.soli{background:#0a3d1f}.soli i{position:absolute;width:28px;height:40px;border-radius:4px;background:#fff;top:36%}
+.soli i:nth-child(1){left:22%}.soli i:nth-child(2){left:40%;background:#d22}.soli i:nth-child(3){left:58%}
+.rink{background:#0b1220}.rink i,.rink b{position:absolute;border-radius:50%}
+.rink i{width:22px;height:22px;left:42%}
+.rink i:nth-child(1){top:22%;background:#4af}.rink i:nth-child(2){bottom:18%;background:#f44}
+.rink b{left:46%;top:46%;width:12px;height:12px;background:#eee}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -172,7 +178,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Thirteen browser games. Best scores stay on this device.</p>
+<p class="lede">Fifteen browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -242,6 +248,14 @@ a.card[hidden]{display:none}
 <div class="thumb mine" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
 <div class="meta"><p class="kicker">Puzzle</p><h2>Minefield</h2><p>Tap to reveal. Long-press, or use Flag, to mark a mine.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
+<a class="card" href="./solitaire.html" data-cat="Classic Puzzle" data-key="arcade-solitaire-best" data-name="Solitaire">
+<div class="thumb soli" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="meta"><p class="kicker">Classic · Puzzle</p><h2>Solitaire</h2><p>Build the four piles from ace to king. Best is your lowest winning move count.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./air-hockey.html" data-cat="Classic Arcade" data-key="arcade-hockey-best" data-name="Air Hockey">
+<div class="thumb rink" aria-hidden="true"><i></i><i></i><b></b></div>
+<div class="meta"><p class="kicker">Classic · Arcade</p><h2>Air Hockey</h2><p>Two players on one phone. Drag a paddle on each half and race to 7 goals.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
 </main>
 <p id="empty" hidden>No games match that search.</p>
 <script>
@@ -253,7 +267,7 @@ function readRecent(){try{const v=JSON.parse(localStorage.getItem(RECENT)||"[]")
 function remember(href){try{const next=[href,...readRecent().filter(x=>x!==href)].slice(0,8);localStorage.setItem(RECENT,JSON.stringify(next))}catch(e){}}
 function paintScores(){document.querySelectorAll("a.card").forEach(card=>{const n=readScore(card.dataset.key);const el=card.querySelector(".best");if(el)el.textContent=n==null?"-":String(n)})}
 function paintRecent(){const wrap=document.getElementById("recent-wrap"),row=document.getElementById("recent");const cards=[...document.querySelectorAll("a.card")];const shown=readRecent().map(href=>cards.find(c=>c.getAttribute("href")===href)).filter(Boolean);wrap.hidden=!shown.length;row.replaceChildren();for(const card of shown){const a=document.createElement("a");a.className="recent";a.href=card.getAttribute("href");a.textContent=card.dataset.name;a.addEventListener("click",()=>remember(a.getAttribute("href")));row.appendChild(a)}}
-function apply(){const q=document.getElementById("q").value.trim().toLowerCase();let visible=0;document.querySelectorAll("a.card").forEach(card=>{const blob=(card.dataset.name+" "+card.innerText).toLowerCase();const ok=(cat==="All"||card.dataset.cat===cat)&&(!q||blob.includes(q));card.hidden=!ok;if(ok)visible++});document.getElementById("empty").hidden=visible>0}
+function apply(){const q=document.getElementById("q").value.trim().toLowerCase();let visible=0;document.querySelectorAll("a.card").forEach(card=>{const blob=(card.dataset.name+" "+card.innerText).toLowerCase();const cats=(card.dataset.cat||"").split(/[\s,]+/).filter(Boolean);const ok=(cat==="All"||cats.includes(cat))&&(!q||blob.includes(q));card.hidden=!ok;if(ok)visible++});document.getElementById("empty").hidden=visible>0}
 document.querySelectorAll(".chip").forEach(btn=>btn.addEventListener("click",()=>{cat=btn.dataset.cat;document.querySelectorAll(".chip").forEach(b=>{const on=b===btn;b.classList.toggle("on",on);b.setAttribute("aria-pressed",on?"true":"false")});apply()}));
 let typed=false;
 document.getElementById("q").addEventListener("keydown",()=>{typed=true});

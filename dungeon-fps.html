@@ -14,7 +14,7 @@ input[type=range]{accent-color:#d08030;width:160px}select{background:#1a1210;col
 #menu .btns{justify-content:center}button{background:linear-gradient(#a0602a,#6a3a16);color:#fff;border:1px solid #d09050;border-radius:5px;padding:7px 20px;font-weight:bold;cursor:pointer}
 button:hover{filter:brightness(1.25)}
 .help{color:#c8c4d8;font:700 11px/1.3 ui-monospace,monospace;margin:0;flex:0 0 auto;max-width:96vw}kbd{background:#2a2020;border:1px solid #554;border-radius:3px;padding:0 5px;color:#eee}
-a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:40;display:inline-flex;align-items:center;min-height:40px;padding:0 12px;border-radius:999px;background:rgba(8,8,16,.82);color:#ffe14d;border:1px solid rgba(255,225,77,.55);font:700 12px/1 ui-monospace,monospace;letter-spacing:.04em;text-decoration:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent}a.back:focus-visible{outline:2px solid #ffe14d;outline-offset:2px}
+a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:80;display:inline-flex;align-items:center;min-height:40px;padding:0 12px;border-radius:999px;background:rgba(8,8,16,.82);color:#ffe14d;border:1px solid rgba(255,225,77,.55);font:700 12px/1 ui-monospace,monospace;letter-spacing:.04em;text-decoration:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent}a.back:focus-visible{outline:2px solid #ffe14d;outline-offset:2px}
 </style></head>
 <body><a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a><h1>DUNGEON FPS</h1><div id="wrap"><div id="menu"><div class="box">
 <h2>SETTINGS</h2>
@@ -25,7 +25,7 @@ a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(saf
 <p><label><input type="checkbox" id="inv"> Invert mouse</label></p>
 <p class="btns"><button id="close">Resume</button> <button id="restart">Restart</button></p></div></div>
 <canvas id="c" width="640" height="400" tabindex="0"></canvas></div>
-<p class="help">Click to start. <kbd>W</kbd>/<kbd>S</kbd> move, <kbd>A</kbd>/<kbd>D</kbd> or mouse turn, <kbd>Space</kbd>/click shoot, <kbd>Enter</kbd> restart, <kbd>Esc</kbd>/<kbd>M</kbd> settings, <kbd>Tab</kbd>/<kbd>N</kbd> minimap.</p>
+<p class="help">Click to start. <kbd>W</kbd>/<kbd>S</kbd> move, <kbd>A</kbd>/<kbd>D</kbd> or mouse turn, <kbd>Space</kbd>/click shoot. Phone: joystick, drag the right side to look, FIRE. <kbd>Enter</kbd> restart, <kbd>Esc</kbd>/<kbd>M</kbd> settings, <kbd>Tab</kbd>/<kbd>N</kbd> minimap.</p>
 <script>
 const c=document.getElementById('c'),x=c.getContext('2d'),W=640,H=400,keys={};
 const M=["################","#......#.......#","#..##..#..###..#","#..#...........#","#..#..####..#..#","#.....#.....#..#","####..#..####..#","#..............#","#..###....##...#","#....#.....#...#","#....#..#..#...#","#.......#......E","################"];
@@ -87,7 +87,7 @@ if(best){best.hp-=2;best.hurt=6;hitM=12;const ix=best.x-cs*0.2,iy=best.y-sn*0.2;
 else{const d=zb[W/2]||5;const ix=P.x+cs*(d-0.03),iy=P.y+sn*(d-0.03);burst(ix,iy,.5,'s',14);parts.push({x:ix,y:iy,z:.5+(Math.random()-.5)*.06,vx:0,vy:0,vz:0,life:600,max:600,type:'h',sz:.05});}}
 function burst(px,py,pz,type,n){for(let i=0;i<n;i++){const a=Math.random()*7,v=Math.random()*0.05;parts.push({x:px,y:py,z:pz,vx:Math.cos(a)*v,vy:Math.sin(a)*v,vz:Math.random()*0.06-.01,life:20+Math.random()*25,max:45,type,sz:type=='g'?.03+Math.random()*.04:.02});}}
 function clear(e,d){for(let t=0;t<d;t+=0.05)if(wall(P.x+(e.x-P.x)*t/d,P.y+(e.y-P.y)*t/d))return false;return true;}
-function update(){tick++;mouseUpdate();if(msgT>0)msgT--;if(over||won||paused)return;const o=S(),s=o.spd,r=o.turn;
+function update(){tick++;mouseUpdate();if(msgT>0)msgT--;if(over||won||paused)return;touchMove();const o=S(),s=o.spd,r=o.turn;
 if(keys.a||keys.arrowleft)P.a-=r;if(keys.d||keys.arrowright)P.a+=r;
 let m=0;if(keys.w||keys.arrowup)m=s;if(keys.s||keys.arrowdown)m=-s;
 const nx=P.x+Math.cos(P.a)*m,ny=P.y+Math.sin(P.a)*m;if(!wall(nx,P.y))P.x=nx;if(!wall(P.x,ny))P.y=ny;
@@ -176,7 +176,7 @@ function drawGun(){const bx=Math.sin(bob)*10,by=Math.abs(Math.cos(bob))*8+recoil
  x.fillStyle=met(-24,24,'#181a1e','#40444c');x.fillRect(-22,55,44,70);
  x.fillStyle='#c48a68';x.beginPath();x.ellipse(-2,95,34,22,0.1,0,7);x.fill();x.fillStyle='#a87050';x.fillRect(-30,85,58,6);
  x.restore();}
-function drawHUD(){if(!locked()&&!paused&&!over&&!won){x.textAlign='center';x.font='bold 13px sans-serif';const t=fallback?'Mouse lock unavailable - move the mouse to the edges to turn, click to shoot':'Click to capture mouse';const w=x.measureText(t).width+20;x.fillStyle='rgba(0,0,0,.6)';x.fillRect(W/2-w/2,H-62,w,22);x.fillStyle=fallback?'#fc6':'#fff';x.fillText(t,W/2,H-46);}
+function drawHUD(){if(!window.TOUCH&&!locked()&&!paused&&!over&&!won){x.textAlign='center';x.font='bold 13px sans-serif';const t=fallback?'Mouse lock unavailable - move the mouse to the edges to turn, click to shoot':'Click to capture mouse';const w=x.measureText(t).width+20;x.fillStyle='rgba(0,0,0,.6)';x.fillRect(W/2-w/2,H-62,w,22);x.fillStyle=fallback?'#fc6':'#fff';x.fillText(t,W/2,H-46);}
 
  if(hitM){const k=4+(12-hitM);x.strokeStyle=`rgba(255,80,60,${hitM/12})`;x.lineWidth=3;x.beginPath();x.moveTo(W/2-k-6,H/2-k-6);x.lineTo(W/2-k,H/2-k);x.moveTo(W/2+k+6,H/2-k-6);x.lineTo(W/2+k,H/2-k);x.moveTo(W/2-k-6,H/2+k+6);x.lineTo(W/2-k,H/2+k);x.moveTo(W/2+k+6,H/2+k+6);x.lineTo(W/2+k,H/2+k);x.stroke();}
 const cx=W/2,cy=H/2,sp=4+recoil*8;x.strokeStyle='rgba(255,255,255,.9)';x.lineWidth=2;x.beginPath();
@@ -226,4 +226,54 @@ function mouseUpdate(){if(paused||over||won)return;const o=S();
 let dungeonHi=0;try{dungeonHi=+localStorage.getItem("arcade-dungeon-best")||0}catch(e){}
 function rememberScore(){try{if(typeof score==="number"&&score>dungeonHi){dungeonHi=score;localStorage.setItem("arcade-dungeon-best",String(score))}}catch(e){}}
 c.focus();reset();(function f(){update();rememberScore();draw();requestAnimationFrame(f)})();
+// ---- touch controls (shared) ----
+window.TOUCH=false;
+const TC={els:[],fit:null};
+function tcBtn(label,css,down,up){const b=document.createElement('div');b.className='tcb';b.textContent=label;b.style.cssText+=css;
+ b.addEventListener('pointerdown',e=>{e.preventDefault();try{b.setPointerCapture(e.pointerId)}catch(_){ }b.classList.add('on');down&&down(e);});
+ const end=e=>{b.classList.remove('on');up&&up(e);};b.addEventListener('pointerup',end);b.addEventListener('pointercancel',end);
+ document.body.appendChild(b);TC.els.push(b);return b;}
+function tcFit(){const s=Math.min(innerWidth/640,innerHeight/400);c.style.width=(640*s|0)+'px';c.style.height=(400*s|0)+'px';c.style.maxWidth='none';}
+function enableTouch(){if(window.TOUCH)return;window.TOUCH=true;document.body.classList.add('touch');
+ const st=document.createElement('style');st.textContent=`html{background:#0a0708}body.touch{overflow:hidden;position:fixed;inset:0;touch-action:none;-webkit-user-select:none;user-select:none;display:flex;align-items:center;justify-content:center}
+ body.touch>*:not(#wrap):not(canvas):not(.tcb):not(.tcz):not(a.back):not(script):not(style){display:none!important}
+ body.touch canvas{touch-action:none;border-width:0!important;box-shadow:none}body.touch #wrap{border:0;box-shadow:none}
+ .tcb{position:fixed;z-index:50;display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.45);color:rgba(255,255,255,.85);font:bold 22px sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
+ .tcb.on{background:rgba(255,255,255,.4)}.tcz{position:fixed;z-index:40;touch-action:none}`;document.head.appendChild(st);
+ tcFit();addEventListener('resize',tcFit);addEventListener('orientationchange',()=>setTimeout(tcFit,200));TC.setup();}
+if(matchMedia('(pointer:coarse)').matches||('ontouchstart' in window)||navigator.maxTouchPoints>0&&matchMedia('(hover:none)').matches)setTimeout(enableTouch,0);
+addEventListener('pointerdown',e=>{if(e.pointerType=='touch')enableTouch();},true);
+document.addEventListener('touchmove',e=>{if(window.TOUCH)e.preventDefault();},{passive:false});
+document.addEventListener('gesturestart',e=>e.preventDefault());
+
+var TJ={f:0,s:0};
+function touchMove(){if(!TJ||(!TJ.f&&!TJ.s))return;const sp=S().spd,ca=Math.cos(P.a),sa=Math.sin(P.a);
+ const vx=(ca*TJ.f-sa*TJ.s)*sp,vy=(sa*TJ.f+ca*TJ.s)*sp;if(!wall(P.x+vx,P.y))P.x+=vx;if(!wall(P.x,P.y+vy))P.y+=vy;bob+=0.18*Math.min(1,Math.hypot(TJ.f,TJ.s));}
+TC.setup=()=>{
+ // tap-to-restart on canvas end screens
+ const endTap=e=>{if(over){reset();return true}if(won){reset(true);return true}return false;};
+ // joystick zone (left half)
+ const jz=document.createElement('div');jz.className='tcz';jz.style.cssText='left:0;top:0;width:50vw;height:100vh';document.body.appendChild(jz);TC.els.push(jz);
+ const base=document.createElement('div');base.className='tcb';base.style.cssText='width:120px;height:120px;left:30px;bottom:30px;pointer-events:none';document.body.appendChild(base);
+ const knob=document.createElement('div');knob.className='tcb';knob.style.cssText='width:56px;height:56px;left:62px;bottom:62px;pointer-events:none;background:rgba(255,255,255,.45)';document.body.appendChild(knob);TC.els.push(base,knob);
+ let jid=null,jc=null;
+ const jset=(e)=>{const dx=e.clientX-jc.x,dy=e.clientY-jc.y,d=Math.min(55,Math.hypot(dx,dy)),a=Math.atan2(dy,dx),kx=Math.cos(a)*d,ky=Math.sin(a)*d;
+  knob.style.transform=`translate(${kx}px,${ky}px)`;const nx=kx/55,ny=ky/55;TJ.f=Math.abs(ny)>0.15?-ny:0;TJ.s=Math.abs(nx)>0.15?nx:0;};
+ jz.addEventListener('pointerdown',e=>{e.preventDefault();if(endTap())return;if(jid!==null)return;jid=e.pointerId;try{jz.setPointerCapture(jid)}catch(_){ }
+  const r=base.getBoundingClientRect();jc={x:r.left+r.width/2,y:r.top+r.height/2};started=true;jset(e);});
+ jz.addEventListener('pointermove',e=>{if(e.pointerId===jid)jset(e);});
+ const jend=e=>{if(e.pointerId!==jid)return;jid=null;TJ.f=TJ.s=0;knob.style.transform='';};jz.addEventListener('pointerup',jend);jz.addEventListener('pointercancel',jend);
+ // look zone (right half)
+ const lz=document.createElement('div');lz.className='tcz';lz.style.cssText='right:0;top:0;width:50vw;height:100vh';document.body.appendChild(lz);TC.els.push(lz);
+ const looks=new Map();
+ lz.addEventListener('pointerdown',e=>{e.preventDefault();if(endTap())return;try{lz.setPointerCapture(e.pointerId)}catch(_){ }looks.set(e.pointerId,e.clientX);started=true;});
+ lz.addEventListener('pointermove',e=>{if(!looks.has(e.pointerId)||paused)return;const dx=e.clientX-looks.get(e.pointerId);looks.set(e.pointerId,e.clientX);const o=S();P.a+=dx*o.sens*o.inv*1.6;});
+ const lend=e=>looks.delete(e.pointerId);lz.addEventListener('pointerup',lend);lz.addEventListener('pointercancel',lend);
+ // buttons
+ tcBtn('FIRE','width:100px;height:100px;right:28px;bottom:34px;font-size:18px;background:rgba(255,80,60,.3);border-color:rgba(255,140,120,.7)',e=>{if(endTap())return;keys[' ']=1;shoot();},()=>keys[' ']=0);
+ tcBtn('❚❚','width:52px;height:52px;right:14px;top:14px;font-size:16px',()=>{keys[' ']=0;menu(!paused);});
+ // hide overlay while settings menu is open
+ (function vis(){const hide=paused;for(const el of TC.els)el.style.display=hide?'none':'';requestAnimationFrame(vis);})();
+ // keep menu overlay above everything and fit
+ $('menu').style.zIndex=60;$('menu').style.position='fixed';};
 </script></body></html>

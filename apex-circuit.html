@@ -213,10 +213,10 @@ function physics(c,dt,frozen){const inp=c.inp,f=[Math.sin(c.h),Math.cos(c.h)],r=
  if(inp.hb)Fb+=vF>0?2500:0;
  const drag=.42*vF*Math.abs(vF)+(off?110:28)*vF;
  const nv=vF+(Fe-Fb*Math.sign(vF)-drag)/MASS*(off?.85:1)*dt;vF=(Fb&&vF>0&&nv<0)?0:nv;
- const sa=inp.steer*.6/(1+Math.abs(vF)/22),sp=Math.max(Math.abs(vF),1);
- let yawT=vF*Math.tan(sa)/2.6;const gmax=11.5*grip*(inp.hb?.5:1);const lim=gmax/sp*(inp.hb?2.4:1.12);yawT=clamp(yawT,-lim,lim);
- c.yaw+=(yawT-c.yaw)*Math.min(1,dt*(inp.hb?3.5:7.5));c.h-=c.yaw*dt;
- vR*=Math.exp(-dt*(inp.hb?1.4:9.5)*grip*(Math.abs(vR)>4?.6:1));
+ const sa=inp.steer*.62/(1+Math.abs(vF)/38),sp=Math.max(Math.abs(vF),1);
+ let yawT=vF*Math.tan(sa)/2.6;const gmax=14*grip*(inp.hb?.5:1);const lim=gmax/sp*(inp.hb?2.4:1.12);yawT=clamp(yawT,-lim,lim);
+ c.yaw+=(yawT-c.yaw)*Math.min(1,dt*(inp.hb?3.5:11));c.h-=c.yaw*dt;
+ vR*=Math.exp(-dt*(inp.hb?1.4:12)*grip*(Math.abs(vR)>4?.6:1));
  c.vx=f[0]*vF+r[0]*vR;c.vz=f[1]*vF+r[1]*vR;c.x+=c.vx*dt;c.z+=c.vz*dt;c.vF=vF;c.vR=vR;c.spin+=vF/RW*dt;c.steerA+=(sa-c.steerA)*Math.min(1,dt*10);
  locate(c);
  const lim2=HW+RUN-1.05;if(Math.abs(c.lat)>lim2){const i=c.ti,s=Math.sign(c.lat),push=c.lat-s*lim2;c.x-=SX[i]*push;c.z-=SZ[i]*push;
@@ -228,7 +228,7 @@ function carCollide(){for(let a=0;a<cars.length;a++)for(let b=a+1;b<cars.length;
 const keys={};let shake=0;
 function playerInput(dt){const p=player;if(p.auto){aiInput(p);return}
  const thr=(keys.KeyW||keys.ArrowUp)?1:0,brk=(keys.KeyS||keys.ArrowDown)?1:0,st=((keys.KeyD||keys.ArrowRight)?1:0)-((keys.KeyA||keys.ArrowLeft)?1:0);
- p.inp.thr=thr;p.inp.brk=brk;p.inp.hb=keys.Space?1:0;p.inp.steer+=(st-p.inp.steer)*Math.min(1,dt*(st?5:8));}
+ p.inp.thr=thr;p.inp.brk=brk;p.inp.hb=keys.Space?1:0;p.inp.steer+=(st-p.inp.steer)*Math.min(1,dt*(st?9:12));}
 const STEP=1/120;
 function stepSim(dt){if(state=='count'){countT-=dt;if(countT<=0){state='race';raceT=0;msg='GO!';msgT=1.2;}}
  if(state!='count')raceT+=dt;if(msgT>0)msgT-=dt;

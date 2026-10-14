@@ -148,7 +148,7 @@ function update(){frame++;if(AC)music();
  if(pl.ground&&!wasG&&fallV>2.2){pl.sx2=1.28;pl.sy2=.72;SFX.land();burst(pl.x+6,pl.y+pl.h,'#e8dcc0',5,1.2,12)}
  pl.sx2+=(1-pl.sx2)*.22;pl.sy2+=(1-pl.sy2)*.22;pl.anim+=Math.abs(pl.vx)*.14;if((frame%110)===0)pl.blink=8;if(pl.blink>0)pl.blink--;
  coins=coins.filter(c=>{if(Math.abs(c.x-(pl.x+6))<11&&Math.abs(c.y-(pl.y+7))<12){score+=10;lvlCoins++;SFX.coin();burst(c.x,c.y,'#ffe14d',6,2,16);popup(c.x,c.y-6,'+10','#ffe14d');return false}return true});
- enemies.forEach(e=>{if(e.dead){e.dead--;return}e.ph+=.22;e.vy=Math.min(e.vy+.28,7);e.hitX=false;e.ground=false;collide(e,e.vx,0);if(e.hitX)e.vx=-e.vx;collide(e,0,e.vy);
+ enemies.forEach(e=>{if(e.dead>0){if(--e.dead===0)e.dead=-1;return}e.ph+=.22;e.vy=Math.min(e.vy+.28,7);e.hitX=false;e.ground=false;collide(e,e.vx,0);if(e.hitX)e.vx=-e.vx;collide(e,0,e.vy);
   const ahead=(e.vx>0?e.x+e.w+1:e.x-1)/T|0,below=(e.y+e.h+2)/T|0;if(e.ground&&!solid(ahead,below))e.vx=-e.vx;
   if(e.y>map.length*T+30)e.dead=-1;
   if(!deathT&&pl.x<e.x+e.w&&pl.x+pl.w>e.x&&pl.y<e.y+e.h&&pl.y+pl.h>e.y){

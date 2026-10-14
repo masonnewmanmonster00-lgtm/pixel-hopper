@@ -1,0 +1,182 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b14"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon.svg"><link rel="apple-touch-icon" href="./icon.svg">
+<title>Meteor Typer</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#05030f;color:#e8ecff;font-family:"Trebuchet MS",system-ui,sans-serif;overflow:hidden;touch-action:manipulation}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:95;display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 12px;border-radius:999px;background:rgba(8,8,16,.82);color:#ffe14d;border:1px solid rgba(255,225,77,.55);font:700 12px/1 ui-monospace,monospace;letter-spacing:.04em;text-decoration:none;touch-action:manipulation}a.back:focus-visible{outline:2px solid #ffe14d;outline-offset:2px}
+#mute{position:fixed;top:8px;right:8px;z-index:60;background:rgba(10,20,40,.75);border:1px solid #2b6c8f;color:#9fe8ff;border-radius:18px;padding:0 12px;min-height:40px;font-size:14px;cursor:pointer}
+#inp{position:fixed;left:50%;bottom:4px;transform:translateX(-50%);width:1px;height:1px;opacity:0.01;font-size:16px;border:0;z-index:1}
+.scr{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:10;text-align:center;padding:20px;background:radial-gradient(ellipse at center,rgba(20,10,60,.85),rgba(3,2,10,.95))}
+.scr.on{display:flex}
+h1{font-size:clamp(38px,9vw,78px);letter-spacing:3px;background:linear-gradient(#ffe36b,#ff7a2f 60%,#ff2f6d);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 18px rgba(255,120,40,.5));margin-bottom:6px}
+h2{font-size:clamp(26px,6vw,44px);color:#ffd36b;margin-bottom:10px}
+.sub{color:#9fb4ff;margin-bottom:24px;font-size:clamp(14px,3.6vw,18px)}
+.btn{display:block;width:min(300px,80vw);margin:8px auto;padding:14px;font-size:19px;font-weight:bold;border-radius:14px;border:2px solid #ffb347;background:linear-gradient(#3a1f5c,#1b0f33);color:#fff;cursor:pointer;box-shadow:0 0 16px rgba(255,160,60,.3)}
+.btn:active{transform:scale(.97)}
+.btn.alt{border-color:#4fd8ff;box-shadow:0 0 16px rgba(80,200,255,.3)}
+.best{margin-top:14px;color:#c9b8ff;font-size:15px;line-height:1.6}
+.diff{display:flex;gap:6px;justify-content:center;margin:6px 0 12px}
+.diff button{padding:8px 12px;border-radius:10px;border:1px solid #555;background:#1a1530;color:#ccc;font-size:15px;cursor:pointer}
+.diff button.sel{border-color:#ffd36b;color:#ffd36b;background:#2d2050}
+#test{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;padding:60px 16px 16px;z-index:8;background:linear-gradient(#0a0820,#140a2e)}
+#test.on{display:flex}
+#tstats{display:flex;gap:18px;font-size:clamp(16px,4vw,22px);margin-bottom:14px}
+#tstats b{color:#ffd36b}
+#ttext{max-width:820px;width:100%;font-family:"Courier New",monospace;font-size:clamp(17px,4.2vw,26px);line-height:1.6;background:rgba(0,0,0,.35);border:1px solid #2b2b5a;border-radius:14px;padding:16px;height:52vh;overflow:hidden;cursor:text;word-break:break-word}
+#ttext .ok{color:#6dffa8}#ttext .bad{color:#ff5f7a;background:rgba(255,60,90,.2)}#ttext .cur{border-left:2px solid #ffd36b;animation:bl 1s infinite}#ttext .todo{color:#7d7fa8}
+@keyframes bl{50%{border-color:transparent}}
+#thint{color:#8888bb;margin-top:10px;font-size:14px}
+.big{font-size:clamp(40px,10vw,70px);color:#6dffa8;font-weight:bold}
+@media(max-height:520px){h1{font-size:32px;margin-bottom:2px}.sub{margin-bottom:8px}.btn{padding:8px;font-size:16px;margin:4px auto}.best{margin-top:6px;font-size:13px}.hint{display:none}}
+</style></head><body>
+<canvas id="c"></canvas>
+<a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a>
+<button id="mute">🔊</button>
+<input id="inp" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="text">
+<div id="title" class="scr on">
+<h1>METEOR TYPER</h1>
+<div class="sub">Type the words. Save the base. Become a keyboard legend.</div>
+<div class="diff" id="diff"><button data-d="0">Easy</button><button data-d="1" class="sel">Normal</button><button data-d="2">Hard</button></div>
+<button class="btn" id="playBtn">🚀 Meteor Defense</button>
+<button class="btn alt" id="testBtn">⌨️ Speed Test (60s)</button>
+<div class="best" id="bestBox"></div>
+<div class="best hint" style="font-size:13px;color:#8080b0">Gold meteors are power-ups: <b style="color:#ffd36b">NUKE</b>, <b style="color:#7fe7ff">FREEZE</b>, <b style="color:#7dff9a">SHIELD</b>, <b style="color:#ff9cf0">SLOWMO</b></div>
+</div>
+<div id="over" class="scr"><h2 id="overT">BASE DESTROYED</h2><div id="overS" class="best" style="font-size:18px"></div>
+<button class="btn" id="againBtn">Play Again</button><button class="btn alt" id="menuBtn">Main Menu</button></div>
+<div id="pause" class="scr"><h2>PAUSED</h2><button class="btn" id="resBtn">Resume</button><button class="btn alt" id="quitBtn">Quit to Menu</button></div>
+<div id="test"><div id="tstats"><span>⏱ <b id="tTime">60</b>s</span><span>WPM <b id="tWpm">0</b></span><span>ACC <b id="tAcc">100</b>%</span></div>
+<div id="ttext"></div><div id="thint">Start typing to begin the timer · Esc to quit</div></div>
+<div id="tres" class="scr"><h2>Speed Test Results</h2><div class="big" id="rWpm">0 WPM</div><div id="rInfo" class="best" style="font-size:18px"></div>
+<button class="btn alt" id="retestBtn">Try Again</button><button class="btn" id="tmenuBtn">Main Menu</button></div>
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const store={get(k,d){try{const v=localStorage.getItem('mtyper_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('mtyper_'+k,JSON.stringify(v))}catch(e){}}};
+// ---------- words ----------
+const W1="cat dog sun run sky map red box fox cup hat jet ice fun web key mix top zip arm bag bed bus car day egg fan gum hop ink jam kid leg mud net owl pen rat sea toy van wax yak zoo bat cow fig hen jar lip mop nut oak pig rug sap tub vet wig ant bee cab".split(" ");
+const W2="star moon rock fire wave ship base beam bolt dust glow jump kick lamp mars nova orbit pixel quest ray solar tiger usher vivid wolf zebra alien blast comet drift eagle flame ghost honey laser magic ninja ocean plasma quick robot storm turbo ultra venom wizard xenon yodel zesty brave cloud dream frost giant hyper ivory jelly karma lunar metal noble opal prism radar sonic tempo".split(" ");
+const W3="asteroid backbone cannonade defender eclipse frontier galactic horizon impulse javelin keyboard lightning meteorite nebula outpost particle quantum rocketry satellite telescope universe velocity warpdrive xylophone gravity hologram infinity jetstream kilometer magnetic navigator overdrive phantom radiation spaceship thruster vortex wildfire champion fortress spectrum crystal shockwave starlight supernova blackhole moonbase".split(" ");
+const W4="intergalactic electromagnetic extraterrestrial constellation photosynthesis hyperspace thunderstorm acceleration bombardment catastrophic interstellar magnificent observatory spectacular transmission unbelievable astronomical commander deflection exploration".split(" ");
+const PW={nuke:'#ffd36b',freeze:'#7fe7ff',shield:'#7dff9a',slowmo:'#ff9cf0'};
+const TEXTW="the quick brown fox jumps over a lazy dog while every small star in the night sky glows above quiet hills people often say that practice makes perfect and typing is no different keep your eyes on the screen and let your fingers find the keys a good rhythm matters more than raw speed when you stay calm the words flow like water across a smooth stone rocket ships fly to distant planets and brave pilots watch the gauges carefully learning something new each day helps your mind grow strong music can make a long road feel short and friends make hard work feel like play the ocean is deep and full of strange bright fish that dance in the dark there is always time to try again if you make a mistake".split(" ");
+// ---------- audio ----------
+let AC=null,muted=store.get('muted',false);
+function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(AC&&AC.state==='suspended')AC.resume();return AC}
+function tone(f,d,type,vol,slide){if(muted)return;const a=ac();if(!a)return;const t=a.currentTime,o=a.createOscillator(),g=a.createGain();o.type=type||'square';o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(20,slide),t+d);g.gain.setValueAtTime(vol||.08,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+d+.02)}
+function noise(d,vol){if(muted)return;const a=ac();if(!a)return;const n=a.sampleRate*d,b=a.createBuffer(1,n,a.sampleRate),c=b.getChannelData(0);for(let i=0;i<n;i++)c[i]=(Math.random()*2-1)*(1-i/n)**2;const s=a.createBufferSource(),g=a.createGain(),fl=a.createBiquadFilter();fl.type='lowpass';fl.frequency.value=1200;s.buffer=b;g.gain.value=vol||.25;s.connect(fl);fl.connect(g);g.connect(a.destination);s.start()}
+const sfx={key:()=>tone(880+Math.random()*80,.04,'square',.03),bad:()=>tone(140,.12,'sawtooth',.06,90),laser:()=>tone(1400,.15,'sawtooth',.05,200),boom:()=>{noise(.45,.3);tone(120,.3,'triangle',.12,40)},hit:()=>{noise(.6,.45);tone(80,.5,'sawtooth',.12,30)},power:()=>{[523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,.12,'triangle',.08),i*60))},wave:()=>{[392,523,659].forEach((f,i)=>setTimeout(()=>tone(f,.18,'square',.05),i*110))},over:()=>{[392,330,262,196].forEach((f,i)=>setTimeout(()=>tone(f,.3,'triangle',.09),i*180))}};
+function setMute(m){muted=m;store.set('muted',m);$('mute').textContent=m?'🔇':'🔊'}
+setMute(muted);$('mute').onclick=e=>{setMute(!muted);e.stopPropagation();focusInp()};
+// ---------- canvas ----------
+const cv=$('c'),cx=cv.getContext('2d');let VW=0,VH=0,DPR=1;
+function resize(){DPR=Math.min(2,window.devicePixelRatio||1);VW=innerWidth;VH=(window.visualViewport?visualViewport.height:innerHeight);cv.width=VW*DPR;cv.height=VH*DPR;cv.style.height=VH+'px';cx.setTransform(DPR,0,0,DPR,0,0)}
+addEventListener('resize',resize);if(window.visualViewport)visualViewport.addEventListener('resize',resize);resize();
+const stars=[];for(let i=0;i<160;i++)stars.push({x:Math.random(),y:Math.random(),s:Math.random()*1.8+.3,v:Math.random()*.02+.005});
+// ---------- state ----------
+let mode='title',diff=1;
+document.querySelectorAll('#diff button').forEach(b=>b.onclick=()=>{diff=+b.dataset.d;document.querySelectorAll('#diff button').forEach(x=>x.classList.toggle('sel',x===b))});
+const G={};
+function show(id){['title','over','pause','tres'].forEach(s=>$(s).classList.toggle('on',s===id));$('test').classList.toggle('on',id==='test')}
+function bestText(){const b=store.get('best',{score:0,wave:0}),w=store.get('wpm',{wpm:0,acc:0});return `🏆 Best score: <b>${b.score}</b> (wave ${b.wave})<br>⌨️ Best speed: <b>${w.wpm} WPM</b> @ ${w.acc}% accuracy`}
+function title(){mode='title';show('title');$('bestBox').innerHTML=bestText()}
+function newGame(){Object.assign(G,{score:0,wave:0,hp:5,maxhp:5,combo:0,maxCombo:0,mult:1,meteors:[],parts:[],lasers:[],floats:[],target:null,typed:'',spawnLeft:0,spawnT:0,freeze:0,slow:0,shake:0,typedOK:0,typedBad:0,waveBanner:0,t:0});mode='game';show(null);nextWave();focusInp()}
+function nextWave(){G.wave++;G.spawnLeft=6+G.wave*2;G.spawnT=1.2;G.waveBanner=2.2;sfx.wave()}
+function pickWord(){const w=G.wave+diff*2,r=Math.random();let pool=W1;if(w>=3)pool=r<.5?W1:W2;if(w>=5)pool=r<.25?W1:r<.75?W2:W3;if(w>=8)pool=r<.15?W2:r<.75?W3:W4;if(w>=11)pool=r<.5?W3:W4;
+ for(let k=0;k<20;k++){const word=pool[Math.random()*pool.length|0];if(!G.meteors.some(m=>m.word[0]===word[0]))return word}return pool[Math.random()*pool.length|0]}
+function spawn(){let word,power=null;if(G.wave>=2&&Math.random()<.09&&!G.meteors.some(m=>m.power)){const ks=Object.keys(PW);power=ks[Math.random()*ks.length|0];word=power}else word=pickWord();
+ cx.font='bold 18px Courier New';const tw=cx.measureText(word).width;const r=14+Math.min(26,word.length*2.2);const x=Math.max(tw/2+12,Math.min(VW-tw/2-12,40+Math.random()*(VW-80)));
+ const sp=(18+G.wave*3.2+diff*8)*(VH/700)*(power?.8:1)/(1+word.length*.04);
+ const pts=[];for(let i=0;i<10;i++)pts.push(.75+Math.random()*.35);
+ G.meteors.push({word,power,x,y:-r-10,r,vx:(Math.random()-.5)*10,vy:sp,rot:0,vr:(Math.random()-.5)*1.5,pts,hit:0})}
+function baseY(){return VH-70}
+function explode(x,y,col,n){for(let i=0;i<n;i++){const a=Math.random()*6.28,s=Math.random()*240+40;G.parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:Math.random()*.8+.4,c:col,sz:Math.random()*3+1.5})}}
+function destroy(m){const i=G.meteors.indexOf(m);if(i<0)return;G.meteors.splice(i,1);G.combo++;G.maxCombo=Math.max(G.maxCombo,G.combo);G.mult=1+Math.floor(G.combo/5);const pts=m.word.length*10*G.mult;G.score+=pts;G.floats.push({x:m.x,y:m.y,t:1,s:'+'+pts+(G.mult>1?' x'+G.mult:'')});
+ G.lasers.push({x:m.x,y:m.y,t:.25});explode(m.x,m.y,m.power?PW[m.power]:'#ffa04a',30);sfx.laser();sfx.boom();G.shake=Math.max(G.shake,4);
+ if(m.power){sfx.power();const p=m.power;G.floats.push({x:VW/2,y:VH/2,t:1.6,s:p.toUpperCase()+'!',big:1});
+  if(p==='nuke'){G.meteors.slice().forEach(o=>{G.meteors.splice(G.meteors.indexOf(o),1);G.score+=o.word.length*5*G.mult;explode(o.x,o.y,'#ffd36b',20)});G.shake=14}
+  if(p==='freeze')G.freeze=4;if(p==='slowmo')G.slow=7;if(p==='shield'){G.hp=Math.min(G.maxhp+1,G.hp+1);G.maxhp=Math.max(G.maxhp,G.hp)}}
+}
+function typeChar(ch){if(mode==='test')return testChar(ch);if(mode!=='game')return;ch=ch.toLowerCase();if(!/[a-z]/.test(ch))return;
+ if(!G.target||!G.meteors.includes(G.target)){G.target=null;G.typed='';let best=null;for(const m of G.meteors)if(m.word[0]===ch&&m.y>-m.r&&(!best||m.y>best.y))best=m;if(!best){miss();return}G.target=best}
+ const nt=G.typed+ch;if(G.target.word.startsWith(nt)){G.typed=nt;G.typedOK++;G.target.hit=.1;sfx.key();G.lasers.push({x:G.target.x,y:G.target.y,t:.08,thin:1});if(nt===G.target.word){destroy(G.target);G.target=null;G.typed=''}}else miss()}
+function miss(){G.typedBad++;G.combo=0;G.mult=1;sfx.bad();G.shake=Math.max(G.shake,2)}
+function update(dt){G.t+=dt;if(G.waveBanner>0)G.waveBanner-=dt;if(G.freeze>0)G.freeze-=dt;if(G.slow>0)G.slow-=dt;G.shake*=.88;
+ const f=G.freeze>0?0:G.slow>0?.4:1;
+ if(G.spawnLeft>0){G.spawnT-=dt;if(G.spawnT<=0){spawn();G.spawnLeft--;G.spawnT=Math.max(.7,(2.6-G.wave*.12-diff*.3))*(.7+Math.random()*.6)}}else if(!G.meteors.length){nextWave()}
+ const by=baseY();for(const m of G.meteors.slice()){m.y+=m.vy*dt*f;m.x+=m.vx*dt*f;if(m.x<m.r||m.x>VW-m.r)m.vx*=-1;m.rot+=m.vr*dt;m.hit=Math.max(0,m.hit-dt);
+  if(Math.random()<.5)G.parts.push({x:m.x+(Math.random()-.5)*m.r,y:m.y-m.r*.6,vx:0,vy:-30,l:.4,c:m.power?PW[m.power]:'#ff7a2f',sz:2.5});
+  if(m.y+m.r*.5>=by){G.meteors.splice(G.meteors.indexOf(m),1);if(G.target===m){G.target=null;G.typed=''}G.hp--;G.combo=0;G.mult=1;explode(m.x,by,'#ff4040',40);sfx.hit();G.shake=16;if(G.hp<=0)return gameOver()}}
+ for(const p of G.parts){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.96;p.vy*=.96;p.l-=dt}G.parts=G.parts.filter(p=>p.l>0);
+ G.lasers.forEach(l=>l.t-=dt);G.lasers=G.lasers.filter(l=>l.t>0);G.floats.forEach(l=>{l.t-=dt;l.y-=30*dt});G.floats=G.floats.filter(l=>l.t>0)}
+function saveHub(n){n=Math.floor(n)||0;if(!(n>0))return;try{const prev=+localStorage.getItem('arcade-typer-best')||0;if(n>prev)localStorage.setItem('arcade-typer-best',String(n))}catch(e){}}
+function gameOver(){mode='over';sfx.over();const b=store.get('best',{score:0,wave:0});const nb=G.score>b.score;if(nb)store.set('best',{score:G.score,wave:G.wave});saveHub(G.score);const acc=Math.round(100*G.typedOK/Math.max(1,G.typedOK+G.typedBad));
+ $('overS').innerHTML=`Score: <b>${G.score}</b>${nb?' <span style="color:#6dffa8">NEW BEST!</span>':''}<br>Wave reached: ${G.wave}<br>Best combo: ${G.maxCombo} · Accuracy: ${acc}%`;show('over')}
+// ---------- drawing ----------
+function drawBg(dt){const g=cx.createLinearGradient(0,0,0,VH);g.addColorStop(0,'#05030f');g.addColorStop(.6,'#120a30');g.addColorStop(1,'#2a0f3a');cx.fillStyle=g;cx.fillRect(0,0,VW,VH);
+ for(const s of stars){s.y+=s.v*dt*(mode==='game'&&G.freeze>0?0:1);if(s.y>1)s.y=0;cx.fillStyle=`rgba(255,255,255,${.4+s.s/4})`;cx.fillRect(s.x*VW,s.y*VH,s.s,s.s)}
+ cx.fillStyle='rgba(120,80,255,.08)';cx.beginPath();cx.arc(VW*.8,VH*.2,120,0,7);cx.fill()}
+function drawGame(){const by=baseY();cx.save();if(G.shake>.5)cx.translate((Math.random()-.5)*G.shake,(Math.random()-.5)*G.shake);
+ // ground & base
+ cx.fillStyle='#1b1030';cx.beginPath();cx.moveTo(0,by+20);for(let x=0;x<=VW;x+=40)cx.lineTo(x,by+16+Math.sin(x*.05)*6);cx.lineTo(VW,VH);cx.lineTo(0,VH);cx.fill();
+ const bx=VW/2;cx.fillStyle='#3d2a6b';cx.beginPath();cx.ellipse(bx,by+22,90,26,0,Math.PI,0);cx.fill();cx.fillStyle='#6a4cc2';cx.beginPath();cx.ellipse(bx,by+14,50,30,0,Math.PI,0);cx.fill();
+ cx.fillStyle='#9ad8ff';cx.globalAlpha=.6;cx.beginPath();cx.ellipse(bx,by+8,26,18,0,Math.PI,0);cx.fill();cx.globalAlpha=1;
+ let ang=-Math.PI/2;if(G.target)ang=Math.atan2(G.target.y-by,G.target.x-bx);cx.save();cx.translate(bx,by-6);cx.rotate(ang);cx.fillStyle='#c8d0ff';cx.fillRect(0,-5,34,10);cx.fillStyle='#ff5ad1';cx.fillRect(30,-3,6,6);cx.restore();
+ if(G.hp>0){cx.strokeStyle=`rgba(120,220,255,${.15+.05*G.hp})`;cx.lineWidth=2;cx.beginPath();cx.ellipse(bx,by+20,130,90,0,Math.PI,0);cx.stroke()}
+ if(G.freeze>0){cx.fillStyle='rgba(120,220,255,.12)';cx.fillRect(0,0,VW,VH)}if(G.slow>0){cx.fillStyle='rgba(255,140,240,.07)';cx.fillRect(0,0,VW,VH)}
+ // lasers
+ for(const l of G.lasers){cx.strokeStyle=l.thin?'rgba(255,120,230,.7)':'#ff9cf0';cx.lineWidth=l.thin?1.5:4*l.t/.25+1;cx.shadowColor='#ff5ad1';cx.shadowBlur=12;cx.beginPath();cx.moveTo(bx,by-6);cx.lineTo(l.x,l.y);cx.stroke();cx.shadowBlur=0}
+ // meteors
+ for(const m of G.meteors){cx.save();cx.translate(m.x,m.y);cx.rotate(m.rot);const col=m.power?PW[m.power]:null;
+  const gr=cx.createRadialGradient(-m.r*.3,-m.r*.3,2,0,0,m.r);gr.addColorStop(0,col||'#b08a6a');gr.addColorStop(1,col?'#553300':'#3d2a20');cx.fillStyle=gr;cx.beginPath();m.pts.forEach((p,i)=>{const a=i/m.pts.length*6.283;cx.lineTo(Math.cos(a)*m.r*p,Math.sin(a)*m.r*p)});cx.closePath();cx.fill();
+  cx.fillStyle='rgba(0,0,0,.25)';cx.beginPath();cx.arc(m.r*.25,m.r*.1,m.r*.22,0,7);cx.arc(-m.r*.3,m.r*.35,m.r*.14,0,7);cx.fill();
+  if(m.hit>0){cx.fillStyle='rgba(255,255,255,.5)';cx.fill()}cx.restore();
+  if(m===G.target){cx.strokeStyle='#ff5ad1';cx.lineWidth=2;cx.beginPath();cx.arc(m.x,m.y,m.r+8,0,7);cx.stroke()}
+  cx.font='bold 18px Courier New';cx.textAlign='center';cx.textBaseline='middle';const tw=cx.measureText(m.word).width;const ty=m.y+m.r+16;
+  cx.fillStyle='rgba(0,0,0,.7)';cx.fillRect(m.x-tw/2-6,ty-12,tw+12,24);if(m.power){cx.strokeStyle=PW[m.power];cx.lineWidth=1.5;cx.strokeRect(m.x-tw/2-6,ty-12,tw+12,24)}
+  const done=m===G.target?G.typed.length:0;cx.textAlign='left';let xx=m.x-tw/2;for(let i=0;i<m.word.length;i++){cx.fillStyle=i<done?'#ff5ad1':(m.power?PW[m.power]:'#fff');cx.fillText(m.word[i],xx,ty);xx+=cx.measureText(m.word[i]).width}}
+ for(const p of G.parts){cx.globalAlpha=Math.min(1,p.l*2);cx.fillStyle=p.c;cx.fillRect(p.x,p.y,p.sz,p.sz)}cx.globalAlpha=1;
+ cx.textAlign='center';for(const f of G.floats){cx.globalAlpha=Math.min(1,f.t);cx.fillStyle=f.big?'#ffd36b':'#6dffa8';cx.font=f.big?'bold 42px Trebuchet MS':'bold 18px Trebuchet MS';cx.fillText(f.s,f.x,f.y)}cx.globalAlpha=1;
+ cx.restore();
+ // HUD
+ cx.textAlign='left';cx.textBaseline='top';cx.font='bold 18px Trebuchet MS';cx.fillStyle='#fff';cx.fillText('SCORE '+G.score,128,14);cx.fillStyle='#9fb4ff';cx.fillText('WAVE '+G.wave,128,36);
+ if(G.combo>1){cx.fillStyle='#ff9cf0';cx.fillText('COMBO '+G.combo+'  x'+G.mult,128,58)}
+ cx.textAlign='right';cx.fillStyle='#ff5a6a';let hs='';for(let i=0;i<G.maxhp;i++)hs+=i<G.hp?'♥':'♡';cx.fillText(hs,VW-12,48);
+ const tags=[];if(G.freeze>0)tags.push('❄ FREEZE '+G.freeze.toFixed(1));if(G.slow>0)tags.push('🐢 SLOWMO '+G.slow.toFixed(1));cx.fillStyle='#7fe7ff';tags.forEach((t,i)=>cx.fillText(t,VW-12,72+i*22));
+ cx.textAlign='center';cx.fillStyle='rgba(0,0,0,.6)';const tp=G.typed||'_';cx.font='bold 20px Courier New';const w=cx.measureText(tp).width+30;cx.fillRect(VW/2-w/2,VH-34,w,28);cx.fillStyle='#ff9cf0';cx.fillText(tp,VW/2,VH-30);
+ if(G.waveBanner>0){cx.globalAlpha=Math.min(1,G.waveBanner);cx.font='bold 48px Trebuchet MS';cx.fillStyle='#ffd36b';cx.fillText('WAVE '+G.wave,VW/2,VH*.32);cx.globalAlpha=1}
+ if('ontouchstart'in window&&document.activeElement!==inp){cx.font='16px Trebuchet MS';cx.fillStyle='#fff';cx.fillText('Tap the screen to open the keyboard',VW/2,VH*.45)}}
+// ---------- speed test ----------
+const T={};
+function newTest(){const w=[];for(let i=0;i<120;i++)w.push(TEXTW[Math.random()*TEXTW.length|0]);Object.assign(T,{text:w.join(' '),pos:0,marks:[],started:false,time:60,left:60,correct:0,errors:0,keys:0});mode='test';show('test');renderTest();focusInp()}
+function renderTest(){let h='';const s=Math.max(0,T.pos-120),e=Math.min(T.text.length,T.pos+260);for(let i=s;i<e;i++){const c=T.text[i]===' '?' ':T.text[i].replace('<','&lt;');const cl=i<T.pos?(T.marks[i]?'ok':'bad'):i===T.pos?'cur todo':'todo';h+=`<span class="${cl}">${c}</span>`}$('ttext').innerHTML=h;
+ const el=(60-T.left)/60;const wpm=el>0?Math.round(T.correct/5/el):0;const acc=T.keys?Math.round(100*T.correct/T.keys):100;$('tWpm').textContent=wpm;$('tAcc').textContent=acc;$('tTime').textContent=Math.ceil(T.left)}
+function testChar(ch){if(!T.started){T.started=true;T.t0=performance.now()}T.keys++;const ok=ch===T.text[T.pos];T.marks[T.pos]=ok;if(ok){T.correct++;sfx.key()}else{T.errors++;sfx.bad()}T.pos++;if(T.pos>=T.text.length)endTest();else renderTest()}
+function testBack(){if(T.pos>0){T.pos--;if(T.marks[T.pos])T.correct--;T.marks[T.pos]=undefined;renderTest()}}
+function endTest(){if(mode!=='test')return;mode='tres';const el=Math.max(1,(60-Math.max(0,T.left)))/60;const wpm=Math.round(T.correct/5/el),raw=Math.round(T.keys/5/el),acc=T.keys?Math.round(100*T.correct/T.keys):0;
+ const b=store.get('wpm',{wpm:0,acc:0});const nb=wpm>b.wpm;if(nb)store.set('wpm',{wpm,acc});T.result={wpm,acc,raw};sfx.wave();
+ $('rWpm').textContent=wpm+' WPM';$('rInfo').innerHTML=`Accuracy: <b>${acc}%</b><br>Raw speed: ${raw} WPM · Characters: ${T.correct} correct, ${T.errors} wrong${nb?'<br><span style="color:#6dffa8">NEW PERSONAL BEST!</span>':''}`;show('tres')}
+// ---------- input ----------
+const inp=$('inp');function focusInp(){try{inp.focus({preventScroll:true})}catch(e){inp.focus()}}
+inp.addEventListener('input',()=>{const v=inp.value;inp.value='';for(const ch of v)typeChar(ch)});
+inp.addEventListener('keydown',e=>{if(e.key==='Backspace'){if(mode==='test')testBack();else if(mode==='game'&&G.typed){G.typed=G.typed.slice(0,-1);if(!G.typed)G.target=null}e.preventDefault()}
+ if(e.key==='Escape'&&!e.repeat){if(mode==='game'){mode='pause';show('pause')}else if(mode==='pause'){mode='game';show(null)}else if(mode==='test')title()}
+ if(e.key==='Enter'&&mode==='game'){G.target=null;G.typed=''}});
+document.addEventListener('keydown',e=>{if(document.activeElement!==inp&&e.key.length===1&&(mode==='game'||mode==='test')){focusInp()}});
+cv.addEventListener('pointerdown',()=>{ac();focusInp()});$('ttext').addEventListener('pointerdown',e=>{e.preventDefault();focusInp()});
+$('playBtn').onclick=()=>{ac();newGame()};$('testBtn').onclick=()=>{ac();newTest()};$('againBtn').onclick=newGame;$('menuBtn').onclick=title;$('retestBtn').onclick=newTest;$('tmenuBtn').onclick=title;
+$('resBtn').onclick=()=>{mode='game';show(null);focusInp()};$('quitBtn').onclick=title;
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&mode==='game'){mode='pause';show('pause')}});
+// ---------- loop ----------
+let last=performance.now();
+function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;drawBg(dt);
+ if(mode==='game'){update(dt);if(mode==='game')drawGame()}else if(mode==='pause'||mode==='over')drawGame();
+ if(mode==='test'&&T.started){T.left=60-(now-T.t0)/1000;if(T.left<=0){T.left=0;endTest()}else if((now|0)%5===0)renderTest()}
+ requestAnimationFrame(loop)}
+title();requestAnimationFrame(loop);
+window.__ty={G,T,get mode(){return mode},typeChar,endTest,gameOver,setT:s=>{T.left=s;T.t0=performance.now()-(60-s)*1000}};
+})();
+</script></body></html>

@@ -277,6 +277,12 @@ h1 span{color:#ff6b6b}
 .pen{background:#1f6e2c}
 .pen i{position:absolute;left:22%;top:26%;width:56%;height:34%;border:3px solid #fff;border-bottom:none}
 .pen b{position:absolute;left:46%;top:64%;width:12px;height:12px;border-radius:50%;background:#fff}
+.mty{background:#120a30}
+.mty i{position:absolute;left:30%;top:24%;width:26px;height:26px;border-radius:46% 54% 48% 52%;background:#ff7a2f}
+.mty b{position:absolute;left:20%;top:58%;width:60%;height:10px;border-radius:5px;background:#6a4cc2}
+.emb{background:#1a100c}
+.emb i{position:absolute;left:16%;top:28%;width:68%;height:8px;background:#6b4a2a;box-shadow:0 16px 0 #6b4a2a,0 32px 0 #6b4a2a}
+.emb b{position:absolute;left:46%;top:20%;width:12px;height:14px;background:#ffb347}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -339,7 +345,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Fifty-five browser games. Best scores stay on this device.</p>
+<p class="lede">Fifty-seven browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -355,6 +361,7 @@ a.card[hidden]{display:none}
 <button type="button" class="chip" data-cat="Sports" aria-pressed="false">Sports</button>
 <button type="button" class="chip" data-cat="Casual" aria-pressed="false">Casual</button>
 <button type="button" class="chip" data-cat="Horror" aria-pressed="false">Horror</button>
+<button type="button" class="chip" data-cat="Adventure" aria-pressed="false">Adventure</button>
 </div>
 </div>
 </header>
@@ -582,6 +589,14 @@ a.card[hidden]{display:none}
 <a class="card" href="./penalty-shootout.html" data-cat="Sports" data-key="arcade-penalty-best" data-name="Penalty Shootout">
 <div class="thumb pen" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Sports</p><h2>Penalty Shootout</h2><p>Five kicks each, then sudden death. Wins are saved.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./meteor-typer.html" data-cat="Casual" data-key="arcade-typer-best" data-name="Meteor Typer">
+<div class="thumb mty" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Casual <span class="tag">PC only</span></p><h2>Meteor Typer</h2><p>Type the falling words before they hit. Best is your highest score.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./emberfall.html" data-cat="Adventure" data-key="arcade-ember-best" data-name="Depths of Emberfall">
+<div class="thumb emb" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Adventure</p><h2>Depths of Emberfall</h2><p>One life in a turn-based dungeon. Best is your deepest floor.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

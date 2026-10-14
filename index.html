@@ -129,6 +129,18 @@ h1 span{color:#ff6b6b}
 .apex i{position:absolute;left:16%;right:16%;top:22%;bottom:18%;border:7px solid #3a3a3a;border-radius:46px;box-shadow:inset 0 0 0 8px #d8d8d8}
 .apex b{position:absolute;left:44%;top:46%;width:16px;height:24px;background:#e23;border-radius:3px}
 .tag{display:inline-block;margin-left:8px;padding:3px 8px;border-radius:999px;background:#ff6b6b;color:#fff;letter-spacing:.04em;font:700 10px/1.2 ui-monospace,monospace;vertical-align:1px}
+.rock{background:radial-gradient(circle at 30% 30%,#243055,#070814)}
+.rock b{position:absolute;border-radius:50%;background:#b9a18f}
+.rock b:nth-child(1){right:18%;top:26%;width:30px;height:24px}
+.rock b:nth-child(2){right:36%;bottom:20%;width:16px;height:14px}
+.rock i{position:absolute;left:24%;top:40%;width:0;height:0;border-top:8px solid transparent;border-bottom:8px solid transparent;border-left:18px solid #ffe14d}
+.maze{background:#12183a}
+.maze i{position:absolute;width:7px;height:7px;border-radius:50%;background:#ffe14d}
+.maze i:nth-child(1){left:18%;top:30%}.maze i:nth-child(2){left:30%;top:48%}.maze i:nth-child(3){left:22%;top:66%}
+.maze b{position:absolute;left:52%;top:34%;width:28px;height:30px;border-radius:14px 14px 8px 8px;background:#ff5d8a}
+.mem{background:linear-gradient(#1a1440,#0b0b14)}
+.mem i{position:absolute;top:32%;width:26px;height:36px;border-radius:5px;background:linear-gradient(#ffe68a,#e0941c)}
+.mem i:nth-child(1){left:22%}.mem i:nth-child(2){left:42%}.mem i:nth-child(3){left:62%;background:linear-gradient(#f4f7ff,#b7c4ee)}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -191,7 +203,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Nineteen browser games. Best scores stay on this device.</p>
+<p class="lede">Twenty-two browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -286,6 +298,18 @@ a.card[hidden]{display:none}
 <a class="card" href="./apex-circuit.html" data-cat="Racing" data-key="arcade-apex-best" data-name="Apex Circuit">
 <div class="thumb apex" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Racing <span class="tag">PC only</span></p><h2>Apex Circuit</h2><p>Race three laps with a keyboard. Best is your fastest lap.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./asteroids.html" data-cat="Action" data-key="arcade-rock-best" data-name="Rock Blaster">
+<div class="thumb rock" aria-hidden="true"><b></b><b></b><i></i></div>
+<div class="meta"><p class="kicker">Action</p><h2>Rock Blaster</h2><p>Drift through a rock field. Rotate, thrust, and blast every wave.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./maze-muncher.html" data-cat="Arcade" data-key="arcade-maze-best" data-name="Maze Muncher">
+<div class="thumb maze" aria-hidden="true"><i></i><i></i><i></i><b></b></div>
+<div class="meta"><p class="kicker">Arcade</p><h2>Maze Muncher</h2><p>Eat every dot and dodge the ghosts. Power pellets turn the chase around.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./memory.html" data-cat="Puzzle" data-key="arcade-memory-best" data-name="Memory Match">
+<div class="thumb mem" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="meta"><p class="kicker">Puzzle</p><h2>Memory Match</h2><p>Flip cards and find the pairs before the clock runs out.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

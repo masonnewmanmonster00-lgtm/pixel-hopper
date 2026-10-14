@@ -215,6 +215,16 @@ h1 span{color:#ff6b6b}
 .pool i:nth-child(2){left:46%;top:46%;width:16px;height:16px;background:#1d4fd6}
 .pool i:nth-child(3){left:62%;top:36%;width:16px;height:16px;background:#d42a2a}
 .pool b{position:absolute;left:18%;top:52%;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px #5a3416}
+.ncl{background:#14081f}
+.ncl i{position:absolute;bottom:28%;width:16px;border-radius:6px 6px 2px 2px}
+.ncl i:nth-child(1){left:28%;height:36px;background:#ff5a3c}
+.ncl i:nth-child(2){right:28%;height:42px;background:#3cb4ff}
+.ncl b{position:absolute;left:46%;top:40%;width:14px;height:14px;border-radius:50%;background:#ffd23c;box-shadow:0 0 8px #ffd23c}
+.goo{background:#07140a}
+.goo i{position:absolute;border-radius:50%;background:#6fcf4a}
+.goo i:nth-child(1){left:22%;top:40%;width:22px;height:22px}
+.goo i:nth-child(2){left:42%;top:32%;width:28px;height:28px}
+.goo b{position:absolute;right:22%;top:48%;width:12px;height:12px;border-radius:50%;background:#ffef5a;box-shadow:0 0 8px #ffef5a}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -277,7 +287,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Thirty-eight browser games. Best scores stay on this device.</p>
+<p class="lede">Forty browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -451,6 +461,14 @@ a.card[hidden]{display:none}
 <a class="card" href="./pool.html" data-cat="Sports" data-key="arcade-pool-best" data-name="8-Ball Pool">
 <div class="thumb pool" aria-hidden="true"><b></b><i></i><i></i><i></i></div>
 <div class="meta"><p class="kicker">Sports</p><h2>8-Ball Pool</h2><p>Aim, pull back, and pocket the 8. Wins against the CPU are saved.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./neon-clash.html" data-cat="Action" data-key="arcade-clash-best" data-name="Neon Clash">
+<div class="thumb ncl" aria-hidden="true"><i></i><i></i><b></b></div>
+<div class="meta"><p class="kicker">Action</p><h2>Neon Clash</h2><p>Two rounds to win. Victories against the computer are saved.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./goo-night.html" data-cat="Action" data-key="arcade-goo-best" data-name="Goo Night">
+<div class="thumb goo" aria-hidden="true"><i></i><i></i><b></b></div>
+<div class="meta"><p class="kicker">Action</p><h2>Goo Night</h2><p>Survive the goo. Best is the highest wave you clear.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

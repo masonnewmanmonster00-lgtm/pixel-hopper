@@ -358,6 +358,9 @@ h1 span{color:#ff6b6b}
 .yht{background:#0d4a2b}
 .yht i{position:absolute;left:18%;top:34%;width:22px;height:22px;border-radius:5px;background:#fff;box-shadow:30px 0 0 #fff,60px 10px 0 #fff}
 .yht b{position:absolute;left:24%;top:40%;width:6px;height:6px;border-radius:50%;background:#1b1b28;box-shadow:30px 10px 0 #c0182a,60px 4px 0 #1b1b28}
+.bgm{background:#1f6b45}
+.bgm i{position:absolute;left:22%;top:28%;width:0;height:0;border-left:16px solid transparent;border-right:16px solid transparent;border-bottom:26px solid #e9d6a8}
+.bgm b{position:absolute;left:28%;top:62%;width:14px;height:14px;border-radius:50%;background:#f5efe2;box-shadow:20px -8px 0 #7a1515,40px 0 0 #f5efe2}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -420,7 +423,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Eighty-two browser games. Best scores stay on this device.</p>
+<p class="lede">Eighty-three browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -773,6 +776,10 @@ a.card[hidden]{display:none}
 <a class="card" href="./yacht.html" data-cat="Casual" data-key="arcade-yacht-best" data-name="Yacht Dice">
 <div class="thumb yht" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Casual</p><h2>Yacht Dice</h2><p>Roll for a yacht and fill the card. Best is your top score.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./backgammon.html" data-cat="Board" data-key="arcade-bg-best" data-name="Backgammon">
+<div class="thumb bgm" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Board</p><h2>Backgammon</h2><p>Move your checkers home before the CPU. Best is your wins.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

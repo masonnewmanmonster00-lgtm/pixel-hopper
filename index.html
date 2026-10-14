@@ -191,6 +191,16 @@ h1 span{color:#ff6b6b}
 .sdk i:nth-child(2){left:42%;top:28%;width:18px;height:18px}
 .sdk i:nth-child(3){left:62%;top:28%;width:18px;height:18px}
 .sdk b{position:absolute;left:46%;top:52%;width:18px;height:18px;background:#6a2a9a;border:1px solid #f6f}
+.tnk{background:#12081f}
+.tnk i{position:absolute;width:28px;height:18px;border-radius:3px}
+.tnk i:nth-child(1){left:22%;top:38%;background:#0ff;box-shadow:0 0 8px #0ff}
+.tnk i:nth-child(2){right:22%;top:38%;background:#f3c;box-shadow:0 0 8px #f3c}
+.tnk b{position:absolute;left:46%;top:58%;width:10px;height:10px;border-radius:50%;background:#ff0}
+.wrd{background:#07071a}
+.wrd i{position:absolute;top:32%;width:22px;height:22px;border-radius:4px}
+.wrd i:nth-child(1){left:18%;background:#19e68c}
+.wrd i:nth-child(2){left:40%;background:#ffd23f}
+.wrd i:nth-child(3){left:62%;background:#3a3a5c}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -253,7 +263,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Thirty-three browser games. Best scores stay on this device.</p>
+<p class="lede">Thirty-five browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -406,6 +416,14 @@ a.card[hidden]{display:none}
 <a class="card" href="./whack-a-mole.html" data-cat="Arcade" data-key="arcade-mole-best" data-name="Whack-a-Mole">
 <div class="thumb mole" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Arcade</p><h2>Whack-a-Mole</h2><p>Whack the moles before they hide. Gold pays more. Bombs cost time.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./tanks.html" data-cat="Action" data-key="arcade-tanks-best" data-name="Neon Tanks">
+<div class="thumb tnk" aria-hidden="true"><i></i><i></i><b></b></div>
+<div class="meta"><p class="kicker">Action</p><h2>Neon Tanks</h2><p>Ricochet through the maze. First to five wins, and AI victories are saved.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./neon-word.html" data-cat="Puzzle" data-key="arcade-word-best" data-name="Neon Word">
+<div class="thumb wrd" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="meta"><p class="kicker">Puzzle</p><h2>Neon Word</h2><p>Guess the five-letter word in six tries. Best is your longest streak.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

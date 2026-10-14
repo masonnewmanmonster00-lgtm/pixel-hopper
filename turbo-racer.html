@@ -1,66 +1,68 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#0b0b14"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon.svg"><link rel="apple-touch-icon" href="./icon.svg"><title>Turbo Racer</title>
-<style>
-*{box-sizing:border-box}
-html,body{margin:0;height:100%;background:#111;overflow:hidden;touch-action:none;font-family:sans-serif}
-canvas{display:block;margin:0 auto;background:#2a2;touch-action:none;max-width:100vw;max-height:100dvh}
-.b{position:fixed;z-index:40;bottom:max(16px,env(safe-area-inset-bottom));width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.25);color:#fff;font-size:32px;display:flex;align-items:center;justify-content:center;user-select:none;touch-action:none}
-#L{left:max(16px,env(safe-area-inset-left))}#R{left:max(110px,calc(env(safe-area-inset-left) + 110px))}#G{right:max(16px,env(safe-area-inset-right))}
-#P{position:fixed;z-index:40;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));width:44px;height:44px;border-radius:8px;background:rgba(255,255,255,.3);color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center;user-select:none;touch-action:none}
-a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:80;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 12px;border-radius:999px;background:rgba(8,8,16,.82);color:#ffe14d;border:1px solid rgba(255,225,77,.55);font:700 12px/1 ui-monospace,monospace;letter-spacing:.04em;text-decoration:none;touch-action:manipulation}
-a.back:focus-visible{outline:2px solid #ffe14d;outline-offset:2px}
-</style></head>
-<body>
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#0b0b14"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon.svg"><link rel="apple-touch-icon" href="./icon.svg"><title>Turbo Racer</title>
+<style>*{box-sizing:border-box}html,body{margin:0;height:100%;background:#0b1020;overflow:hidden;touch-action:none;font-family:system-ui,sans-serif;-webkit-user-select:none;user-select:none}canvas{display:block;touch-action:none}
+.b{position:fixed;z-index:40;bottom:max(18px,env(safe-area-inset-bottom));width:84px;height:84px;border-radius:50%;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.45);color:#fff;font-size:34px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px);touch-action:none;user-select:none}
+.b.on{background:rgba(255,255,255,.45)}#L{left:max(18px,env(safe-area-inset-left))}#R{left:max(118px,calc(env(safe-area-inset-left) + 118px))}#G{right:max(18px,env(safe-area-inset-right));background:rgba(255,140,0,.35)}
+#P{position:fixed;z-index:40;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));width:46px;height:46px;border-radius:10px;background:rgba(0,0,0,.4);border:2px solid rgba(255,255,255,.5);color:#fff;font-size:20px;font-weight:bold;display:flex;align-items:center;justify-content:center;touch-action:none;user-select:none}
+a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:80;display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 12px;border-radius:999px;background:rgba(8,8,16,.82);color:#ffe14d;border:1px solid rgba(255,225,77,.55);font:700 12px/1 ui-monospace,monospace;letter-spacing:.04em;text-decoration:none;touch-action:manipulation}
+a.back:focus-visible{outline:2px solid #ffe14d;outline-offset:2px}</style></head><body>
 <a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a>
 <canvas id="c" tabindex="0"></canvas><div class="b" id="L">◀</div><div class="b" id="R">▶</div><div class="b" id="G">⚡</div><div id="P">II</div>
 <script>
-"use strict";
-const c=document.getElementById('c'),x=c.getContext('2d');let W,H;
-function rs(){H=innerHeight;W=Math.min(innerWidth,H*0.75);c.width=W;c.height=H}rs();addEventListener('resize',rs);
-let phone=false;
-try{phone=matchMedia('(pointer:coarse)').matches||(navigator.maxTouchPoints>0&&matchMedia('(hover:none)').matches)}catch(e){}
-function showPads(on){phone=on;['L','R','G'].forEach(i=>{document.getElementById(i).style.display=on?'flex':'none'})}
-showPads(phone);
-const k={};
-addEventListener('keydown',e=>{
- if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();
- k[e.key]=1;
- if(e.repeat)return;
- if(e.key==='p'||e.key==='P'||e.key==='Escape')tp();
- if(e.key==='Enter'||e.key===' ')st();
-});
-addEventListener('keyup',e=>{k[e.key]=0});
-function hold(id,name){const el=document.getElementById(id);
- const down=e=>{if(e.pointerType==='mouse'&&e.button!==0)return;e.preventDefault();e.stopPropagation();showPads(true);try{el.setPointerCapture(e.pointerId)}catch(_){}k[name]=1;if(state!=='play')st()};
- const up=e=>{if(e.pointerId!=null)k[name]=0};
- el.addEventListener('pointerdown',down);
- el.addEventListener('pointerup',up);
- el.addEventListener('pointercancel',up);
-}
+const c=document.getElementById('c'),x=c.getContext('2d');let W,H,D=1;
+function rs(){D=devicePixelRatio||1;W=innerWidth;H=innerHeight;c.width=W*D;c.height=H*D;c.style.width=W+'px';c.style.height=H+'px';x.setTransform(D,0,0,D,0,0)}rs();addEventListener('resize',rs);
+const touch='ontouchstart'in window||navigator.maxTouchPoints>0;if(!touch)['L','R','G'].forEach(i=>document.getElementById(i).style.display='none');
+const k={};addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();k[e.key]=1;if(e.repeat)return;if(e.key=='p'||e.key=='P'||e.key=='Escape')tp();if(e.key=='Enter'||e.key==' ')st()});addEventListener('keyup',e=>k[e.key]=0);
+function hold(id,n){const el=document.getElementById(id);const on=e=>{e.preventDefault();k[n]=1;el.classList.add('on');st()},off=e=>{e.preventDefault();k[n]=0;el.classList.remove('on')};
+el.addEventListener('touchstart',on,{passive:false});el.addEventListener('touchend',off,{passive:false});el.addEventListener('touchcancel',off,{passive:false});el.addEventListener('mousedown',on);el.addEventListener('mouseup',off);el.addEventListener('mouseleave',off)}
 hold('L','ArrowLeft');hold('R','ArrowRight');hold('G','ArrowUp');
-document.getElementById('P').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();tp()});
-c.addEventListener('pointerdown',e=>{if(e.pointerType==='touch')showPads(true);if(state!=='play')st()});
-let state='title',paused=false,best=0,p,cars,sc,sp,off,t;
+const pb=document.getElementById('P');pb.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();tp()});
+c.addEventListener('touchstart',e=>{e.preventDefault();st()},{passive:false});c.addEventListener('click',st);
+let state='title',paused=false,best=0,p,cars,coins,parts,sc,sp,off,t,shake,trees;
 try{best=+localStorage.getItem('arcade-racer-best')||0}catch(e){}
-function saveBest(n){const v=Math.floor(n);if(v>best){best=v;try{localStorage.setItem('arcade-racer-best',String(best))}catch(e){}}}
-function reset(){p={x:.5};cars=[];sc=0;sp=6;off=0;t=0}reset();
-function st(){if(state!=='play'){reset();state='play';paused=false}}
-function tp(){if(state==='play')paused=!paused}
-const cols=['#e33','#33e','#ee3','#e3e','#3ee','#f80'];
-function car(cx,cy,w,h,col){x.fillStyle=col;x.fillRect(cx-w/2,cy-h/2,w,h);x.fillStyle='#9cf';x.fillRect(cx-w/2+4,cy-h/2+h*.2,w-8,h*.2);x.fillStyle='#111';[[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>x.fillRect(cx+a*w/2-(a>0?0:4),cy+b*h*.3-6,4,12))}
-function loop(){requestAnimationFrame(loop);const rw=W*.8,rx=W*.1,lw=rw/3,cw=lw*.55,ch=cw*1.8;
-if(state==='play'&&!paused){t++;const boost=k.ArrowUp||k.w?1.6:1;sp=Math.min(6+t/400,18)*boost;off=(off+sp)%60;sc+=sp/10;
-if(k.ArrowLeft||k.a)p.x-=.012;if(k.ArrowRight||k.d)p.x+=.012;p.x=Math.max(.1,Math.min(.9,p.x));
-if(Math.random()<.02+t/60000){const ln=Math.floor(Math.random()*3);if(!cars.some(o=>o.y<ch*2&&o.l===ln))cars.push({l:ln,y:-ch,v:2+Math.random()*3,c:cols[Math.random()*6|0]})}
-cars.forEach(o=>o.y+=sp-o.v);cars=cars.filter(o=>o.y<H+ch);
-const px=rx+p.x*rw,py=H-ch*1.2;for(const o of cars){const ox=rx+lw*(o.l+.5);if(Math.abs(ox-px)<cw*.9&&Math.abs(o.y-py)<ch*.9){state='over';saveBest(sc)}}}
-x.fillStyle='#2a2';x.fillRect(0,0,W,H);x.fillStyle='#555';x.fillRect(rx,0,rw,H);x.fillStyle='#fff';
-for(let i=1;i<3;i++)for(let y=-60+off;y<H;y+=60)x.fillRect(rx+lw*i-3,y,6,30);
-x.fillStyle='#d22';for(let y=-60+off;y<H;y+=60){x.fillRect(rx-8,y,8,30);x.fillRect(rx+rw,y,8,30)}
-cars.forEach(o=>car(rx+lw*(o.l+.5),o.y,cw,ch,o.c));if(p)car(rx+p.x*rw,H-ch*1.2,cw,ch,'#fff');
-x.fillStyle='#fff';x.font='bold 20px sans-serif';x.textAlign='left';x.fillText('Score '+Math.floor(sc),78,36);x.fillText('Best '+best,78,60);
-x.textAlign='center';const msg=(a,b)=>{x.fillStyle='rgba(0,0,0,.6)';x.fillRect(0,H/2-70,W,140);x.fillStyle='#fff';x.font='bold 28px sans-serif';x.fillText(a,W/2,H/2-10);x.font='16px sans-serif';x.fillText(b,W/2,H/2+28)};
-if(state==='title')msg('TURBO RACER',phone?'Tap to start. ◀ ▶ steer, ⚡ boost':'Click or Enter. Arrows steer, Up boosts, P pause');
-if(state==='over')msg('CRASH! '+Math.floor(sc),phone?'Tap to restart':'Click or Enter to restart');
-if(paused)msg('PAUSED',phone?'Tap II to resume':'Press P to resume')}
-loop();
+function reset(){p={x:.5,tilt:0};cars=[];coins=[];parts=[];sc=0;sp=5;off=0;t=0;shake=0;trees=[];for(let i=0;i<14;i++)trees.push({s:Math.random()<.5?-1:1,y:Math.random()*2000,d:Math.random(),k:Math.random()})}reset();
+function st(){if(state!='play'){reset();state='play';paused=false}}function tp(){if(state=='play')paused=!paused}
+const cols=[['#ff3b3b','#a00'],['#3b7bff','#0033aa'],['#ffd23b','#b88a00'],['#c23bff','#6a00a0'],['#2fe0c0','#00806a'],['#ff8a2b','#a04800']];
+function rr(a,b,w,h,r){x.beginPath();x.moveTo(a+r,b);x.arcTo(a+w,b,a+w,b+h,r);x.arcTo(a+w,b+h,a,b+h,r);x.arcTo(a,b+h,a,b,r);x.arcTo(a,b,a+w,b,r);x.fill()}
+function car(cx,cy,w,h,col,tilt,me){x.save();x.translate(cx,cy);x.rotate(tilt||0);
+x.fillStyle='rgba(0,0,0,.35)';rr(-w/2+4,-h/2+6,w,h,w*.25);
+x.fillStyle='#111';[[-1,-.3],[1,-.3],[-1,.3],[1,.3]].forEach(([a,b])=>rr(a*w/2-(a>0?w*.08:-w*.08)-w*.1,b*h-h*.11,w*.2,h*.22,3));
+const g=x.createLinearGradient(-w/2,0,w/2,0);g.addColorStop(0,col[1]);g.addColorStop(.5,col[0]);g.addColorStop(1,col[1]);x.fillStyle=g;rr(-w/2+w*.08,-h/2,w*.84,h,w*.28);
+x.fillStyle='rgba(255,255,255,.85)';rr(-w*.06,-h/2+2,w*.12,h-4,3);
+x.fillStyle=me?'#1b2a44':'#1d2b3f';rr(-w*.3,(me?-h*.18:h*.02),w*.6,h*.2,5);rr(-w*.28,(me?h*.12:-h*.3),w*.56,h*.14,5);
+if(me){x.fillStyle='#fff7a0';rr(-w*.36,-h/2+1,w*.16,h*.06,2);rr(w*.2,-h/2+1,w*.16,h*.06,2);x.fillStyle='#ff2a2a';rr(-w*.36,h/2-h*.06,w*.16,h*.05,2);rr(w*.2,h/2-h*.06,w*.16,h*.05,2)}
+else{x.fillStyle='#ff2a2a';rr(-w*.36,h/2-h*.06,w*.16,h*.05,2);rr(w*.2,h/2-h*.06,w*.16,h*.05,2)}
+x.restore()}
+function tree(tx,ty,s){x.fillStyle='rgba(0,0,0,.25)';x.beginPath();x.ellipse(tx+6,ty+8,s,s*.6,0,0,7);x.fill();x.fillStyle='#1f6b2a';x.beginPath();x.arc(tx,ty,s,0,7);x.fill();x.fillStyle='#2f9a3c';x.beginPath();x.arc(tx-s*.25,ty-s*.25,s*.65,0,7);x.fill()}
+let last=performance.now();
+function loop(now){requestAnimationFrame(loop);const dt=Math.min(2,(now-last)/16.7);last=now;
+const rw=Math.min(W*.9,Math.max(H*.9,W*.55)),rx=(W-rw)/2,lw=rw/3,cw=Math.min(lw*.5,H*.11),ch=cw*1.8,py=H-ch*1.1;
+if(state=='play'&&!paused){t+=dt;const boost=(k.ArrowUp||k.w)?1.6:1;sp=Math.min(5+t/300,16)*boost;off+=sp*dt;sc+=sp*dt/10;
+let dir=(k.ArrowLeft||k.a?-1:0)+(k.ArrowRight||k.d?1:0);p.x+=dir*.014*dt*(1+sp/30);p.tilt+=(dir*.18-p.tilt)*.2;p.x=Math.max(.08,Math.min(.92,p.x));
+if(Math.random()<(.018+t/50000)*dt){const ln=Math.floor(Math.random()*3);if(!cars.some(o=>o.y<ch*2.2&&o.l==ln)&&cars.filter(o=>o.y<ch*2.2).length<2)cars.push({l:ln,y:-ch,v:1.5+Math.random()*2.5,c:cols[Math.random()*6|0]})}
+if(Math.random()<.012*dt)coins.push({l:Math.random()*3|0,y:-40});
+cars.forEach(o=>o.y+=(sp-o.v)*dt);cars=cars.filter(o=>o.y<H+ch);coins.forEach(o=>o.y+=sp*dt);coins=coins.filter(o=>!o.g&&o.y<H+40);
+if(boost>1&&Math.random()<.8)parts.push({x:rx+p.x*rw+(Math.random()-.5)*cw*.5,y:py+ch/2,vx:(Math.random()-.5)*2,vy:2+Math.random()*3,l:20,c:Math.random()<.5?'#ffb300':'#ff5a00'});
+const px=rx+p.x*rw;for(const o of coins){if(Math.abs(rx+lw*(o.l+.5)-px)<cw*.8&&Math.abs(o.y-py)<ch*.6){o.g=1;sc+=50;for(let i=0;i<12;i++)parts.push({x:px,y:py-ch/3,vx:(Math.random()-.5)*6,vy:(Math.random()-.5)*6,l:25,c:'#ffe14d'})}}
+for(const o of cars){const ox=rx+lw*(o.l+.5);if(Math.abs(ox-px)<cw*.85&&Math.abs(o.y-py)<ch*.85){state='over';shake=18;for(let i=0;i<40;i++)parts.push({x:px,y:py,vx:(Math.random()-.5)*10,vy:(Math.random()-.5)*10,l:40,c:['#fff','#ff5a00','#ffb300','#666'][i%4]});if(sc>best){best=Math.floor(sc);try{localStorage.setItem('arcade-racer-best',String(best))}catch(e){}}}}}
+parts.forEach(q=>{q.x+=q.vx*dt;q.y+=q.vy*dt;q.l-=dt});parts=parts.filter(q=>q.l>0);
+x.save();if(shake>0){x.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);shake*=.9;if(shake<.5)shake=0}
+const gg=x.createLinearGradient(0,0,W,0);gg.addColorStop(0,'#2e7d32');gg.addColorStop(.5,'#43a047');gg.addColorStop(1,'#2e7d32');x.fillStyle=gg;x.fillRect(-20,-20,W+40,H+40);
+x.fillStyle='rgba(255,255,255,.06)';for(let y=(off%80)-80;y<H;y+=80)x.fillRect(0,y,W,40);
+trees.forEach(tr=>{const side=tr.s<0?rx:W-rx;if(side<30)return;const tx=tr.s<0?rx*(.15+tr.d*.6):rx+rw+(W-rx-rw)*(.25+tr.d*.6);const ty=((tr.y+off)%(H+200))-100;tree(tx,ty,14+tr.k*14)});
+x.fillStyle='#3a3d44';x.fillRect(rx,0,rw,H);const rg=x.createLinearGradient(rx,0,rx+rw,0);rg.addColorStop(0,'rgba(0,0,0,.25)');rg.addColorStop(.5,'rgba(255,255,255,.04)');rg.addColorStop(1,'rgba(0,0,0,.25)');x.fillStyle=rg;x.fillRect(rx,0,rw,H);
+for(let y=(off%40)-40;y<H;y+=40){x.fillStyle=(Math.floor((y-off)/40)&1)?'#e53935':'#fafafa';x.fillRect(rx-10,y,10,40);x.fillRect(rx+rw,y,10,40)}
+x.fillStyle='rgba(255,255,255,.85)';for(let i=1;i<3;i++)for(let y=(off%70)-70;y<H;y+=70)x.fillRect(rx+lw*i-3,y,6,36);
+coins.forEach(o=>{const cx=rx+lw*(o.l+.5),r=cw*.28,sx=Math.abs(Math.sin(t/8+o.y/50));x.shadowColor='#ffd400';x.shadowBlur=15;x.fillStyle='#ffd400';x.beginPath();x.ellipse(cx,o.y,r*Math.max(.2,sx),r,0,0,7);x.fill();x.shadowBlur=0;x.fillStyle='#fff3a0';x.beginPath();x.ellipse(cx,o.y,r*.5*Math.max(.2,sx),r*.5,0,0,7);x.fill()});
+cars.forEach(o=>car(rx+lw*(o.l+.5),o.y,cw,ch,o.c,0,0));
+if(state!='over'||shake>2)car(rx+p.x*rw,py,cw,ch,['#ffffff','#9aa4b5'],p.tilt,1);
+parts.forEach(q=>{x.globalAlpha=Math.max(0,q.l/40);x.fillStyle=q.c;x.fillRect(q.x-3,q.y-3,6,6)});x.globalAlpha=1;
+if(state=='play'&&sp>12){x.strokeStyle='rgba(255,255,255,.25)';x.lineWidth=2;for(let i=0;i<8;i++){const lx=Math.random()*W,ly=Math.random()*H;x.beginPath();x.moveTo(lx,ly);x.lineTo(lx,ly+40);x.stroke()}}
+x.restore();
+x.fillStyle='rgba(0,0,0,.45)';rr(12,52,176,64,12);x.fillStyle='#fff';x.font='bold 20px system-ui,sans-serif';x.textAlign='left';x.fillText('SCORE '+Math.floor(sc),24,78);x.fillStyle='#ffd400';x.font='bold 16px system-ui,sans-serif';x.fillText('BEST '+best,24,102);
+if(state=='play'){x.fillStyle='rgba(0,0,0,.45)';rr(W/2-60,10,120,30,10);x.fillStyle='#fff';x.textAlign='center';x.font='bold 16px system-ui,sans-serif';x.fillText(Math.round(sp*14)+' km/h',W/2,31)}
+x.textAlign='center';const msg=(a,b,cc)=>{x.fillStyle='rgba(5,10,30,.75)';rr(W/2-Math.min(W*.45,260),H/2-80,Math.min(W*.9,520),160,20);x.fillStyle=cc||'#fff';x.font='900 40px system-ui,sans-serif';x.shadowColor='#ff6a00';x.shadowBlur=20;x.fillText(a,W/2,H/2-10);x.shadowBlur=0;x.fillStyle='#ddd';x.font='17px system-ui,sans-serif';x.fillText(b,W/2,H/2+30)};
+if(state=='title')msg('TURBO RACER',touch?'Tap to start · ◀ ▶ steer · ⚡ boost':'Click or Enter · Arrows steer · Up boosts · P pause','#ffd400');
+if(state=='over'&&shake<2)msg('CRASH! '+Math.floor(sc),touch?'Tap to race again':'Click or Enter to race again','#ff5a3b');
+if(paused)msg('PAUSED',touch?'Tap II to resume':'Press P to resume')}
+requestAnimationFrame(loop);
 </script></body></html>

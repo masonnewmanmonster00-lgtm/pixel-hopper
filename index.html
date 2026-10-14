@@ -177,6 +177,9 @@ h1 span{color:#ff6b6b}
 .hoop{background:#1a2744}
 .hoop i{position:absolute;left:34%;top:28%;width:46px;height:8px;border-radius:8px;border:3px solid #ff6a1a;background:transparent}
 .hoop b{position:absolute;left:46%;top:52%;width:18px;height:18px;border-radius:50%;background:#e07020}
+.arch{background:linear-gradient(#3a6bd6,#3e9b4a 78%)}
+.arch i{position:absolute;left:40%;top:26%;width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,#ffd54a 0 18%,#e33 19% 42%,#2a6ef0 43% 66%,#fff 67%)}
+.arch b{position:absolute;left:16%;top:46%;width:34px;height:4px;border-radius:2px;background:#d7b07a;transform:rotate(-18deg)}
 .pin{background:#03020a}
 .pin i{position:absolute;bottom:18%;height:8px;border-radius:4px;background:#3df4ff}
 .pin i:nth-child(1){left:22%;width:28px;transform:rotate(-28deg)}
@@ -250,7 +253,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Thirty-two browser games. Best scores stay on this device.</p>
+<p class="lede">Thirty-three browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -383,6 +386,10 @@ a.card[hidden]{display:none}
 <a class="card" href="./mini-golf.html" data-cat="Sports" data-key="arcade-golf-best" data-name="Mini Golf">
 <div class="thumb golf" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Sports</p><h2>Mini Golf</h2><p>Putt nine holes through sand, water, and gates. Best is your lowest round.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./archery.html" data-cat="Sports" data-key="arcade-archery-best" data-name="Archery">
+<div class="thumb arch" aria-hidden="true"><b></b><i></i></div>
+<div class="meta"><p class="kicker">Sports</p><h2>Archery</h2><p>Aim through the wind. Ten arrows, and a bullseye builds a streak.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 <a class="card" href="./hoop-shot.html" data-cat="Sports" data-key="arcade-hoop-best" data-name="Hoop Shot">
 <div class="thumb hoop" aria-hidden="true"><i></i><b></b></div>

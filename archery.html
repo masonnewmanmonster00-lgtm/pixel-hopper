@@ -1,0 +1,52 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b14">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg">
+<link rel="apple-touch-icon" href="./icon.svg">
+<title>Archery</title>
+<style>html,body{margin:0;height:100%;background:#0b1020;overflow:hidden;touch-action:none;font-family:system-ui,sans-serif}canvas{display:block;width:100%;height:100%}
+#ui{position:fixed;top:56px;left:0;right:0;display:flex;justify-content:space-between;padding:0 14px;color:#fff;font-weight:700;text-shadow:0 2px 4px #000;pointer-events:none}
+.b{pointer-events:auto;background:#fff2;border:1px solid #fff5;color:#fff;border-radius:8px;padding:4px 10px;font-weight:700}
+#ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#000a;color:#fff;text-align:center}
+#ov h1{font-size:44px;margin:0 0 8px;color:#ffd54a}#ov button{font-size:22px;padding:10px 26px;border-radius:12px;border:0;background:#ffd54a;font-weight:800;margin-top:12px}a.back{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:80;display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 12px;border-radius:999px;background:rgba(8,8,16,.82);color:#ffe14d;border:1px solid rgba(255,225,77,.55);font:700 12px/1 ui-monospace,monospace;letter-spacing:.04em;text-decoration:none;touch-action:manipulation}a.back:focus-visible{outline:2px solid #ffe14d;outline-offset:2px}</style></head><body>
+<a class="back" href="./index.html" aria-label="Back to menu" onpointerdown="event.stopPropagation()" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">← Menu</a>
+<canvas id="c"></canvas><div id="ui"><span id="sc">Score 0</span><span id="ar">Arrows 10</span><span id="wd">Wind 0</span><span>Best <span id="bs">0</span> <button class="b" id="pb">II</button></span></div>
+<div id="ov"><h1>🏹 Archery</h1><div id="msg">Drag back from anywhere and release to shoot.<br>PC: ↑↓ aim, ←→ power, Space shoot, P pause, R restart.<br>Watch the wind! 10 arrows, bullseye = 10 (+bonus).</div><button id="go">Play</button></div>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d');let W,H,D;function rs(){D=devicePixelRatio||1;W=innerWidth;H=innerHeight;c.width=W*D;c.height=H*D;x.setTransform(D,0,0,D,0,0)}addEventListener('resize',rs);rs();
+let AC;function snd(f,d,t='sine',v=.2){try{AC=AC||new AudioContext();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.setValueAtTime(v,AC.currentTime);g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.connect(g).connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
+let best=(()=>{try{return +localStorage.getItem('arcade-archery-best')||0}catch(e){return 0}})();bs.textContent=best;
+let st='menu',score,arrows,wind,ang,pow,arrow,stuck,tgt,drag=null,parts=[],paused=false,popups=[],streak;
+function newT(){const r=Math.max(26,H*.13-(10-arrows)*1.5);tgt={x:W*(.72+Math.random()*.2),y:H*(.3+Math.random()*.4),r,vy:score>=40?(Math.random()<.5?-1:1)*H*.12:0};wind=Math.round((Math.random()*2-1)*(2+score/15)*10)/10;wd.textContent='Wind '+(wind>0?'→ ':wind<0?'← ':'')+Math.abs(wind)}
+function start(){score=0;arrows=10;streak=0;stuck=[];arrow=null;ang=-.15;pow=.6;newT();st='play';ov.style.display='none';ui()}
+function ui(){sc.textContent='Score '+score;ar.textContent='Arrows '+arrows}
+function bow(){return{x:W*.12,y:H*.62}}
+function shoot(){if(arrow||st!='play'||paused||arrows<=0)return;const b=bow(),s=(W*.9)*(.45+pow*.9);arrow={x:b.x,y:b.y,vx:Math.cos(ang)*s,vy:Math.sin(ang)*s};arrows--;ui();snd(300,.15,'triangle',.25)}
+function end(){st='over';if(score>best){best=score;try{localStorage.setItem('arcade-archery-best',best)}catch(e){}bs.textContent=best}ov.style.display='flex';msg.innerHTML='Final score <b>'+score+'</b><br>Best '+best;go.textContent='Play again'}
+function hit(dist){const ring=Math.floor(dist/(tgt.r/5));let p=[10,8,6,4,2][ring]||0;if(p==10){streak++;p+=streak>1?5:0;snd(880,.3,'square',.15);snd(1320,.4,'sine',.15)}else streak=0;if(p)snd(500+p*30,.15,'triangle');score+=p;popups.push({x:tgt.x,y:tgt.y-tgt.r,t:1,s:p?(p>=10?'BULLSEYE! +':'+')+p:'Miss'});for(let i=0;i<20;i++)parts.push({x:arrow.x,y:arrow.y,vx:(Math.random()-.5)*300,vy:(Math.random()-.5)*300,t:.6,c:p>=10?'#ffd54a':'#fff'});ui()}
+let last=0;function loop(t){const dt=Math.min(.033,(t-last)/1000||0);last=t;if(st=='play'&&!paused)upd(dt);draw();requestAnimationFrame(loop)}
+function upd(dt){if(tgt.vy){tgt.y+=tgt.vy*dt;if(tgt.y<H*.2||tgt.y>H*.8)tgt.vy*=-1}
+if(arrow){arrow.vx+=wind*25*dt;arrow.vy+=H*.9*dt;arrow.x+=arrow.vx*dt;arrow.y+=arrow.vy*dt;
+const tx=tgt.x-tgt.r*.15;if(arrow.x>=tx&&arrow.x-arrow.vx*dt<tx+1){const d=Math.abs(arrow.y-tgt.y);if(d<tgt.r){arrow.x=tx;hit(d);stuck.push({dy:arrow.y-tgt.y,a:Math.atan2(arrow.vy,arrow.vx)});arrow=null;setTimeout(()=>{stuck=[];if(arrows<=0)end();else newT()},700);return}}
+if(arrow.x>W+40||arrow.y>H+40){hit(1e9);arrow=null;if(arrows<=0)setTimeout(end,500);else newT()}}
+parts.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.t-=dt});parts=parts.filter(p=>p.t>0);popups.forEach(p=>{p.y-=40*dt;p.t-=dt});popups=popups.filter(p=>p.t>0)}
+function drawArrow(px,py,a){x.save();x.translate(px,py);x.rotate(a);x.strokeStyle='#d7b07a';x.lineWidth=3;x.beginPath();x.moveTo(-40,0);x.lineTo(0,0);x.stroke();x.fillStyle='#ccc';x.beginPath();x.moveTo(6,0);x.lineTo(-4,-5);x.lineTo(-4,5);x.fill();x.fillStyle='#e53';x.fillRect(-42,-5,9,4);x.fillRect(-42,1,9,4);x.restore()}
+function draw(){const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#3a6bd6');g.addColorStop(1,'#b8e0ff');x.fillStyle=g;x.fillRect(0,0,W,H);
+x.fillStyle='#fff8';for(let i=0;i<4;i++){const cx=((i*W/3+performance.now()*.01*(1+wind))%(W+200)+W+200)%(W+200)-100;x.beginPath();x.ellipse(cx,H*.12+i*20,60,18,0,0,7);x.fill()}
+x.fillStyle='#3e9b4a';x.fillRect(0,H*.85,W,H);x.fillStyle='#2d7a38';x.fillRect(0,H*.85,W,6);
+if(tgt){x.fillStyle='#6b4a2b';x.fillRect(tgt.x-4,tgt.y,8,H*.85-tgt.y);const cols=['#fff','#222','#2a6ef0','#e33','#ffd54a'];for(let i=0;i<5;i++){x.fillStyle=cols[i];x.beginPath();x.ellipse(tgt.x,tgt.y,tgt.r*.3*(1-i/5),tgt.r*(1-i/5),0,0,7);x.fill()}
+stuck.forEach(s=>drawArrow(tgt.x-tgt.r*.15,tgt.y+s.dy,s.a))}
+const b=bow();x.save();x.translate(b.x,b.y);x.rotate(ang);x.strokeStyle='#7a4a1c';x.lineWidth=6;x.beginPath();x.arc(0,0,H*.12,-1.2,1.2);x.stroke();const pull=arrow?0:pow*30;x.strokeStyle='#eee';x.lineWidth=1.5;x.beginPath();const r=H*.12;x.moveTo(Math.cos(-1.2)*r,Math.sin(-1.2)*r);x.lineTo(-pull,0);x.lineTo(Math.cos(1.2)*r,Math.sin(1.2)*r);x.stroke();x.restore();
+if(!arrow&&st=='play'){drawArrow(b.x+Math.cos(ang)*(30-pow*30),b.y+Math.sin(ang)*(30-pow*30),ang);const s=(W*.9)*(.45+pow*.9);let px=b.x,py=b.y,vx=Math.cos(ang)*s,vy=Math.sin(ang)*s;x.fillStyle='#fff9';for(let i=0;i<14;i++){for(let k=0;k<3;k++){vy+=H*.9*.02;px+=vx*.02;py+=vy*.02}if(i>2)x.fillRect(px-2,py-2,4,4)}}
+if(arrow)drawArrow(arrow.x,arrow.y,Math.atan2(arrow.vy,arrow.vx));
+parts.forEach(p=>{x.globalAlpha=p.t/.6;x.fillStyle=p.c;x.fillRect(p.x,p.y,3,3)});x.globalAlpha=1;
+popups.forEach(p=>{x.globalAlpha=Math.min(1,p.t*2);x.fillStyle='#fff';x.strokeStyle='#000';x.lineWidth=4;x.font='bold 26px system-ui';x.textAlign='center';x.strokeText(p.s,p.x,p.y);x.fillText(p.s,p.x,p.y)});x.globalAlpha=1;
+if(paused){x.fillStyle='#0008';x.fillRect(0,0,W,H);x.fillStyle='#fff';x.font='bold 40px system-ui';x.textAlign='center';x.fillText('Paused',W/2,H/2)}}
+function pd(e){if(st!='play'||paused)return;drag={x:e.clientX,y:e.clientY}}
+function pm(e){if(!drag)return;const dx=drag.x-e.clientX,dy=drag.y-e.clientY;const d=Math.hypot(dx,dy);if(d>8){ang=Math.max(-1.3,Math.min(.5,Math.atan2(dy,dx)));pow=Math.min(1,d/(H*.35))}}
+function pu(){if(drag){drag=null;shoot()}}
+c.addEventListener('pointerdown',pd);addEventListener('pointermove',pm);addEventListener('pointerup',pu);
+addEventListener('keydown',e=>{const k=e.key;if(k=='ArrowUp')ang=Math.max(-1.3,ang-.04);if(k=='ArrowDown')ang=Math.min(.5,ang+.04);if(k=='ArrowLeft')pow=Math.max(.05,pow-.04);if(k=='ArrowRight')pow=Math.min(1,pow+.04);if(k==' '){e.preventDefault();st=='play'?shoot():start()}if((k=='p'||k=='P')&&!e.repeat)paused=!paused;if(k=='r'||k=='R')start()});
+pb.onclick=()=>{if(st=='play')paused=!paused};go.onclick=start;requestAnimationFrame(loop);
+</script></body></html>

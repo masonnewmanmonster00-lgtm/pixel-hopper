@@ -388,6 +388,9 @@ h1 span{color:#ff6b6b}
 .knt{background:#2a1d3d}
 .knt i{position:absolute;left:46%;top:16%;width:8px;height:68%;background:#cfd8dc;clip-path:polygon(0 18%,100% 0,100% 100%,0 82%)}
 .knt b{position:absolute;left:22%;top:62%;width:56%;height:16px;border-radius:8px;background:#8d6e63;box-shadow:inset 0 0 0 3px #5d4037}
+.hxs{background:#231a4a}
+.hxs i{position:absolute;left:22%;top:28%;width:36px;height:32px;background:#5be37a;clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)}
+.hxs b{position:absolute;left:48%;top:46%;width:28px;height:24px;background:#ff5a6e;clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -450,7 +453,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">Ninety-two browser games. Best scores stay on this device.</p>
+<p class="lede">Ninety-three browser games. Best scores stay on this device.</p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
 <div class="chips" role="group" aria-label="Categories">
@@ -843,6 +846,10 @@ a.card[hidden]{display:none}
 <a class="card" href="./knifetoss.html" data-cat="Arcade" data-key="arcade-knife-best" data-name="Knife Toss">
 <div class="thumb knt" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Arcade</p><h2>Knife Toss</h2><p>Stick the knives and clear the stages. Best is your highest stage.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./hexstack.html" data-cat="Puzzle" data-key="arcade-hex-best" data-name="Hex Stack">
+<div class="thumb hxs" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Puzzle</p><h2>Hex Stack</h2><p>Stack matching colors until they clear. Best is your endless score.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

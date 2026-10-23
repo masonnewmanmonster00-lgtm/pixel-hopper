@@ -96,8 +96,8 @@
       '<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Analog clock">' +
       '<circle cx="100" cy="100" r="96" fill="#fffdf8" stroke="#1c2430" stroke-width="4"/>' +
       ticks + numbers +
-      '<line x1="100" y1="108" x2="100" y2="52" stroke="#1c2430" stroke-width="7" stroke-linecap="round" transform="rotate(' + hourAngle + ' 100 100)"/>' +
-      '<line x1="100" y1="112" x2="100" y2="28" stroke="#ef6f4c" stroke-width="4" stroke-linecap="round" transform="rotate(' + minuteAngle + ' 100 100)"/>' +
+      '<line x1="100" y1="100" x2="100" y2="54" stroke="#1c2430" stroke-width="8" stroke-linecap="round" transform="rotate(' + hourAngle + ' 100 100)"/>' +
+      '<line x1="100" y1="100" x2="100" y2="30" stroke="#ef6f4c" stroke-width="5" stroke-linecap="round" transform="rotate(' + minuteAngle + ' 100 100)"/>' +
       '<circle cx="100" cy="100" r="5" fill="#1c2430"/>' +
       "</svg>"
     );

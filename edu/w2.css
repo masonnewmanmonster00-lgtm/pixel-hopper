@@ -1,0 +1,49 @@
+.scene, .hand-wrap, .face-wrap {
+  margin: 0 auto 10px;
+}
+
+.scene { max-width: 460px; }
+.hand-wrap { max-width: 230px; }
+.face-wrap { max-width: 210px; }
+
+.scene svg, .hand-wrap svg, .face-wrap svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.scene svg {
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  background: #d7ecff;
+}
+
+.hands-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: flex-end;
+  margin: 0 auto 8px;
+  max-width: 520px;
+}
+
+.hands-row .hand-wrap { width: 32%; max-width: 160px; }
+
+.letter-name {
+  margin: 0;
+  text-align: center;
+  font-size: clamp(2.4rem, 8vw, 3.4rem);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.scene-title {
+  margin: 0 0 8px;
+  text-align: center;
+  font-size: clamp(1.25rem, 3.6vw, 1.7rem);
+  font-weight: 800;
+}
+
+.feelings-page .choices { grid-template-columns: 1fr; }
+
+.feelings-page .choice { line-height: 1.3; }

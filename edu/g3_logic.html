@@ -1,0 +1,162 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Logic Lab</title><style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;height:100%;background:#1d1630;color:#eef;font-family:system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden;user-select:none}
+#top{position:absolute;top:0;left:0;right:0;height:40px;display:flex;align-items:center;gap:6px;padding:0 8px;background:#0008;z-index:3}
+#top a,#top button{color:#fff;background:#283070;border:0;border-radius:8px;padding:6px 10px;font-size:13px;text-decoration:none;cursor:pointer;white-space:nowrap}
+#title{flex:1;font-weight:800;white-space:nowrap;overflow:hidden}#title b{color:#ffcf5a}#st{font-size:13px;white-space:nowrap}
+canvas{position:absolute;top:40px;left:0;touch-action:none}
+.btn{background:linear-gradient(#ffb340,#e07a10);color:#fff;border:0;border-radius:12px;padding:9px 13px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 #8a4a00;margin:3px}
+.btn:active{transform:translateY(2px)}
+#ov{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:9}
+#ov>div{background:#121a4a;border:2px solid #ffcf5a;border-radius:16px;padding:12px 16px;text-align:center;max-width:96%;max-height:94%;overflow:auto}
+#ov h2{margin:4px 0}#ov p{margin:6px 0;font-size:14px}
+.lv{display:inline-block;margin:3px;padding:5px 8px;border-radius:8px;background:#283070;font-size:13px;cursor:pointer;min-width:120px}
+.lv:hover{background:#e07a10}.lv.lock{opacity:.45;cursor:default}.stars{font-size:34px;color:#ffd54a}
+</style></head><body>
+<div id="top"><a id="lz" href="./index.html">◀ Learning Lab</a><a id="menu" href="../index.html">🏠</a><div id="title">🧠 Logic <b>Lab</b></div><span id="st"></span><button id="lvB">Levels</button><button id="pB">⏸</button><button id="mu">🔊</button></div>
+<canvas id="c"></canvas><div id="ov"><div id="ovc"></div></div>
+<script>
+const SAVEKEY='g3LogicSave',TITLE='🧠 Logic Lab',INTRO="Think like a detective! Solve logic grids, crack knights-and-knaves riddles, sort with Venn diagrams, spot sequences and decide what is true, false or can't be told.";
+// shared skeleton injected into both games
+const $=id=>document.getElementById(id);
+const cv=$('c'),cx=cv.getContext('2d');let W=0,H=0,DPR=1;
+let save={mute:false,stars:{},unlocked:1};
+try{const s=JSON.parse(localStorage.getItem(SAVEKEY)||'null');if(s)save=Object.assign(save,s)}catch(e){}
+function persist(){try{localStorage.setItem(SAVEKEY,JSON.stringify(save))}catch(e){}}
+let AC=null;function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(AC&&AC.state==='suspended')AC.resume();return AC}
+function tone(f,d=0.12,t='sine',v=0.15,dl=0){if(save.mute)return;const a=ac();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type=t;o.frequency.value=f;const s=a.currentTime+dl;g.gain.setValueAtTime(v,s);g.gain.exponentialRampToValueAtTime(0.001,s+d);o.connect(g);g.connect(a.destination);o.start(s);o.stop(s+d+0.02)}
+const sfx={ok(){tone(660,.1,'triangle');tone(990,.15,'triangle',.15,.08)},bad(){tone(200,.25,'sawtooth',.08)},tap(){tone(500,.05,'square',.05)},win(){[523,659,784,1046].forEach((f,i)=>tone(f,.2,'triangle',.15,i*.12))}};
+function resize(){DPR=window.devicePixelRatio||1;W=innerWidth;H=innerHeight-40;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);cv.style.width=W+'px';cv.style.height=H+'px';cx.setTransform(DPR,0,0,DPR,0,0)}
+function rr(x,y,w,h,r){cx.beginPath();cx.roundRect?cx.roundRect(x,y,w,h,r):cx.rect(x,y,w,h)}
+function txt(s,x,y,sz,col='#fff',al='center',wt='700'){cx.font=wt+' '+sz+'px system-ui,Segoe UI,Roboto,sans-serif';cx.fillStyle=col;cx.textAlign=al;cx.textBaseline='middle';cx.fillText(s,x,y)}
+function fit(s,maxw,sz){cx.font='700 '+sz+'px system-ui';while(sz>9&&cx.measureText(s).width>maxw){sz--;cx.font='700 '+sz+'px system-ui'}return sz}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function pick(a){return a[Math.random()*a.length|0]}
+let paused=false,btns=[];
+function hit(x,y){for(let i=btns.length-1;i>=0;i--){const b=btns[i];if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){b.f();return true}}return false}
+function ptr(e){ac();if(paused||$('ov').style.display==='flex')return;const r=cv.getBoundingClientRect();const p=e.changedTouches?e.changedTouches[0]:e;onTap(p.clientX-r.left,p.clientY-r.top)}
+cv.addEventListener('pointerdown',e=>{e.preventDefault();ptr(e)});
+function ov(html){$('ovc').innerHTML=html;$('ov').style.display=html?'flex':'none'}
+function setPause(p){if($('ov').style.display==='flex'&&!paused)return;paused=p;$('pB').textContent=p?'▶':'⏸';ov(p?'<h2>⏸ Paused</h2><p>Press P or tap to resume. R restarts the level.</p><button class="btn" onclick="setPause(false)">▶ Resume</button> <button class="btn" onclick="setPause(false);restart()">↻ Restart</button>':'')}
+$('pB').onclick=()=>setPause(!paused);
+$('mu').textContent=save.mute?'🔇':'🔊';$('mu').onclick=()=>{save.mute=!save.mute;$('mu').textContent=save.mute?'🔇':'🔊';persist()};
+$('lvB').onclick=()=>{paused=false;showLevels()};
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function showLevels(){let h='<h2>'+TITLE+'</h2><p>'+INTRO+'</p>';LV.forEach((L,i)=>{const ok=i<save.unlocked;h+='<span class="lv'+(ok?'':' lock')+'" data-lv="'+i+'" '+(ok?'onclick="startLevel('+i+')"':'')+'>'+(ok?'':'🔒 ')+(i+1)+'. '+L.name+'<br><small>'+starStr(save.stars[i]||0)+'</small></span>'});h+='<p><small>Keys: 1-4 choose · Enter check · P pause · R restart · M mute</small></p>';ov(h)}
+function finishLevel(stars){sfx.win();const i=cur;save.stars[i]=Math.max(save.stars[i]||0,stars);save.unlocked=Math.max(save.unlocked,Math.min(LV.length,i+2));persist();
+ ov('<h2>Level complete!</h2><div class="stars">'+starStr(stars)+'</div><p>'+LV[i].name+'</p>'+(i+1<LV.length?'<button class="btn" id="nextB" onclick="startLevel('+(i+1)+')">Next level ▶</button> ':'')+'<button class="btn" onclick="restart()">↻ Replay</button> <button class="btn" onclick="showLevels()">Levels</button>')}
+function restart(){ov('');startLevel(cur)}
+addEventListener('keydown',e=>{const k=e.key;if(k==='p'||k==='P'){setPause(!paused);return}if(paused)return;if($('ov').style.display==='flex'){if(k==='Enter'&&$('nextB'))$('nextB').click();return}
+ if(keyTyping()&&k.length===1&&k!=='p'&&k!=='P'){onKey(e);return}
+ if(k==='r'||k==='R'){restart();return}if(k==='m'||k==='M'){$('mu').click();return}onKey(e)});
+addEventListener('resize',()=>{resize();draw()});
+function ri(a,b){return a+Math.floor(Math.random()*(b-a+1))}
+let cur=0,qi=0,miss=0,Q=null,msg='',msgCol='#fff',lock=false;const CUSTOM={};let BG=['#2a2140','#16213e'],ICON='📚';
+const NQ=()=>{const L=LV[cur];return L.n||(L.m==='order'||L.m==='tl'?(L.reps||1):L.m==='mix'?8:6)};
+function mo(ans,pool,n=4){return shuffle([ans,...shuffle([...new Set(pool)].filter(x=>x!==ans)).slice(0,n-1)])}
+function fromList(list,q){const u=(Q&&Q.used)||[],key=x=>Array.isArray(x)?x[0]:x,left=list.filter(x=>!u.includes(key(x)));const f=pick(left.length?left:list);q.used=u.concat(key(f));return f}
+function quizQ(q,f){q.text=f[0];q.opts=shuffle([f[1],...f[2]]);q.ans=f[1];q.why=f[3]||''}
+function orderQ(q,list,text){q.list=list;q.stages=shuffle(list.map((s,i)=>({s,i})));q.next=0;q.text=text||'Tap the steps IN ORDER, first to last.'}
+function tlQ(q,TL,fmt){const ev=shuffle(TL).slice(0,4).sort((a,b)=>a[0]-b[0]);orderQ(q,ev.map(e=>e[1]+' ('+fmt(e[0])+')'),'Tap these events from OLDEST to NEWEST.');q.stages.forEach(s=>s.s=s.s.replace(/ \([^)]*\)$/,''))}
+function startLevel(i){ov('');paused=false;cur=i;qi=0;miss=0;msg='';lock=false;Q=null;Q=makeQ();draw();if(TIPS[i]&&!save['tip'+i]){save['tip'+i]=1;persist();ov('<h2>'+LV[i].name+'</h2><p>'+TIPS[i]+'</p><button class="btn" onclick="ov(\'\')">Let\'s go ▶</button>')}}
+function keyTyping(){return false}
+function card(x,y,w,h,col,stroke){cx.fillStyle=col;rr(x,y,w,h,12);cx.fill();if(stroke){cx.strokeStyle=stroke;cx.lineWidth=3;cx.stroke()}}
+function wrapC(s,x,y,w,sz,col,maxL=3){cx.font='700 '+sz+'px system-ui';const ws=String(s).split(' ');let lines=[],l='';for(const wd of ws){const t=l?l+' '+wd:wd;if(cx.measureText(t).width>w&&l){lines.push(l);l=wd}else l=t}lines.push(l);if(lines.length>maxL&&sz>10)return wrapC(s,x,y,w,sz-1,col,maxL);lines.forEach((ln,i)=>txt(ln,x,y+(i-(lines.length-1)/2)*(sz+3),sz,col))}
+function draw(){btns=[];cx.clearRect(0,0,W,H);const g=cx.createLinearGradient(0,0,0,H);g.addColorStop(0,BG[0]);g.addColorStop(1,BG[1]);cx.fillStyle=g;cx.fillRect(0,0,W,H);if(!Q)return;const q=Q;
+ $('st').textContent='Lv '+(cur+1)+' · '+Math.min(qi+1,NQ())+'/'+NQ()+' · ✗'+miss;txt(LV[cur].name,W/2,14,13,'#ffcf5a');
+ if(CUSTOM[q.m])return CUSTOM[q.m].draw(q);
+ if(q.stages){wrapC(q.text,W/2,36,W-40,16,'#fff');const n=q.stages.length,gap=8,bw=Math.min(180,(W-20-gap*(n-1))/n),x0=(W-(n*bw+gap*(n-1)))/2;for(let i=0;i<n;i++){const x=x0+i*(bw+gap);card(x,56,bw,40,'#0005');wrapC(i<q.next?q.list[i]:(i+1)+'. ?',x+bw/2,76,bw-8,11,i<q.next?'#7f7':'#ccd')}
+  q.stages.forEach((st,i)=>{const x=x0+i*(bw+gap),y=110,done=st.i<q.next;card(x,y,bw,120,done?'#2a5a3a':'#fdf6e3',st.bad?'#e74c3c':null);const parts=st.s.split(' ');const em=/^\p{Extended_Pictographic}/u.test(parts[0])?parts.shift():'';if(em)txt(em,x+bw/2,y+30,26);wrapC(parts.join(' '),x+bw/2,y+(em?80:60),bw-10,12,done?'#cfc':'#2b1d0e',4);if(!done)btns.push({x,y,w:bw,h:120,f:()=>pickStage(st)})});if(msg)wrapC(msg,W/2,H-36,W-40,14,msgCol);return}
+ const lw=q.wide?0:W*.4;if(!q.wide){if(q.vis)q.vis(lw/2+8,H/2,Math.min(lw,H-60));else if(q.big){card(16,50,lw-16,H-80,'#fdf6e3');wrapC(q.big,lw/2+8,H/2-6,lw-44,q.bigSz||20,'#2b1d0e',6)}else txt(q.icon||ICON,lw/2+8,H/2,70)}
+ const px=q.wide?20:lw+24,pw=W-px-14;wrapC(q.text,px+pw/2,q.wide?52:48,pw,q.wide?17:16,'#fff',q.wide?3:4);const n=q.opts.length,one=n<=3&&q.optCol!==2,bw=one?pw:(pw-10)/2,bh=n>4?36:one?38:46,top=q.wide?92:96;
+ q.opts.forEach((o,i)=>{const bx=px+(one?0:(i%2)*(bw+10)),by=top+(one?i*(bh+8):Math.floor(i/2)*(bh+10));let col='#283070';if(q.picked!=null){if(o===q.ans)col='#2a8a3a';else if(o===q.picked)col='#a33'}card(bx,by,bw,bh,col);const s=(i+1)+'  '+o;if(cx.measureText&&s.length>40)wrapC(s,bx+bw/2,by+bh/2,bw-14,13,'#fff',2);else txt(s,bx+bw/2,by+bh/2,fit(s,bw-10,15));btns.push({x:bx,y:by,w:bw,h:bh,f:()=>choose(o)})});
+ if(msg)wrapC(msg,px+pw/2,H-30,pw,13,msgCol)}
+function pickStage(st){if(lock)return;const q=Q;if(st.i===q.next){q.next++;st.bad=0;sfx.ok();if(q.next>=q.stages.length){lock=true;msg='✔ Perfect order!'+(q.done?' '+q.done:'');msgCol='#7f7';draw();setTimeout(next,1900);return}msg='✔ Yes!';msgCol='#7f7'}else{sfx.bad();miss++;st.bad=1;msg='✘ Not yet — what comes next?';msgCol='#f99'}draw()}
+function choose(v){if(lock)return;Q.picked=v;lock=true;const ok=v===Q.ans;if(ok)sfx.ok();else{sfx.bad();miss++}msg=(ok?'✔ Correct! ':'✘ The answer: '+Q.ans+'. ')+(Q.why||'');msgCol=ok?'#7f7':'#f99';draw();setTimeout(next,ok?1600:3300)}
+function good(m){sfx.ok();lock=true;msg='✔ '+m;msgCol='#7f7';draw();setTimeout(next,1900)}
+function bad(m){sfx.bad();miss++;msg='✘ '+m;msgCol='#f99';draw()}
+function next(){msg='';lock=false;qi++;if(qi>=NQ()){finishLevel(miss===0?3:miss<=2?2:1);return}Q=makeQ();draw()}
+function onTap(x,y){hit(x,y)}
+function onKey(e){const k=e.key,q=Q;if(!q||lock)return;const n=+k;if(CUSTOM[q.m]&&CUSTOM[q.m].key)return CUSTOM[q.m].key(e,q);if(q.opts&&n>=1&&n<=q.opts.length)return choose(q.opts[n-1]);if(q.stages&&n>=1&&n<=q.stages.length&&q.stages[n-1].i>=q.next)return pickStage(q.stages[n-1])}
+
+BG=['#2b2350','#141029'];ICON='🧠';
+const TF=[['All dogs are mammals. Rex is a dog.','Rex is a mammal.','True'],['No fish can walk. Nemo is a fish.','Nemo can walk.','False'],['Every child in Class 3 has a library card. Sam is in Class 3.','Sam has a library card.','True'],['If it rains, the match is cancelled. It rained.','The match was cancelled.','True'],['If it rains, the match is cancelled. The match was NOT cancelled.','It rained.','False'],['All triangles have 3 sides. This shape has 4 sides.','This shape is a triangle.','False'],['Ana is taller than Ben. Ben is taller than Cy.','Ana is taller than Cy.','True'],['Mia is older than Leo. Leo is older than Zoe.','Zoe is the oldest of the three.','False'],['Every number ending in 0 is even. 70 ends in 0.','70 is even.','True'],['All of Kim\'s pens are blue. This pen is red.','This is one of Kim\'s pens.','False']];
+const CT=[['All cats have whiskers. Max has whiskers.','Max is a cat.','Can\'t tell','Dogs and mice have whiskers too!'],['Some apples are red. This is an apple.','This apple is red.','Can\'t tell','Only SOME apples are red.'],['If it rains, the match is cancelled. The match was cancelled.','It rained.','Can\'t tell','It could have been cancelled for another reason.'],['Ana is taller than Ben. Cy is taller than Ben.','Ana is taller than Cy.','Can\'t tell','We only know both are taller than Ben.'],['Some students play chess. Lee is a student.','Lee plays chess.','Can\'t tell','Only SOME students play.'],['All squares are rectangles. This shape is a rectangle.','It is a square.','Can\'t tell','Not every rectangle is a square.']];
+// ---- AND / OR / NOT ----
+function fact(){const t=ri(0,3);if(t===0){const n=ri(2,40);return[n+' is even',n%2===0]}if(t===1){const a=ri(1,30),b=ri(1,30);if(a===b)return fact();return[a+' is greater than '+b,a>b]}if(t===2){const a=ri(2,9),b=ri(2,9),c=Math.random()<.5?a*b:a*b+ri(1,3);return[a+' × '+b+' = '+c,c===a*b]}const n=ri(2,9);const sq=n*n+(Math.random()<.5?0:1);return[sq+' is a square number',Number.isInteger(Math.sqrt(sq))]}
+// ---- Venn ----
+const PROPS=[['Even numbers',n=>n%2===0],['Multiples of 3',n=>n%3===0],['Multiples of 5',n=>n%5===0],['Greater than 15',n=>n>15],['Odd numbers',n=>n%2===1],['Square numbers',n=>[1,4,9,16,25,36].includes(n)]];
+const ANI=[['Eagle',1,1],['Bat',1,0],['Penguin',0,1],['Dog',0,0],['Butterfly',1,1],['Crocodile',0,1],['Ostrich',0,1],['Bee',1,1],['Whale',0,0],['Platypus',0,1],['Owl',1,1],['Horse',0,0],['Turtle',0,1],['Moth',1,1],['Cat',0,0]];
+const REG=['Only in A','Only in B','In both','In neither'];
+function region(a,b){return a&&b?2:a?0:b?1:3}
+// ---- sequences ----
+function seqQ(hard){const kinds=hard?['geo','sq','tri','inc','alt','fib','let','down']:['ar','ar','down','geo2','let'];const k=pick(kinds);let s=[],ans,rule;
+ if(k==='ar'){const a=ri(1,20),d=ri(2,9);s=[0,1,2,3,4].map(i=>a+i*d);ans=a+5*d;rule='Add '+d+' each time.'}
+ else if(k==='down'){const d=ri(2,8),a=ri(5*d+5,90);s=[0,1,2,3,4].map(i=>a-i*d);ans=a-5*d;rule='Subtract '+d+' each time.'}
+ else if(k==='geo2'||k==='geo'){const r=k==='geo2'?2:pick([2,3]),a=ri(1,k==='geo2'?5:3);s=[0,1,2,3,4].map(i=>a*r**i);ans=a*r**5;rule='Multiply by '+r+' each time.'}
+ else if(k==='sq'){const o=ri(1,4);s=[0,1,2,3,4].map(i=>(i+o)**2);ans=(5+o)**2;rule='Square numbers: '+o+'², '+(o+1)+'², …'}
+ else if(k==='tri'){s=[1,3,6,10,15];ans=21;rule='Triangular numbers: add 2, 3, 4, 5, then 6.'}
+ else if(k==='inc'){const a=ri(1,10),d=ri(1,3);s=[a];for(let i=1;i<5;i++)s.push(s[i-1]+d*i);ans=s[4]+d*5;rule='The gap grows by '+d+' each time.'}
+ else if(k==='alt'){const a=ri(10,30),u=ri(3,8),v=ri(1,u-1);s=[a];for(let i=1;i<5;i++)s.push(s[i-1]+(i%2?u:-v));ans=s[4]+u;rule='Alternately add '+u+' and subtract '+v+'.'}
+ else if(k==='fib'){const a=ri(1,3),b=ri(a,5);s=[a,b];for(let i=2;i<5;i++)s.push(s[i-1]+s[i-2]);ans=s[3]+s[4];rule='Add the two previous numbers.'}
+ else{const st=ri(0,8),d=pick([1,2,3]);const L=i=>String.fromCharCode(65+st+i*d);s=[0,1,2,3,4].map(L);ans=L(5);rule='Skip '+(d-1)+' letter'+(d===2?'':'s')+' each time.';if(st+5*d>25)return seqQ(hard)}
+ const c=typeof ans==='number'?[ans+1,ans-1,ans+2,ans*2,ans+(s[4]-s[3]),ans-2].filter(x=>x!==ans&&x>=0):[String.fromCharCode(ans.charCodeAt(0)+1),String.fromCharCode(ans.charCodeAt(0)-1),String.fromCharCode(ans.charCodeAt(0)+2)];return{s,ans:String(ans),opts:mo(String(ans),c.map(String)),rule}}
+// ---- logic grid with brute-force uniqueness ----
+const PEOPLE=['Ava','Ben','Cleo','Dev','Eli','Fay'];
+const THEMES=[['🐶 Dog','🐱 Cat','🐟 Fish','🐰 Rabbit'],['🍎 Apple','🍌 Banana','🍇 Grapes','🍓 Strawberry'],['⚽ Football','🎾 Tennis','🏊 Swimming','🎨 Painting'],['🔴 Red','🔵 Blue','🟢 Green','🟡 Yellow']];
+function perms(n){if(n===1)return[[0]];const out=[];perms(n-1).forEach(p=>{for(let i=0;i<=p.length;i++){const c=p.slice();c.splice(i,0,n-1);out.push(c)}});return out}
+function sat(c,p){if(c.t==='pos')return p[c.a]===c.i;if(c.t==='neg')return p[c.a]!==c.i;if(c.t==='or')return p[c.a]===c.i||p[c.a]===c.j;return true}
+function countSol(cl,n){return perms(n).filter(p=>cl.every(c=>sat(c,p))).length}
+function genGrid(n,noPos){const P=shuffle(PEOPLE).slice(0,n),T=pick(THEMES).slice(0,n),sol=shuffle([...Array(n).keys()]);let cand=[];for(let a=0;a<n;a++)for(let i=0;i<n;i++){if(sol[a]===i){if(!noPos)cand.push({t:'pos',a,i})}else{cand.push({t:'neg',a,i});const j=sol[a];cand.push({t:'or',a,i:Math.min(i,j),j:Math.max(i,j)})}}cand=shuffle(cand);const cl=[];for(const c of cand){if(countSol(cl,n)===1)break;cl.push(c)}
+ for(let k=cl.length-1;k>=0;k--){const t=cl.slice(0,k).concat(cl.slice(k+1));if(countSol(t,n)===1)cl.splice(k,1)}
+ const txtC=c=>{const nm=P[c.a],it=x=>T[x].split(' ').slice(1).join(' ').toLowerCase();if(c.t==='pos')return nm+' has the '+it(c.i)+'.';if(c.t==='neg')return pick([nm+' does not have the '+it(c.i)+'.','The '+it(c.i)+' does not belong to '+nm+'.']);return nm+' has either the '+it(c.i)+' or the '+it(c.j)+'.'};
+ return{P,T,sol,cl,clues:cl.map(txtC),unique:countSol(cl,n)===1}}
+CUSTOM.grid={draw(q){const n=q.g.P.length,lw=W*.42;wrapC('Clues:',lw/2+10,36,lw,14,'#ffcf5a');q.g.clues.forEach((c,i)=>wrapC((i+1)+'. '+c,lw/2+10,58+i*(Math.min(34,(H-120)/q.g.clues.length)),lw-10,12,'#fff',2));
+ const gx=lw+90,cs=Math.min(58,(W-gx-14)/n,(H-110)/n),gy=74;q.g.T.forEach((t,j)=>{txt(t.split(' ')[0],gx+j*cs+cs/2,gy-26,20);txt(t.split(' ').slice(1).join(' '),gx+j*cs+cs/2,gy-8,9,'#ccd')});
+ q.g.P.forEach((p,i)=>{txt(p,gx-40,gy+i*cs+cs/2,15,'#fff');for(let j=0;j<n;j++){const v=q.marks[i][j],x=gx+j*cs,y=gy+i*cs;card(x+2,y+2,cs-4,cs-4,v===2?'#2a8a3a':v===1?'#5a2a3a':'#283070');if(v)txt(v===2?'✓':'✗',x+cs/2,y+cs/2,22,'#fff');btns.push({x,y,w:cs,h:cs,f:()=>{if(lock)return;q.marks[i][j]=(v+1)%3;if(q.marks[i][j]===2){for(let k=0;k<n;k++){if(k!==j&&q.marks[i][k]===2)q.marks[i][k]=1;if(k!==i&&q.marks[k][j]===2)q.marks[k][j]=1}}sfx.tap();msg='';draw()}})}});
+ const by=gy+n*cs+12;if(!lock){card(gx,by,n*cs,38,'#e07a10');txt('✔ Check',gx+n*cs/2,by+19,15);btns.push({x:gx,y:by,w:n*cs,h:38,f:()=>checkGrid(q)})}txt('Tap: ✗ → ✓ → blank',gx+n*cs/2,by+50,10,'#9ab');if(msg)wrapC(msg,gx+n*cs/2-20,H-16,W-gx,12,msgCol)},
+ key(e,q){if(e.key==='Enter')checkGrid(q)}};
+function checkGrid(q){if(lock)return;const n=q.g.P.length;for(let i=0;i<n;i++)if(!q.marks[i].includes(2))return bad('Put one ✓ in every row first.');const wrong=q.g.P.filter((p,i)=>q.marks[i].indexOf(2)!==q.g.sol[i]);if(!wrong.length)good('Solved! Every clue fits only this answer.');else bad('Not quite — check '+wrong.join(' and ')+' against the clues.')}
+// ---- knights and knaves ----
+function kkGen(n){const names=shuffle(['Ari','Bo','Cass','Dax','Eve']).slice(0,n);for(let t=0;t<500;t++){const st=names.map((_,i)=>{const o=pick([...Array(n).keys()].filter(j=>j!==i));const k=ri(0,5);
+  if(k===0)return{s:names[o]+' is a knight.',f:a=>a[o]};if(k===1)return{s:names[o]+' is a knave.',f:a=>!a[o]};if(k===2)return{s:names[o]+' and I are the same type.',f:a=>a[o]===a[i]};if(k===3)return{s:names[o]+' and I are different types.',f:a=>a[o]!==a[i]};if(k===4)return{s:'At least one of us is a knave.',f:a=>a.some(x=>!x)};return{s:'We are all knights.',f:a=>a.every(x=>x)}});
+  const sols=[];for(let m=0;m<1<<n;m++){const a=names.map((_,i)=>!!(m>>i&1));if(st.every((s,i)=>s.f(a)===a[i]))sols.push(a)}if(sols.length===1)return{names,st,sol:sols[0]}}return kkGen(n)}
+CUSTOM.kk={draw(q){wrapC('Knights always tell the TRUTH. Knaves always LIE. Tap each person to choose.',W/2,38,W-40,14,'#fff');const n=q.k.names.length,bw=Math.min(240,(W-40-(n-1)*12)/n),x0=(W-(n*bw+(n-1)*12))/2;q.k.names.forEach((nm,i)=>{const x=x0+i*(bw+12),y=62,v=q.guess[i];card(x,y,bw,90,'#fdf6e3');wrapC('"'+q.k.st[i].s+'"',x+bw/2,y+45,bw-16,14,'#2b1d0e');const by=y+104;card(x,by,bw,62,v===1?'#2a6a9a':v===2?'#8a2a2a':'#283070');txt((v===1?'🛡️ ':v===2?'🦹 ':'❓ ')+nm,x+bw/2,by+22,18);txt(v===1?'Knight':v===2?'Knave':'tap to choose',x+bw/2,by+46,12,'#ddd');btns.push({x,y:by,w:bw,h:62,f:()=>{if(lock)return;q.guess[i]=v===1?2:1;sfx.tap();msg='';draw()}})});
+ if(!lock){card(W/2-80,H-56,160,40,'#e07a10');txt('✔ Check',W/2,H-36,16);btns.push({x:W/2-80,y:H-56,w:160,h:40,f:()=>checkKK(q)})}if(msg)wrapC(msg,W/2,H-74,W-40,13,msgCol)},key(e,q){const n=+e.key;if(n>=1&&n<=q.guess.length){q.guess[n-1]=q.guess[n-1]===1?2:1;draw()}else if(e.key==='Enter')checkKK(q)}};
+function checkKK(q){if(lock)return;if(q.guess.some(v=>!v))return bad('Choose knight or knave for everyone.');const ok=q.guess.every((v,i)=>(v===1)===q.k.sol[i]);if(ok)good('Brilliant deduction! Only this answer makes every statement work.');else bad('That doesn\'t work — try assuming someone is a knight and see if their statement holds.')}
+// ---- Venn custom draw ----
+CUSTOM.venn={draw(q){const cx0=W*.24,cy0=H/2+10,r=Math.min(H*.36,W*.15);cx.globalAlpha=.35;cx.fillStyle='#e74c3c';cx.beginPath();cx.arc(cx0-r*.55,cy0,r,0,7);cx.fill();cx.fillStyle='#3498db';cx.beginPath();cx.arc(cx0+r*.55,cy0,r,0,7);cx.fill();cx.globalAlpha=1;cx.strokeStyle='#fff';cx.lineWidth=2;cx.strokeRect(cx0-r*1.75,cy0-r*1.2,r*3.5,r*2.4);
+ txt('A: '+q.A,cx0-r*.6,cy0-r*1.2-12,12,'#f99');txt('B: '+q.B,cx0+r*.6,cy0-r*1.2-12,12,'#9cf');
+ const pos=[[cx0-r*.95,cy0],[cx0+r*.95,cy0],[cx0,cy0],[cx0-r*1.5,cy0+r*1.05]];q.placed.forEach((p,k)=>{const [x,y]=pos[p.r];txt(p.v,x+((k%3)-1)*18,y-r*.4+Math.floor(k/3)*16,13,'#fff')});
+ const px=W*.5,pw=W-px-14;card(px+pw/2-70,40,140,46,'#fdf6e3');txt(q.item,px+pw/2,63,fit(q.item,130,24),'#2b1d0e');txt('Where does it go?',px+pw/2,104,15,'#fff');const bw=(pw-10)/2,bh=42;REG.forEach((o,i)=>{const bx=px+(i%2)*(bw+10),by=122+Math.floor(i/2)*(bh+10);let col='#283070';if(q.picked!=null){if(i===q.ans)col='#2a8a3a';else if(i===q.picked)col='#a33'}card(bx,by,bw,bh,col);txt((i+1)+'  '+o,bx+bw/2,by+bh/2,15);btns.push({x:bx,y:by,w:bw,h:bh,f:()=>vpick(q,i)})});if(msg)wrapC(msg,px+pw/2,H-30,pw,13,msgCol)},key(e,q){const n=+e.key;if(n>=1&&n<=4)vpick(q,n-1)}};
+function vpick(q,i){if(lock||q.picked!=null)return;q.picked=i;const ok=i===q.ans;if(ok){sfx.ok();q.placed.push({v:q.item,r:i})}else{sfx.bad();miss++}msg=(ok?'✔ ':'✘ It goes '+REG[q.ans].toLowerCase()+'. ')+q.why;msgCol=ok?'#7f7':'#f99';lock=true;draw();setTimeout(()=>{const keep=q.placed;next();if(Q&&Q.m==='venn'&&Q.A===q.A)Q.placed=keep;draw()},ok?1400:2800)}
+const LV=[
+{name:'True or false?',m:'tf'},
+{name:'Number sequences',m:'seq'},
+{name:'Venn diagram: numbers',m:'vennN',n:8},
+{name:'Logic grid 3 × 3',m:'grid',g:3,n:3},
+{name:'Knights & knaves (2)',m:'kk',k:2,n:3},
+{name:'Tricky sequences',m:'seq',hard:1},
+{name:'Venn diagram: animals',m:'vennA',n:8},
+{name:'Logic grid 4 × 4',m:'grid',g:4,n:3},
+{name:'True, false or can\'t tell?',m:'ct'},
+{name:'Knights & knaves (3)',m:'kk',k:3,n:3},
+{name:'AND, OR, NOT',m:'bool'},
+{name:'Expert grid (no free answers)',m:'grid',g:4,noPos:1,n:3},
+{name:'Letter & number patterns',m:'seq',hard:1},
+{name:'Logic master',m:'mix'}];
+const TIPS={0:'Read the facts, then decide: does the conclusion HAVE to be true? Only use what you are told.',2:'A Venn diagram sorts things into circles. The overlap holds things that belong in BOTH circles.',3:'Each person has exactly one thing, and no two people share. Mark ✗ for what clues rule out, then find the ✓.',4:'Knights always tell the truth, knaves always lie. Imagine each person is a knight: does everything still make sense?',8:'"Can\'t tell" means the facts don\'t give enough information to be sure.',10:'AND is true only if BOTH parts are true. OR is true if AT LEAST ONE part is true. NOT flips true and false.'};
+function makeQ(){const L=LV[cur];let m=L.m;if(m==='mix')m=pick(['tf','seq','vennN','grid','kk','ct','bool','vennA']);const q={m,used:(Q&&Q.used)||[]};
+ if(m==='tf'||m==='ct'){const f=fromList(m==='tf'?TF:TF.concat(CT,CT),q);q.big='Facts: '+f[0];q.bigSz=17;q.text='So… "'+f[1]+'"';q.opts=m==='tf'?['True','False']:['True','False','Can\'t tell'];q.ans=f[2];q.why=f[3]||(f[2]==='True'?'It must follow from the facts.':'The facts show it can\'t be true.')}
+ else if(m==='seq'){const s=seqQ(L.hard||LV[cur].m==='mix');q.big=s.s.join(',  ')+',  ?';q.bigSz=24;q.text='What comes next?';q.opts=s.opts;q.ans=s.ans;q.why=s.rule}
+ else if(m==='bool'){const [a,av]=fact(),[b,bv]=fact(),op=pick(['AND','OR','NOT']);let s,v;if(op==='NOT'){s='It is NOT true that '+a+'.';v=!av}else{s='"'+a+'" '+op+' "'+b+'"';v=op==='AND'?av&&bv:av||bv}q.big=s;q.bigSz=18;q.text='Is this whole statement true or false?';q.opts=['True','False'];q.ans=v?'True':'False';q.why=op==='NOT'?'"'+a+'" is '+(av?'true':'false')+', so NOT flips it.':'"'+a+'" is '+(av?'true':'false')+' and "'+b+'" is '+(bv?'true':'false')+'. '+op+(op==='AND'?' needs both.':' needs at least one.')}
+ else if(m==='vennN'||m==='vennA'){const prev=Q&&Q.m==='venn'&&qi>0?Q:null;q.m='venn';q.placed=[];if(m==='vennN'){let pa,pb;if(prev){q.A=prev.A;q.B=prev.B;pa=prev.fa;pb=prev.fb}else{const two=shuffle(PROPS.filter(p=>p[0]!=='Odd numbers')).slice(0,2);q.A=two[0][0];q.B=two[1][0];pa=two[0][1];pb=two[1][1]}q.fa=pa;q.fb=pb;let n;do n=ri(1,30);while(q.used.includes(n));q.used=q.used.concat(n);q.item=String(n);q.ans=region(pa(n),pb(n));q.why=n+(pa(n)?' IS ':' is NOT ')+'in A, and'+(pb(n)?' IS ':' is NOT ')+'in B.'}
+  else{q.A='Can fly';q.B='Lays eggs';const a=fromList(ANI,q);q.item=a[0];q.ans=region(a[1],a[2]);q.why=a[0]+(a[1]?' can fly':' can\'t fly')+' and '+(a[2]?'lays eggs.':'doesn\'t lay eggs.')}}
+ else if(m==='grid'){const n=L.g||3;q.g=genGrid(n,L.noPos);q.marks=[...Array(n)].map(()=>Array(n).fill(0))}
+ else if(m==='kk'){q.k=kkGen(L.k||2);q.guess=q.k.names.map(()=>0)}
+ return q}
+window.G={get Q(){return Q},LV,genGrid,kkGen,countSol,perms,sat};
+resize();cur=0;Q=makeQ();draw();showLevels();
+
+
+</script></body></html>

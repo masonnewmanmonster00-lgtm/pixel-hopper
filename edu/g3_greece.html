@@ -1,0 +1,131 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Ancient Greece</title><style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;height:100%;background:#1d1630;color:#eef;font-family:system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden;user-select:none}
+#top{position:absolute;top:0;left:0;right:0;height:40px;display:flex;align-items:center;gap:6px;padding:0 8px;background:#0008;z-index:3}
+#top a,#top button{color:#fff;background:#283070;border:0;border-radius:8px;padding:6px 10px;font-size:13px;text-decoration:none;cursor:pointer;white-space:nowrap}
+#title{flex:1;font-weight:800;white-space:nowrap;overflow:hidden}#title b{color:#ffcf5a}#st{font-size:13px;white-space:nowrap}
+canvas{position:absolute;top:40px;left:0;touch-action:none}
+.btn{background:linear-gradient(#ffb340,#e07a10);color:#fff;border:0;border-radius:12px;padding:9px 13px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 #8a4a00;margin:3px}
+.btn:active{transform:translateY(2px)}
+#ov{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:9}
+#ov>div{background:#121a4a;border:2px solid #ffcf5a;border-radius:16px;padding:12px 16px;text-align:center;max-width:96%;max-height:94%;overflow:auto}
+#ov h2{margin:4px 0}#ov p{margin:6px 0;font-size:14px}
+.lv{display:inline-block;margin:3px;padding:5px 8px;border-radius:8px;background:#283070;font-size:13px;cursor:pointer;min-width:120px}
+.lv:hover{background:#e07a10}.lv.lock{opacity:.45;cursor:default}.stars{font-size:34px;color:#ffd54a}
+</style></head><body>
+<div id="top"><a id="lz" href="./index.html">◀ Learning Lab</a><a id="menu" href="../index.html">🏠</a><div id="title">🏛️ Ancient <b>Greece</b></div><span id="st"></span><button id="lvB">Levels</button><button id="pB">⏸</button><button id="mu">🔊</button></div>
+<canvas id="c"></canvas><div id="ov"><div id="ovc"></div></div>
+<script>
+const SAVEKEY='g3GreeceSave',TITLE='🏛️ Ancient Greece',INTRO='Visit the world of the ancient Greeks! Learn the Greek alphabet, meet the gods, compete in the first Olympics, compare Athens and Sparta, and spot temple columns.';
+// shared skeleton injected into both games
+const $=id=>document.getElementById(id);
+const cv=$('c'),cx=cv.getContext('2d');let W=0,H=0,DPR=1;
+let save={mute:false,stars:{},unlocked:1};
+try{const s=JSON.parse(localStorage.getItem(SAVEKEY)||'null');if(s)save=Object.assign(save,s)}catch(e){}
+function persist(){try{localStorage.setItem(SAVEKEY,JSON.stringify(save))}catch(e){}}
+let AC=null;function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(AC&&AC.state==='suspended')AC.resume();return AC}
+function tone(f,d=0.12,t='sine',v=0.15,dl=0){if(save.mute)return;const a=ac();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type=t;o.frequency.value=f;const s=a.currentTime+dl;g.gain.setValueAtTime(v,s);g.gain.exponentialRampToValueAtTime(0.001,s+d);o.connect(g);g.connect(a.destination);o.start(s);o.stop(s+d+0.02)}
+const sfx={ok(){tone(660,.1,'triangle');tone(990,.15,'triangle',.15,.08)},bad(){tone(200,.25,'sawtooth',.08)},tap(){tone(500,.05,'square',.05)},win(){[523,659,784,1046].forEach((f,i)=>tone(f,.2,'triangle',.15,i*.12))}};
+function resize(){DPR=window.devicePixelRatio||1;W=innerWidth;H=innerHeight-40;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);cv.style.width=W+'px';cv.style.height=H+'px';cx.setTransform(DPR,0,0,DPR,0,0)}
+function rr(x,y,w,h,r){cx.beginPath();cx.roundRect?cx.roundRect(x,y,w,h,r):cx.rect(x,y,w,h)}
+function txt(s,x,y,sz,col='#fff',al='center',wt='700'){cx.font=wt+' '+sz+'px system-ui,Segoe UI,Roboto,sans-serif';cx.fillStyle=col;cx.textAlign=al;cx.textBaseline='middle';cx.fillText(s,x,y)}
+function fit(s,maxw,sz){cx.font='700 '+sz+'px system-ui';while(sz>9&&cx.measureText(s).width>maxw){sz--;cx.font='700 '+sz+'px system-ui'}return sz}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function pick(a){return a[Math.random()*a.length|0]}
+let paused=false,btns=[];
+function hit(x,y){for(let i=btns.length-1;i>=0;i--){const b=btns[i];if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){b.f();return true}}return false}
+function ptr(e){ac();if(paused||$('ov').style.display==='flex')return;const r=cv.getBoundingClientRect();const p=e.changedTouches?e.changedTouches[0]:e;onTap(p.clientX-r.left,p.clientY-r.top)}
+cv.addEventListener('pointerdown',e=>{e.preventDefault();ptr(e)});
+function ov(html){$('ovc').innerHTML=html;$('ov').style.display=html?'flex':'none'}
+function setPause(p){if($('ov').style.display==='flex'&&!paused)return;paused=p;$('pB').textContent=p?'▶':'⏸';ov(p?'<h2>⏸ Paused</h2><p>Press P or tap to resume. R restarts the level.</p><button class="btn" onclick="setPause(false)">▶ Resume</button> <button class="btn" onclick="setPause(false);restart()">↻ Restart</button>':'')}
+$('pB').onclick=()=>setPause(!paused);
+$('mu').textContent=save.mute?'🔇':'🔊';$('mu').onclick=()=>{save.mute=!save.mute;$('mu').textContent=save.mute?'🔇':'🔊';persist()};
+$('lvB').onclick=()=>{paused=false;showLevels()};
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function showLevels(){let h='<h2>'+TITLE+'</h2><p>'+INTRO+'</p>';LV.forEach((L,i)=>{const ok=i<save.unlocked;h+='<span class="lv'+(ok?'':' lock')+'" data-lv="'+i+'" '+(ok?'onclick="startLevel('+i+')"':'')+'>'+(ok?'':'🔒 ')+(i+1)+'. '+L.name+'<br><small>'+starStr(save.stars[i]||0)+'</small></span>'});h+='<p><small>Keys: 1-4 choose · P pause · R restart · M mute</small></p>';ov(h)}
+function finishLevel(stars){sfx.win();const i=cur;save.stars[i]=Math.max(save.stars[i]||0,stars);save.unlocked=Math.max(save.unlocked,Math.min(LV.length,i+2));persist();
+ ov('<h2>Level complete!</h2><div class="stars">'+starStr(stars)+'</div><p>'+LV[i].name+'</p>'+(i+1<LV.length?'<button class="btn" id="nextB" onclick="startLevel('+(i+1)+')">Next level ▶</button> ':'')+'<button class="btn" onclick="restart()">↻ Replay</button> <button class="btn" onclick="showLevels()">Levels</button>')}
+function restart(){ov('');startLevel(cur)}
+addEventListener('keydown',e=>{const k=e.key;if(k==='p'||k==='P'){setPause(!paused);return}if(paused)return;if($('ov').style.display==='flex'){if(k==='Enter'&&$('nextB'))$('nextB').click();return}
+ if(keyTyping()&&k.length===1&&k!=='p'&&k!=='P'){onKey(e);return}
+ if(k==='r'||k==='R'){restart();return}if(k==='m'||k==='M'){$('mu').click();return}onKey(e)});
+addEventListener('resize',()=>{resize();draw()});
+function ri(a,b){return a+Math.floor(Math.random()*(b-a+1))}
+let cur=0,qi=0,miss=0,Q=null,msg='',msgCol='#fff',lock=false;const CUSTOM={};let BG=['#2a2140','#16213e'],ICON='📚';
+const NQ=()=>{const L=LV[cur];return L.n||(L.m==='order'||L.m==='tl'?(L.reps||1):L.m==='mix'?8:6)};
+function mo(ans,pool,n=4){return shuffle([ans,...shuffle([...new Set(pool)].filter(x=>x!==ans)).slice(0,n-1)])}
+function fromList(list,q){const u=(Q&&Q.used)||[],key=x=>Array.isArray(x)?x[0]:x,left=list.filter(x=>!u.includes(key(x)));const f=pick(left.length?left:list);q.used=u.concat(key(f));return f}
+function quizQ(q,f){q.text=f[0];q.opts=shuffle([f[1],...f[2]]);q.ans=f[1];q.why=f[3]||''}
+function orderQ(q,list,text){q.list=list;q.stages=shuffle(list.map((s,i)=>({s,i})));q.next=0;q.text=text||'Tap the steps IN ORDER, first to last.'}
+function tlQ(q,TL,fmt){const ev=shuffle(TL).slice(0,4).sort((a,b)=>a[0]-b[0]);orderQ(q,ev.map(e=>e[1]+' ('+fmt(e[0])+')'),'Tap these events from OLDEST to NEWEST.');q.stages.forEach(s=>s.s=s.s.replace(/ \([^)]*\)$/,''))}
+function startLevel(i){ov('');paused=false;cur=i;qi=0;miss=0;msg='';lock=false;Q=null;Q=makeQ();draw();if(TIPS[i]&&!save['tip'+i]){save['tip'+i]=1;persist();ov('<h2>'+LV[i].name+'</h2><p>'+TIPS[i]+'</p><button class="btn" onclick="ov(\'\')">Let\'s go ▶</button>')}}
+function keyTyping(){return false}
+function card(x,y,w,h,col,stroke){cx.fillStyle=col;rr(x,y,w,h,12);cx.fill();if(stroke){cx.strokeStyle=stroke;cx.lineWidth=3;cx.stroke()}}
+function wrapC(s,x,y,w,sz,col,maxL=3){cx.font='700 '+sz+'px system-ui';const ws=String(s).split(' ');let lines=[],l='';for(const wd of ws){const t=l?l+' '+wd:wd;if(cx.measureText(t).width>w&&l){lines.push(l);l=wd}else l=t}lines.push(l);if(lines.length>maxL&&sz>10)return wrapC(s,x,y,w,sz-1,col,maxL);lines.forEach((ln,i)=>txt(ln,x,y+(i-(lines.length-1)/2)*(sz+3),sz,col))}
+function draw(){btns=[];cx.clearRect(0,0,W,H);const g=cx.createLinearGradient(0,0,0,H);g.addColorStop(0,BG[0]);g.addColorStop(1,BG[1]);cx.fillStyle=g;cx.fillRect(0,0,W,H);if(!Q)return;const q=Q;
+ $('st').textContent='Lv '+(cur+1)+' · '+Math.min(qi+1,NQ())+'/'+NQ()+' · ✗'+miss;txt(LV[cur].name,W/2,14,13,'#ffcf5a');
+ if(CUSTOM[q.m])return CUSTOM[q.m].draw(q);
+ if(q.stages){wrapC(q.text,W/2,36,W-40,16,'#fff');const n=q.stages.length,gap=8,bw=Math.min(180,(W-20-gap*(n-1))/n),x0=(W-(n*bw+gap*(n-1)))/2;for(let i=0;i<n;i++){const x=x0+i*(bw+gap);card(x,56,bw,40,'#0005');wrapC(i<q.next?q.list[i]:(i+1)+'. ?',x+bw/2,76,bw-8,11,i<q.next?'#7f7':'#ccd')}
+  q.stages.forEach((st,i)=>{const x=x0+i*(bw+gap),y=110,done=st.i<q.next;card(x,y,bw,120,done?'#2a5a3a':'#fdf6e3',st.bad?'#e74c3c':null);const parts=st.s.split(' ');const em=/^\p{Extended_Pictographic}/u.test(parts[0])?parts.shift():'';if(em)txt(em,x+bw/2,y+30,26);wrapC(parts.join(' '),x+bw/2,y+(em?80:60),bw-10,12,done?'#cfc':'#2b1d0e',4);if(!done)btns.push({x,y,w:bw,h:120,f:()=>pickStage(st)})});if(msg)wrapC(msg,W/2,H-36,W-40,14,msgCol);return}
+ const lw=q.wide?0:W*.4;if(!q.wide){if(q.vis)q.vis(lw/2+8,H/2,Math.min(lw,H-60));else if(q.big){card(16,50,lw-16,H-80,'#fdf6e3');wrapC(q.big,lw/2+8,H/2-6,lw-44,q.bigSz||20,'#2b1d0e',6)}else txt(q.icon||ICON,lw/2+8,H/2,70)}
+ const px=q.wide?20:lw+24,pw=W-px-14;wrapC(q.text,px+pw/2,q.wide?52:48,pw,q.wide?17:16,'#fff',q.wide?3:4);const n=q.opts.length,one=n<=3&&q.optCol!==2,bw=one?pw:(pw-10)/2,bh=n>4?36:one?38:46,top=q.wide?92:96;
+ q.opts.forEach((o,i)=>{const bx=px+(one?0:(i%2)*(bw+10)),by=top+(one?i*(bh+8):Math.floor(i/2)*(bh+10));let col='#283070';if(q.picked!=null){if(o===q.ans)col='#2a8a3a';else if(o===q.picked)col='#a33'}card(bx,by,bw,bh,col);const s=(i+1)+'  '+o;if(cx.measureText&&s.length>40)wrapC(s,bx+bw/2,by+bh/2,bw-14,13,'#fff',2);else txt(s,bx+bw/2,by+bh/2,fit(s,bw-10,15));btns.push({x:bx,y:by,w:bw,h:bh,f:()=>choose(o)})});
+ if(msg)wrapC(msg,px+pw/2,H-30,pw,13,msgCol)}
+function pickStage(st){if(lock)return;const q=Q;if(st.i===q.next){q.next++;st.bad=0;sfx.ok();if(q.next>=q.stages.length){lock=true;msg='✔ Perfect order!'+(q.done?' '+q.done:'');msgCol='#7f7';draw();setTimeout(next,1900);return}msg='✔ Yes!';msgCol='#7f7'}else{sfx.bad();miss++;st.bad=1;msg='✘ Not yet — what comes next?';msgCol='#f99'}draw()}
+function choose(v){if(lock)return;Q.picked=v;lock=true;const ok=v===Q.ans;if(ok)sfx.ok();else{sfx.bad();miss++}msg=(ok?'✔ Correct! ':'✘ The answer: '+Q.ans+'. ')+(Q.why||'');msgCol=ok?'#7f7':'#f99';draw();setTimeout(next,ok?1600:3300)}
+function good(m){sfx.ok();lock=true;msg='✔ '+m;msgCol='#7f7';draw();setTimeout(next,1900)}
+function bad(m){sfx.bad();miss++;msg='✘ '+m;msgCol='#f99';draw()}
+function next(){msg='';lock=false;qi++;if(qi>=NQ()){finishLevel(miss===0?3:miss<=2?2:1);return}Q=makeQ();draw()}
+function onTap(x,y){hit(x,y)}
+function onKey(e){const k=e.key,q=Q;if(!q||lock)return;const n=+k;if(CUSTOM[q.m]&&CUSTOM[q.m].key)return CUSTOM[q.m].key(e,q);if(q.opts&&n>=1&&n<=q.opts.length)return choose(q.opts[n-1]);if(q.stages&&n>=1&&n<=q.stages.length&&q.stages[n-1].i>=q.next)return pickStage(q.stages[n-1])}
+
+BG=['#1f3b63','#0f2140'];ICON='🏛️';
+const GK=[['Α','α','Alpha','A'],['Β','β','Beta','B'],['Γ','γ','Gamma','G'],['Δ','δ','Delta','D'],['Ε','ε','Epsilon','E (short)'],['Ζ','ζ','Zeta','Z'],['Η','η','Eta','E (long)'],['Θ','θ','Theta','TH'],['Ι','ι','Iota','I'],['Κ','κ','Kappa','K'],['Λ','λ','Lambda','L'],['Μ','μ','Mu','M'],['Ν','ν','Nu','N'],['Ξ','ξ','Xi','X (ks)'],['Ο','ο','Omicron','O (short)'],['Π','π','Pi','P'],['Ρ','ρ','Rho','R'],['Σ','σ','Sigma','S'],['Τ','τ','Tau','T'],['Υ','υ','Upsilon','U / Y'],['Φ','φ','Phi','PH (f)'],['Χ','χ','Chi','KH (ch)'],['Ψ','ψ','Psi','PS'],['Ω','ω','Omega','O (long)']];
+const GODS=[['Zeus','King of the gods, god of the sky and thunder','⚡ thunderbolt and eagle'],['Hera','Queen of the gods, goddess of marriage and family','🦚 peacock'],['Poseidon','God of the sea, earthquakes and horses','🔱 trident'],['Athena','Goddess of wisdom, crafts and war strategy','🦉 owl and olive tree'],['Apollo','God of music, light, healing and prophecy','🎵 lyre'],['Artemis','Goddess of hunting and the Moon','🏹 bow and deer'],['Ares','God of war','🛡️ spear and helmet'],['Aphrodite','Goddess of love and beauty','🕊️ dove'],['Hermes','Messenger of the gods, god of travellers','👟 winged sandals'],['Hephaestus','God of fire and blacksmiths','🔨 hammer and anvil'],['Demeter','Goddess of the harvest and grain','🌾 wheat'],['Dionysus','God of wine, theatre and festivals','🍇 grapes']];
+const AS=[['Ruled by citizens voting in an assembly (democracy)','Athens'],['Ruled by two kings and a council of elders','Sparta'],['Boys began military training at age 7 (the agoge)','Sparta'],['Famous for plays, philosophy and the Parthenon','Athens'],['Girls ran, wrestled and trained to be strong','Sparta'],['Had a powerful navy of triremes','Athens'],['Helots (enslaved people) farmed the land for citizens','Sparta'],['Home of the philosopher Socrates','Athens'],['Named after its patron goddess Athena','Athens'],['Its soldiers fought at Thermopylae under King Leonidas','Sparta'],['Built Long Walls down to its port, Piraeus','Athens'],['Used iron bars as money so people wouldn\'t want riches','Sparta']];
+const Q_OLY=[['Where were the ancient Olympic Games held?','Olympia',['Athens','Sparta','Rome'],'Olympia was a sanctuary of Zeus in the western Peloponnese.'],['Traditionally, when were the first Olympics?','776 BC',['AD 1896','1000 BC','AD 776'],'The first recorded winner was a cook called Koroibos who won the stadion race.'],['How often were the Games held?','Every four years',['Every year','Every ten years','Only once'],'The four-year period was called an Olympiad.'],['The Olympics honoured which god?','Zeus',['Poseidon','Ares','Hades'],'A giant gold-and-ivory statue of Zeus stood in his temple at Olympia.'],['What did winners receive?','A crown of olive leaves',['A gold medal','Money only','A chariot'],'Back home, champions were often given free meals and fame.'],['Which was the oldest event?','The stadion sprint (about 192 m)',['Marathon','Swimming','Football'],'The marathon was only added in the modern Games of 1896.'],['What happened during the Games?','A sacred truce so athletes could travel safely',['Wars got bigger','Nobody could watch','Women ran the Games'],'Messengers announced the truce across Greece.'],['Which event combined five sports?','The pentathlon',['The decathlon','The relay','Archery'],'Running, long jump, discus, javelin and wrestling.'],['Married women could…','Not watch the Games',['Compete in wrestling','Judge the races','Light the torch'],'But women had their own Games, the Heraia, for Hera.']];
+const Q_DEM=[['"Democracy" comes from Greek words meaning…','Rule by the people',['Rule by one','Rule by the rich','Rule by gods'],'Demos = people, kratos = power or rule.'],['Where did democracy begin, around 508 BC?','Athens',['Sparta','Rome','Egypt'],'Cleisthenes\' reforms are usually seen as the start.'],['Who could vote in Athens?','Free adult men born to Athenian citizens',['Everyone','Women only','Enslaved people'],'Women, foreigners and enslaved people could not vote.'],['The Assembly (Ekklesia) met on a hill called…','The Pnyx',['Olympus','The Acropolis','Marathon'],'Thousands of citizens gathered there to debate and vote.'],['How were many officials chosen?','By lottery, picking names at random',['By exams','By the king','By strength'],'A machine called a kleroterion picked names fairly.'],['Ostracism let Athenians…','Vote to send a politician away for 10 years',['Choose a king','Build ships','Elect gods'],'Voters scratched names on pieces of pottery called ostraka.'],['Juries in Athens were…','Very big — often 201 to 501 citizens',['One judge','Robots','Only 3 people'],'Big juries were hard to bribe.']];
+const Q_MYTH=[['Who killed the Minotaur in the Labyrinth?','Theseus',['Hercules','Perseus','Jason'],'Ariadne gave him a ball of thread to find his way out.'],['Medusa could turn people to stone by…','Her gaze',['Singing','Touch','Breathing fire'],'Perseus beheaded her using a polished shield as a mirror.'],['Heracles (Hercules) had to complete…','Twelve labours',['Three wishes','Seven quests','One hundred battles'],'Including capturing Cerberus and slaying the Nemean lion.'],['Jason sailed on the Argo to find…','The Golden Fleece',['The Holy Grail','A dragon egg','Atlantis'],'His crew were called the Argonauts.'],['Pandora opened a jar that released…','All the troubles of the world, leaving only hope',['Gold','Bees','Rain'],'In the oldest stories it was a jar (pithos), not a box.'],['Icarus fell because he flew too close to…','The Sun',['The sea','A mountain','The Moon'],'The wax on his feathered wings melted.'],['Who wrote the Iliad and the Odyssey (traditionally)?','Homer',['Plato','Aesop','Homer Simpson'],'The epics tell of the Trojan War and Odysseus\'s journey home.'],['The Greeks tricked Troy with…','A giant wooden horse',['A flying ship','A fake treaty','A giant'],'Soldiers hid inside and opened the gates at night.']];
+const Q_WORD=[['"Telephone" comes from tele + phone, meaning…','Far + sound',['Small + light','Fast + word','Wire + talk'],'Tele = far, phone = sound or voice.'],['"Biology" means the study of…','Life',['Rocks','Stars','Books'],'Bios = life, logos = word or study.'],['"Geography" means…','Earth writing',['Sky drawing','Water study','Map making'],'Geo = Earth, graphein = to write.'],['"Dinosaur" means…','Terrible lizard',['Big bird','Old dragon','Fast beast'],'Deinos = terrible, sauros = lizard.'],['"Microscope" means…','Small + look at',['Far + see','Big + tube','Light + glass'],'Mikros = small, skopein = to look.'],['"Alphabet" comes from…','Alpha + beta, the first two Greek letters',['A + B in Latin','A king\'s name','An Egyptian god'],'Our word literally starts with the Greek letters.'],['"Philosophy" means…','Love of wisdom',['Fear of books','Love of food','Study of rocks'],'Philos = loving, sophia = wisdom.']];
+const Q_THINK=[['Which thinker said "I know that I know nothing" and asked endless questions?','Socrates',['Archimedes','Homer','Leonidas'],'He wrote nothing himself — his student Plato wrote about him.'],['Who shouted "Eureka!" after discovering how to measure volume in his bath?','Archimedes',['Pythagoras','Plato','Hippocrates'],'He lived in Syracuse in the 200s BC.'],['Who is known for a famous theorem about right-angled triangles?','Pythagoras',['Socrates','Aristotle','Homer'],'a² + b² = c².'],['Doctors still take an oath named after…','Hippocrates',['Zeus','Plato','Pericles'],'He taught that illnesses have natural causes, not curses.'],['Plato founded a famous school called…','The Academy',['The Lyceum','The Olympics','The Agora'],'Aristotle studied there for 20 years.'],['Aristotle taught which young prince?','Alexander the Great',['Julius Caesar','Leonidas','Pericles'],'Alexander went on to build a huge empire.'],['Who worked out that the Earth is round and estimated its size?','Eratosthenes',['Icarus','Homer','Ares'],'He compared shadows in two cities, about 240 BC.']];
+const TEMPLE=['🪨 Level the stone platform (stylobate)','🏛️ Stack drums to raise the columns','👑 Add the carved capitals on top','➖ Lay the architrave beams across','🎨 Add the frieze with carved scenes','🔺 Build the triangular pediment','🧱 Cover the roof with tiles'];
+const TL=[[-776,'🏃 First recorded Olympic Games'],[-750,'📜 Homer\'s epics take shape (about)'],[-508,'🗳️ Democracy begins in Athens'],[-490,'⚔️ Battle of Marathon'],[-480,'🛡️ Battle of Thermopylae'],[-447,'🏛️ Building of the Parthenon begins'],[-431,'⚔️ Peloponnesian War begins'],[-399,'⚖️ Trial and death of Socrates'],[-336,'👑 Alexander the Great becomes king'],[-146,'🦅 Greece comes under Roman rule']];
+const yr=y=>(y<0?(-y)+' BC':'AD '+y);
+const COLS=[['Doric','Plain, cushion-like capital and no base — sturdy and simple'],['Ionic','Capital with two scrolls (volutes) and a base'],['Corinthian','Fancy capital carved with acanthus leaves']];
+function column(t,x,y,s){const w=s*.22,h=s*.8,top=y-h/2,c='#efe7d6',sh='#c9bea6';cx.fillStyle=c;cx.fillRect(x-w/2,top+s*.1,w,h-s*.16);cx.strokeStyle=sh;cx.lineWidth=1.5;for(let i=1;i<6;i++){const fx=x-w/2+i*w/6;cx.beginPath();cx.moveTo(fx,top+s*.1);cx.lineTo(fx,top+h-s*.06);cx.stroke()}
+ cx.fillStyle=c;if(t==='Doric'){cx.fillRect(x-w*.75,top,w*1.5,s*.04);cx.beginPath();cx.ellipse(x,top+s*.07,w*.68,s*.035,0,0,7);cx.fill()}
+ else if(t==='Ionic'){cx.fillRect(x-w*.75,top,w*1.5,s*.05);[-1,1].forEach(d=>{cx.beginPath();cx.arc(x+d*w*.6,top+s*.08,s*.045,0,7);cx.fill();cx.strokeStyle=sh;cx.beginPath();cx.arc(x+d*w*.6,top+s*.08,s*.025,0,7);cx.stroke()});cx.fillRect(x-w*.7,top+h-s*.06,w*1.4,s*.05)}
+ else{cx.fillRect(x-w*.8,top,w*1.6,s*.04);for(let r=0;r<2;r++)for(let i=-2;i<=2;i++){cx.fillStyle=r?'#d9cfb5':'#e8dfc8';cx.beginPath();cx.ellipse(x+i*w*.28,top+s*.1-r*s*.04,w*.14,s*.05,0,0,7);cx.fill()}cx.fillStyle=c;cx.fillRect(x-w*.7,top+h-s*.06,w*1.4,s*.05)}
+ cx.fillStyle='#d8cfb8';cx.fillRect(x-w*.9,top+h-s*.01,w*1.8,s*.04)}
+const LV=[
+{name:'Alpha to Omega',m:'abc'},
+{name:'Gods of Olympus',m:'gods'},
+{name:'Athens or Sparta?',m:'as'},
+{name:'The first Olympics',m:'quiz',k:Q_OLY},
+{name:'Greek letter sounds',m:'abc2'},
+{name:'Column detective',m:'col'},
+{name:'Birth of democracy',m:'quiz',k:Q_DEM},
+{name:'Myths & heroes',m:'quiz',k:Q_MYTH},
+{name:'Build a Greek temple',m:'order',list:TEMPLE},
+{name:'Greek timeline',m:'tl',reps:3},
+{name:'Greek words we still use',m:'quiz',k:Q_WORD},
+{name:'Gods & their symbols',m:'sym'},
+{name:'Thinkers & inventors',m:'quiz',k:Q_THINK},
+{name:'Greece master',m:'mix'}];
+const TIPS={0:'The Greek alphabet has 24 letters. Our word "alphabet" comes from its first two: alpha and beta!',2:'Athens and Sparta were rival city-states (poleis). Athens loved debate and the arts; Sparta was famous for its army.',5:'There are three main styles (orders) of Greek column: Doric, Ionic and Corinthian. Look at the top — the capital!',9:'BC years count DOWN towards year 1, so 776 BC is older than 480 BC.'};
+function makeQ(){const L=LV[cur];let m=L.m;if(m==='mix')m=pick(['abc','gods','as','quiz','col','sym','abc2']);const q={m,used:(Q&&Q.used)||[]};
+ if(m==='abc'){const l=fromList(GK,q);q.icon=null;q.vis=(x,y)=>{card(x-80,y-90,160,170,'#fdf6e3');txt(l[0]+' '+l[1],x,y-10,64,'#1f3b63')};q.text='What is this Greek letter called?';q.opts=mo(l[2],GK.map(g=>g[2]));q.ans=l[2];q.why=l[0]+' '+l[1]+' is '+l[2]+', sounding like "'+l[3]+'".'}
+ else if(m==='abc2'){const l=fromList(GK,q);q.vis=(x,y)=>{card(x-80,y-90,160,170,'#fdf6e3');txt(l[1],x,y-10,72,'#1f3b63')};q.text='Which sound does this lowercase letter make?';q.opts=mo(l[3],GK.map(g=>g[3]));q.ans=l[3];q.why=l[1]+' ('+l[2]+') = '+l[3]+'.'}
+ else if(m==='gods'){const g=fromList(GODS,q);q.big=g[1];q.text='Which Olympian god or goddess is this?';q.opts=mo(g[0],GODS.map(x=>x[0]));q.ans=g[0];q.why=g[0]+': '+g[1]+'. Symbol: '+g[2]+'.'}
+ else if(m==='sym'){const g=fromList(GODS,q);q.icon=g[2].split(' ')[0];q.text='Whose symbol is the '+g[2].split(' ').slice(1).join(' ')+'?';q.opts=mo(g[0],GODS.map(x=>x[0]));q.ans=g[0];q.why=g[0]+' — '+g[1]+'.'}
+ else if(m==='as'){const f=fromList(AS,q);q.big=f[0];q.text='Athens or Sparta?';q.opts=['Athens','Sparta'];q.ans=f[1];q.why=''}
+ else if(m==='col'){const c=pick(COLS);q.vis=(x,y,s)=>column(c[0],x,y,Math.min(s,H-40));q.text='Which style of column is this?';q.opts=COLS.map(x=>x[0]);q.ans=c[0];q.why=c[0]+': '+c[1]+'. The Parthenon uses Doric columns.'}
+ else if(m==='order'){orderQ(q,L.list);q.done='Temples like the Parthenon were built of marble and brightly painted!'}
+ else if(m==='tl')tlQ(q,TL,yr);
+ else quizQ(q,fromList(L.k||pick([Q_OLY,Q_DEM,Q_MYTH,Q_WORD,Q_THINK]),q));
+ return q}
+window.G={get Q(){return Q},LV};
+resize();cur=0;Q=makeQ();draw();showLevels();
+
+
+</script></body></html>

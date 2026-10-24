@@ -1,0 +1,152 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>Compound Words</title>
+<style>
+:root{--bg:#0f1530;--card:#1b2350;--ink:#f4f6ff;--mut:#9aa6d8;--acc:#7ad0ff;--good:#3ddc84;--bad:#ff5c7a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:"Trebuchet MS",system-ui,sans-serif;background:radial-gradient(circle at 20% 0%,#2a3480,var(--bg) 60%);color:var(--ink);min-height:100vh;user-select:none;-webkit-user-select:none;overflow-x:hidden}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0008;position:sticky;top:0;z-index:5;backdrop-filter:blur(4px)}
+header a{color:var(--ink);text-decoration:none;background:#fff1;padding:6px 12px;border-radius:20px;font-weight:bold}
+header h1{font-size:20px;margin:0;flex:1;color:var(--acc);text-shadow:0 2px 0 #0006}
+.pill{background:#fff1;padding:5px 10px;border-radius:14px;font-size:14px}
+main{max-width:980px;margin:0 auto;padding:14px}
+.btn{font:inherit;font-weight:bold;border:0;border-radius:14px;padding:10px 16px;background:var(--acc);color:#111;cursor:pointer;box-shadow:0 4px 0 #0007;transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #0007}.btn.alt{background:#2c3770;color:var(--ink)}.btn.sel{outline:3px solid #fff}
+.btn:disabled{opacity:.4}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border-radius:18px;padding:14px;box-shadow:0 6px 18px #0005;border:2px solid #ffffff10}
+.tile{cursor:pointer;transition:transform .15s}.tile:hover{transform:translateY(-4px) rotate(-1deg)}
+.tile .em{font-size:40px}.tile h3{margin:6px 0}.tile p{margin:0;color:var(--mut);font-size:14px}
+.stars{color:#ffd34d;letter-spacing:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fb{min-height:28px;font-weight:bold;font-size:18px;margin:8px 0}
+.opt{display:block;width:100%;margin:6px 0;text-align:left;background:#2c3770;color:var(--ink)}
+.opt.ok{background:var(--good);color:#111}.opt.no{background:var(--bad)}
+.pop{animation:pop .35s}@keyframes pop{50%{transform:scale(1.12)}}
+.shake{animation:shk .35s}@keyframes shk{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:9}
+.bar{height:10px;background:#fff2;border-radius:6px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--acc);transition:width .3s}
+.fact{background:#ffd34d22;border-left:4px solid #ffd34d;padding:8px 12px;border-radius:8px;margin:8px 0}
+svg text{font-family:inherit}
+</style></head><body>
+<header><a href="./index.html">← Learning Lab</a><h1>Compound Words</h1><span class="pill" id="starTotal">⭐ 0</span><button class="btn alt" id="snd" style="padding:6px 10px">🔊</button></header>
+<main id="app"></main><canvas id="fx"></canvas>
+<script>
+// ---- shared helpers ----
+const $=s=>document.querySelector(s),app=$('#app');
+const SAVEKEY='g1_compoundWords';let SAVE=JSON.parse(localStorage.getItem(SAVEKEY)||'{}');SAVE.stars=SAVE.stars||{};SAVE.best=SAVE.best||{};
+function save(){localStorage.setItem(SAVEKEY,JSON.stringify(SAVE));$('#starTotal').textContent='⭐ '+Object.values(SAVE.stars).reduce((a,b)=>a+b,0)}
+let AC=null,muted=!!SAVE.muted;$('#snd').textContent=muted?'🔇':'🔊';
+$('#snd').onclick=()=>{muted=!muted;SAVE.muted=muted;save();$('#snd').textContent=muted?'🔇':'🔊'};
+function tone(f,d=.12,type='sine',v=.15,slide=0,delay=0){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.02)}catch(e){}}
+function noise(d=.4,v=.2,lp=800){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const n=AC.sampleRate*d,b=AC.createBuffer(1,n,AC.sampleRate),c=b.getChannelData(0);for(let i=0;i<n;i++)c[i]=(Math.random()*2-1)*(1-i/n);const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();f.type='lowpass';f.frequency.value=lp;g.gain.value=v;s.buffer=b;s.connect(f);f.connect(g);g.connect(AC.destination);s.start()}catch(e){}}
+const SFX={click:()=>tone(660,.05,'square',.06),good:()=>{tone(523,.1,'triangle');tone(784,.15,'triangle',.15,0,.08)},bad:()=>tone(200,.25,'sawtooth',.08,-80),
+win:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.15,0,i*.1)),pick:()=>tone(440,.06,'sine',.1,200),drop:()=>tone(330,.08,'sine',.12,-100)};
+// confetti
+const cv=$('#fx'),cx=cv.getContext('2d');let fxp=[];function rs(){cv.width=innerWidth;cv.height=innerHeight}rs();addEventListener('resize',rs);
+function confetti(x=innerWidth/2,y=innerHeight/3,n=60){for(let i=0;i<n;i++)fxp.push({x,y,vx:(Math.random()-.5)*10,vy:-Math.random()*9-2,c:`hsl(${Math.random()*360},90%,60%)`,l:90});}
+(function loop(){cx.clearRect(0,0,cv.width,cv.height);fxp=fxp.filter(p=>p.l-->0);for(const p of fxp){p.vy+=.3;p.x+=p.vx;p.y+=p.vy;cx.fillStyle=p.c;cx.fillRect(p.x,p.y,7,7)}requestAnimationFrame(loop)})();
+function flash(el,ok){el.classList.remove('pop','shake');void el.offsetWidth;el.classList.add(ok?'pop':'shake')}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function award(id,n){if((SAVE.stars[id]||0)<n)SAVE.stars[id]=n;save()}
+// generic timed quiz: qs=[{q,opts,a,fact}] ; a is correct string
+let __QZ=0;function runQuiz(id,title,qs,secs,back){let i=0,score=0,t=secs,timer;const tok=++__QZ;clearInterval(window.__qt);const alive=()=>tok===__QZ&&!!document.getElementById("qz"+tok);qs=shuffle(qs).slice(0,10);
+ function end(){clearInterval(timer);if(!alive())return;const st=score>=9?3:score>=7?2:score>=5?1:0;award(id,st);if(score>(SAVE.best[id]||0))SAVE.best[id]=score;save();if(st)SFX.win(),confetti();
+  app.innerHTML=`<div class="card" style="text-align:center"><h2>${title} — done!</h2><div style="font-size:48px" class="stars">${starStr(st)}</div><p>You got <b>${score}/${qs.length}</b>. Best: ${SAVE.best[id]}</p><div class="row" style="justify-content:center"><button class="btn" id="ag">Play again</button><button class="btn alt" id="bk">Back</button></div></div>`;$('#ag').onclick=()=>runQuiz(id,title,qs,secs,back);$('#bk').onclick=back}
+ function show(){if(i>=qs.length)return end();const q=qs[i];app.innerHTML=`<div class="card" id="qz${tok}"><div class="row"><b style="flex:1">${title} · Q${i+1}/${qs.length}</b>${secs?`<span class="pill">⏱ <span id="tm">${t}</span>s</span>`:''}<span class="pill">✅ ${score}</span></div><div class="bar" style="margin:8px 0"><i style="width:${i/qs.length*100}%"></i></div>${q.svg||''}<h2>${q.q}</h2><div id="os"></div><div class="fb" id="fb"></div></div>`;
+  shuffle(q.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.innerHTML=o;b.onclick=()=>{if(b.parentNode.dataset.done)return;b.parentNode.dataset.done=1;const ok=o==q.a;if(ok){score++;SFX.good();confetti(innerWidth/2,innerHeight/2,20)}else SFX.bad();[...$('#os').children].forEach(x=>{if(x.innerHTML==q.a)x.classList.add('ok')});if(!ok)b.classList.add('no');flash(b,ok);$('#fb').innerHTML=(ok?'✅ Correct! ':'❌ Not quite. ')+(q.fact?`<div class="fact">💡 ${q.fact}</div>`:'');setTimeout(()=>{if(!alive())return;i++;show()},q.fact?2200:1100)};$('#os').appendChild(b)})}
+ if(secs)window.__qt=timer=setInterval(()=>{if(!alive()){clearInterval(timer);return}t--;const e=$('#tm');if(e)e.textContent=t;if(t<=5&&t>0)tone(880,.05);if(t<=0)end()},1000);show()}
+save();
+</script>
+<script>
+// common menu/learn/levels helpers for g1 games
+function learnPage(i){const m=LEARN[i];app.innerHTML=`<div class="card"><div class="row"><b style="flex:1">📖 ${i+1} / ${LEARN.length}</b><button class="btn alt" id="bk">Menu</button></div><div style="text-align:center"><canvas id="lc" width="440" height="200" style="max-width:100%;background:#05081a;border-radius:14px"></canvas></div><h2>${m.h}</h2><p style="line-height:1.5">${m.p}</p>
+ <div class="row"><button class="btn alt" id="pv" ${i?'':'disabled'}>← Prev</button><span style="flex:1"></span><button class="btn" id="nx">${i<LEARN.length-1?'Next →':'Done ✓'}</button></div></div>`;
+ $('#bk').onclick=menu;$('#pv').onclick=()=>learnPage(i-1);$('#nx').onclick=()=>{SFX.click();if(i<LEARN.length-1)learnPage(i+1);else{SAVE.learned=1;save();SFX.win();confetti();menu()}};
+ const c=$('#lc'),g=c.getContext('2d'),t0=performance.now();(function f(n){if(!c.isConnected)return;g.clearRect(0,0,440,200);g.save();m.d(g,(n-t0)/1000);g.restore();requestAnimationFrame(f)})(t0)}
+function unlocked(i){return i==0||(SAVE.stars[LV[i-1].id]||0)>0}
+function levelGrid(title){app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">${title}</h2><button class="btn alt" id="bk">Menu</button></div><p style="color:var(--mut)">Earn a star to unlock the next level.</p><div class="grid" id="lg"></div></div>`;$('#bk').onclick=menu;
+ LV.forEach((l,i)=>{const d=document.createElement('div'),u=unlocked(i);d.className='card tile lv'+i;d.style.opacity=u?1:.45;d.innerHTML=`<div class="em">${u?l.em||'🎯':'🔒'}</div><h3>${i+1}. ${l.n}</h3><p class="stars">${starStr(SAVE.stars[l.id]||0)}</p>`;d.onclick=()=>{if(!u){SFX.bad();flash(d,0);return}SFX.click();play(i)};$('#lg').appendChild(d)})}
+function winLevel(i,st,msg){award(LV[i].id,st);SFX.win();confetti();const last=i>=LV.length-1;
+ $('#fb').innerHTML=`🎉 ${msg} <span class="stars">${starStr(st)}</span><div class="row" style="margin-top:6px"><button class="btn" id="nl">${last?'All levels ✓':'Next level →'}</button><button class="btn alt" id="rl">Retry</button></div>`;
+ $('#nl').onclick=()=>last?levels():play(i+1);$('#rl').onclick=()=>play(i)}
+function mainMenu(em,name,blurb,tiles){const tot=LV.length*3,got=LV.reduce((a,l)=>a+(SAVE.stars[l.id]||0),0);
+ app.innerHTML=`<div class="card" style="text-align:center"><div style="font-size:54px">${em}</div><h2 style="margin:4px">${name}</h2><p style="color:var(--mut)">${blurb}</p><div class="bar"><i style="width:${got/tot*100}%"></i></div><p class="stars">${got}/${tot} ★</p></div><div class="grid" style="margin-top:12px" id="mg"></div>`;
+ tiles.forEach(([id,e,h,p,fn])=>{const d=document.createElement('div');d.className='card tile';d.id=id;d.innerHTML=`<div class="em">${e}</div><h3>${h}</h3><p>${p}</p>`;d.onclick=()=>{SFX.click();fn()};$('#mg').appendChild(d)})}
+function stdTiles(qtitle){return[['mQ','❓','Quiz',`10 questions. <span class="stars">${starStr(SAVE.stars.quiz||0)}</span>`,()=>runQuiz('quiz',qtitle,QS,0,menu)],['mT','⏱️','Timed challenge',`60 seconds! <span class="stars">${starStr(SAVE.stars.timed||0)}</span>`,()=>runQuiz('timed','Timed Challenge',QS,60,menu)]]}
+// ---- shared level kinds (g1r) ----
+function anim(c,fn){const g=c.getContext('2d'),t0=performance.now();(function f(n){if(!c.isConnected)return;g.clearRect(0,0,c.width,c.height);g.save();fn(g,(n-t0)/1000);g.restore();requestAnimationFrame(f)})(t0)}
+function lvHead(L,i){return `<div class="card"><div class="row"><h2 style="flex:1;margin:0">${L.em} ${i+1}. ${L.n}</h2><button class="btn alt" id="bk">Levels</button></div>`}
+const CVS='width:100%;max-width:620px;display:block;margin:8px auto 0;border-radius:14px;touch-action:manipulation';
+function mcLevel(L,i){let tries=0;app.innerHTML=lvHead(L,i)+`${L.svg||''}<h3>${L.q}</h3><div id="os"></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=levels;
+ shuffle(L.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.textContent=o;b.onclick=()=>{if(b.disabled||$('#nl'))return;tries++;if(o==L.ans){b.classList.add('ok');winLevel(i,tries<=1?3:tries<=2?2:1,`Correct!<div class="fact">💡 ${L.fact}</div>`)}else{b.classList.add('no');b.disabled=true;SFX.bad();flash(b,0);$('#fb').textContent='❌ Not quite — try again.'}};$('#os').appendChild(b)})}
+function orderLevel(L,i){let n=0,miss=0;app.innerHTML=lvHead(L,i)+`<p><b>${L.goal}</b></p><div id="ol" style="margin-bottom:8px"></div><div id="os"></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=levels;
+ shuffle(L.items).forEach(it=>{const b=document.createElement('button');b.className='btn opt';b.textContent=it;b.onclick=()=>{if(b.disabled)return;if(it==L.items[n]){n++;b.disabled=true;b.classList.add('ok');SFX.good();const d=document.createElement('div');d.className='card pop';d.style.margin='4px 0';d.style.padding='8px 12px';d.textContent=n+'. '+it;$('#ol').appendChild(d);if(n==L.items.length)winLevel(i,miss==0?3:miss<=1?2:1,`Perfect order!<div class="fact">💡 ${L.fact}</div>`)}else{miss++;SFX.bad();flash(b,0);$('#fb').textContent='❌ Not next — think again.'}};$('#os').appendChild(b)})}
+function matchLevel(L,i){let n=0,miss=0;const ord=shuffle(L.pairs);app.innerHTML=lvHead(L,i)+`<p><b>${L.goal}</b></p><div class="card" style="text-align:center;font-size:22px;background:#2c3770" id="mq"></div><div class="grid" id="os" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:8px"></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=levels;
+ const ask=()=>{$('#mq').innerHTML=`${ord[n][0]} <span style="color:var(--mut)">→ ?</span>`;flash($('#mq'),1)};ask();
+ shuffle(L.pairs).forEach(([a,r])=>{const b=document.createElement('button');b.className='btn opt';b.style.textAlign='center';b.textContent=r;b.onclick=()=>{if(b.disabled||n>=ord.length)return;if(r==ord[n][1]){b.disabled=true;b.classList.add('ok');SFX.good();b.textContent=r+' ✓ '+ord[n][0].split(' ')[0];n++;if(n==ord.length){$('#mq').textContent='All matched!';winLevel(i,miss==0?3:miss<=2?2:1,`Great matching!<div class="fact">💡 ${L.fact}</div>`)}else ask()}else{miss++;SFX.bad();flash(b,0);$('#fb').textContent='❌ Not a match — try another.'}};$('#os').appendChild(b)})}
+// ---- Compound Words ----
+const CW=['sun+flower','rain+bow','foot+ball','butter+fly','tooth+brush','snow+man','star+fish','cup+cake','pan+cake','fire+fly','air+plane','bed+room','book+shelf','door+bell','gold+fish','hair+cut','home+work','sea+shell','back+pack','sand+box','tree+house','pop+corn','note+book','water+melon','sun+glasses','lunch+box','skate+board','light+house','mail+box','bath+tub','snow+flake','rain+coat','grass+hopper','jelly+fish','sun+rise','moon+light','thunder+storm','earth+quake','wheel+chair','head+ache','super+market','basket+ball','ice+berg','key+board','water+fall','sail+boat','eye+brow','pea+nut','sun+burn','cow+boy','foot+print','dish+washer','camp+fire','tooth+paste','birth+day','week+end','high+way','sky+scraper','life+guard','scare+crow','horse+shoe','blue+berry','fish+bowl','rattle+snake','drum+stick','snow+ball','hand+shake','day+light','arm+chair','bee+hive'];
+const ALSO=new Set(['sunlight','moonrise','snowstorm','rainstorm','snowfall','rainfall','sunset','doorknob','bedroom']);const CWSET=new Set(CW.map(w=>w.replace('+','')));
+function joinGame(L,i){const pairs=L.words.map(w=>w.split('+'));let sel=null,made=0,miss=0;
+ app.innerHTML=lvHead(L,i)+`<p><b>${L.goal}</b></p><div class="card" id="wz" style="text-align:center;font-size:26px;min-height:60px;background:#05081a">🔧 <span id="wl">? + ?</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px"><div id="lc"></div><div id="rc"></div></div><div class="row" id="done" style="margin-top:8px"></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=levels;
+ const mk=(w,side)=>{const b=document.createElement('button');b.className='btn opt';b.style.textAlign='center';b.textContent=w;b.dataset.w=w;b.dataset.s=side;b.onclick=()=>tap(b);return b};
+ shuffle(pairs.map(p=>p[0])).forEach(w=>$('#lc').appendChild(mk(w,'L')));shuffle(pairs.map(p=>p[1])).forEach(w=>$('#rc').appendChild(mk(w,'R')));
+ function tap(b){if(b.disabled)return;SFX.click();if(b.dataset.s=='L'){document.querySelectorAll('#lc .btn').forEach(x=>x.classList.remove('sel'));sel=b;b.classList.add('sel');$('#wl').textContent=b.dataset.w+' + ?';return}
+  if(!sel){$('#fb').textContent='Pick a first word on the left first.';flash(b,0);return}const w=sel.dataset.w+b.dataset.w;$('#wl').textContent=sel.dataset.w+' + '+b.dataset.w;
+  if(pairs.some(p=>p[0]==sel.dataset.w&&p[1]==b.dataset.w)){made++;SFX.good();confetti(innerWidth/2,innerHeight/3,18);$('#wl').innerHTML=`<b style="color:var(--good)">${w}</b>`;flash($('#wz'),1);sel.disabled=b.disabled=true;sel.classList.remove('sel');sel.classList.add('ok');b.classList.add('ok');sel=null;const t=document.createElement('span');t.className='pill pop';t.textContent='✅ '+w;$('#done').appendChild(t);$('#fb').textContent='';
+   if(made==pairs.length)winLevel(i,miss==0?3:miss<=2?2:1,`You built ${made} compound words!<div class="fact">💡 ${L.fact}</div>`)}
+  else if(ALSO.has(w)||CWSET.has(w)){tone(600,.1,'triangle');$('#fb').textContent=`✨ "${w}" is a real word, but these tiles are needed for other words. Try another ending!`}else{miss++;SFX.bad();flash($('#wz'),0);$('#fb').textContent=`❌ "${w}" isn't a real compound word. Try another ending.`}}
+ window.__join={pairs}}
+function splitGame(L,i){let k=0,miss=0;const ws=shuffle(L.words);
+ app.innerHTML=lvHead(L,i)+`<p><b>${L.goal}</b></p><div class="bar"><i id="sb" style="width:0"></i></div><p style="text-align:center;color:var(--mut)">Tap the gap where the two words join. ✂️</p><div id="sw" style="display:flex;justify-content:center;flex-wrap:nowrap;margin:16px 0;touch-action:manipulation"></div><div class="fb" id="fb" style="text-align:center"></div></div>`;$('#bk').onclick=levels;
+ function show(){const[a,b]=ws[k].split('+'),w=a+b;window.__split=a.length;const box=$('#sw');box.innerHTML='';[...w].forEach((ch,j)=>{if(j>0){const g=document.createElement('button');g.className='btn alt';g.dataset.cut=j;g.style.cssText='padding:0;width:clamp(12px,3.2vw,20px);min-height:54px;margin:0 1px;box-shadow:none;background:#fff1';g.textContent='┊';g.onclick=()=>cut(j,g);box.appendChild(g)}const s=document.createElement('span');s.textContent=ch;s.style.cssText='font-size:clamp(18px,5vw,40px);font-weight:bold;padding:4px 0;min-width:.6em;text-align:center';box.appendChild(s)})}
+ function cut(j,g){const[a,b]=ws[k].split('+');if(j==a.length){SFX.good();g.textContent='✂️';g.style.background='var(--good)';$('#fb').innerHTML=`✅ <b>${a}</b> + <b>${b}</b>`;k++;$('#sb').style.width=k/ws.length*100+'%';if(k==ws.length)winLevel(i,miss==0?3:miss<=2?2:1,`All split!<div class="fact">💡 ${L.fact}</div>`);else setTimeout(()=>{if($('#sw'))show()},900)}else{miss++;SFX.bad();flash(g,0);const w=a+b;$('#fb').textContent=`❌ "${w.slice(0,j)}" + "${w.slice(j)}" aren't two real words.`}}
+ show()}
+const LV=[
+{n:'First welds',em:'🔧',k:'join',words:['sun+flower','rain+bow','foot+ball','cup+cake'],goal:'Tap a first word, then the word that joins it.',fact:'A compound word is two smaller words joined to make a new word.'},
+{n:'Snip it',em:'✂️',k:'split',words:['snow+man','star+fish','bed+room','gold+fish','pop+corn'],goal:'Cut each compound word into its two words.',fact:'Finding the two small words inside a long word makes it easier to read.'},
+{n:'Around the house',em:'🏠',k:'join',words:['tooth+brush','book+shelf','door+bell','bath+tub','arm+chair'],goal:'Build words you\'d find at home.',fact:'Many everyday things are named with compound words.'},
+{n:'Spot the fake',em:'🕵️',k:'mc',q:'Which one is NOT a real compound word?',opts:['catdog','rainbow','sunflower','football'],ans:'catdog',fact:'Both parts must make a real word together. "Catdog" isn\'t in the dictionary.'},
+{n:'Weather words',em:'⛈️',k:'join',words:['thunder+storm','snow+flake','rain+coat','sun+rise','moon+light'],goal:'Make weather and sky words.',fact:'Snowflake = snow + flake. A flake is a small, thin piece.'},
+{n:'What does it mean?',em:'🧠',k:'match',goal:'Use the two parts to work out each meaning.',pairs:[['🐴 horseshoe','a U-shaped metal shoe for a horse'],['🦅 scarecrow','a dummy that scares birds away'],['🏖️ lifeguard','a person who guards swimmers\' lives'],['🏙️ skyscraper','a building so tall it seems to scrape the sky']],fact:'The parts are clues to the meaning, but not always! A butterfly is not made of butter.'},
+{n:'Long snips',em:'📏',k:'split',words:['grass+hopper','water+melon','basket+ball','super+market','rattle+snake','thunder+storm'],goal:'Longer words. Find the join!',fact:'Watermelon: a melon that is mostly water (about 92%).'},
+{n:'Fake finder',em:'🔎',k:'mc',q:'Which is a REAL compound word?',opts:['earthquake','treedog','bookfish','cloudshoe'],ans:'earthquake',fact:'Earth + quake: when the ground shakes.'},
+{n:'Outdoors',em:'🏕️',k:'join',words:['camp+fire','water+fall','sail+boat','tree+house','sand+box','sea+shell'],goal:'Six outdoor words. Careful, some starts could fit more than one ending!',fact:'Sea shell is often written as one word (seashell). Dictionaries sometimes disagree on spacing.'},
+{n:'Tricky meanings',em:'🤔',k:'mc',q:'A "headache" is…',opts:['a pain in your head','a hat','a kind of hair','a nod'],ans:'a pain in your head',fact:'Head + ache: an ache in your head. Toothache and stomachache work the same way.'},
+{n:'Compound master',em:'🏆',k:'join',words:['skate+board','earth+quake','wheel+chair','key+board','dish+washer','jelly+fish','life+guard'],goal:'Seven words, no mistakes for 3 stars!',fact:'Compound words can be closed (keyboard), hyphenated (well-known) or open (ice cream).'}];
+LV.forEach((l,i)=>l.id='c'+i);
+const LEARN=[
+{h:'🔧 What is a compound word?',p:'A <b>compound word</b> is made when two words join to make a new word. <b>sun + flower = sunflower</b>. <b>foot + ball = football</b>.',d:(g,t)=>{const x=Math.min(1,t/1.5);g.fillStyle='#fff';g.font='bold 34px sans-serif';g.fillText('sun',60+x*80,110);g.fillText('flower',300-x*80,110);if(x>=1){g.font='40px serif';g.fillText('🌻',200,170)}}},
+{h:'🧩 Three kinds',p:'<b>Closed</b> compounds are written as one word: <i>notebook</i>. <b>Hyphenated</b> ones use a dash: <i>well-known</i>, <i>mother-in-law</i>. <b>Open</b> ones keep a space: <i>ice cream</i>, <i>bus stop</i>. In this game we build closed compounds.',d:(g,t)=>{g.fillStyle='#fff';g.font='bold 24px sans-serif';g.fillText('notebook',40,70);g.fillStyle='#ffd34d';g.fillText('well-known',40,120);g.fillStyle='#7ad0ff';g.fillText('ice cream',40,170)}},
+{h:'✂️ Splitting words',p:'Reading a long word? Look for two small words inside: <b>grass|hopper</b>, <b>water|melon</b>. Both parts must be real words.',d:(g,t)=>{g.fillStyle='#fff';g.font='bold 40px sans-serif';g.fillText('grass',70,120);g.fillText('hopper',220+Math.sin(t*3)*8,120);g.font='30px serif';g.fillText('✂️',180,80)}},
+{h:'🧠 Meaning from parts',p:'The parts often tell you the meaning: a <b>toothbrush</b> brushes teeth and a <b>bedroom</b> is a room with a bed. Some are surprising: a <b>butterfly</b> isn\'t a fly made of butter and a <b>hotdog</b> isn\'t a dog!',d:(g,t)=>{g.font='46px serif';g.fillText('🪥',60,120);g.fillText('🛏️',190,120);g.fillText('🦋',320,120+Math.sin(t*4)*8)}},
+{h:'🕵️ Spotting fakes',p:'Two words jammed together aren\'t always a real word. <i>Catdog</i> and <i>bookfish</i> aren\'t in the dictionary. If you\'re not sure, check one!',d:(g,t)=>{g.fillStyle='#ff5c7a';g.font='bold 34px sans-serif';g.fillText('catdog ✗',60,90);g.fillStyle='#3ddc84';g.fillText('goldfish ✓',60,160)}}];
+const QS=[
+{q:'sun + flower =',a:'sunflower',opts:['sunflower','sunshine','flowerpot','sunlight']},
+{q:'rain + ? = rainbow',a:'bow',opts:['bow','coat','drop','fall']},
+{q:'Which is a compound word?',a:'toothbrush',opts:['toothbrush','happy','running','table']},
+{q:'Split "starfish":',a:'star + fish',opts:['star + fish','sta + rfish','starf + ish','s + tarfish']},
+{q:'Split "grasshopper":',a:'grass + hopper',opts:['grass + hopper','gra + sshopper','grassh + opper','grasshop + per']},
+{q:'Which is NOT a real compound word?',a:'dogcloud',opts:['dogcloud','goldfish','popcorn','bedroom']},
+{q:'A "bookshelf" is…',a:'a shelf for books',opts:['a shelf for books','a book about shelves','a kind of fish','a bookmark']},
+{q:'A "lighthouse" is…',a:'a tower with a light for ships',opts:['a tower with a light for ships','a very light house','a lamp shop','a tent']},
+{q:'snow + ? = a snowman',a:'man',opts:['man','fall','ball','flake']},
+{q:'Which is an open compound (with a space)?',a:'ice cream',opts:['ice cream','notebook','sunrise','well-known']},
+{q:'Which is a hyphenated compound?',a:'well-known',opts:['well-known','popcorn','bus stop','rainbow']},
+{q:'water + melon =',a:'watermelon',opts:['watermelon','waterfall','melonwater','waterbed']},
+{q:'Which pair makes a compound word?',a:'foot + print',opts:['foot + print','foot + cloud','print + dog','cloud + foot']},
+{q:'A "headache" is…',a:'pain in your head',opts:['pain in your head','a hat','a pillow','a haircut']},
+{q:'Which compound is NOT what its parts say?',a:'butterfly',opts:['butterfly','toothbrush','bedroom','mailbox']},
+{q:'birth + day =',a:'birthday',opts:['birthday','daybirth','birthdate','daylight']},
+{q:'Which word does NOT go with "sun"?',a:'sunchair',opts:['sunchair','sunrise','sunburn','sunglasses']},
+{q:'key + board =',a:'keyboard',opts:['keyboard','keyhole','boardkey','keychain']},
+{q:'Split "skyscraper":',a:'sky + scraper',opts:['sky + scraper','skys + craper','sk + yscraper','skyscr + aper']},
+{q:'A "beehive" is…',a:'a home for bees',opts:['a home for bees','a bee sting','a kind of honey','a flower']},
+{q:'Which is a compound word?',a:'peanut',opts:['peanut','pencil','paper','puzzle']}];
+function joinFree(){const ws=shuffle(CW).slice(0,6);joinGame({n:'Word Welder',em:'🔧',words:ws,goal:'Free play: build these 6 random compound words.',fact:'There are thousands of compound words in English!'},0);$('#bk').onclick=menu;window.__free=1}
+function menu(){mainMenu('🔧🌻🌈','Compound Words','Weld words together, snip them apart, catch the fakes and work out meanings from the parts!',[['mL','📖','Learn','What compound words are and how to read them.',()=>learnPage(0)],['mW','🔧','Word Welder','Endless random words to build.',joinFree],['mP','🧩','Levels',`${LV.length} word challenges.`,()=>levels()],...stdTiles('Compound Quiz')])}
+function levels(){levelGrid('🧩 Word challenges')}
+const _win=winLevel;winLevel=function(i,st,msg){if(window.__free){window.__free=0;SFX.win();confetti();$('#fb').innerHTML=`🎉 ${msg}<div class="row" style="margin-top:6px"><button class="btn" id="nl">More words</button></div>`;$('#nl').onclick=joinFree;return}_win(i,st,msg)};
+function play(i){window.__free=0;const L=LV[i];({join:joinGame,split:splitGame,order:orderLevel,match:matchLevel,mc:mcLevel})[L.k](L,i)}
+menu();
+</script></body></html>

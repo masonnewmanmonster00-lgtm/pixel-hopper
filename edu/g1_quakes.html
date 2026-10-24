@@ -1,0 +1,201 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>Quake Lab</title>
+<style>
+:root{--bg:#0f1530;--card:#1b2350;--ink:#f4f6ff;--mut:#9aa6d8;--acc:#7ad0ff;--good:#3ddc84;--bad:#ff5c7a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:"Trebuchet MS",system-ui,sans-serif;background:radial-gradient(circle at 20% 0%,#2a3480,var(--bg) 60%);color:var(--ink);min-height:100vh;user-select:none;-webkit-user-select:none;overflow-x:hidden}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0008;position:sticky;top:0;z-index:5;backdrop-filter:blur(4px)}
+header a{color:var(--ink);text-decoration:none;background:#fff1;padding:6px 12px;border-radius:20px;font-weight:bold}
+header h1{font-size:20px;margin:0;flex:1;color:var(--acc);text-shadow:0 2px 0 #0006}
+.pill{background:#fff1;padding:5px 10px;border-radius:14px;font-size:14px}
+main{max-width:980px;margin:0 auto;padding:14px}
+.btn{font:inherit;font-weight:bold;border:0;border-radius:14px;padding:10px 16px;background:var(--acc);color:#111;cursor:pointer;box-shadow:0 4px 0 #0007;transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #0007}.btn.alt{background:#2c3770;color:var(--ink)}.btn.sel{outline:3px solid #fff}
+.btn:disabled{opacity:.4}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border-radius:18px;padding:14px;box-shadow:0 6px 18px #0005;border:2px solid #ffffff10}
+.tile{cursor:pointer;transition:transform .15s}.tile:hover{transform:translateY(-4px) rotate(-1deg)}
+.tile .em{font-size:40px}.tile h3{margin:6px 0}.tile p{margin:0;color:var(--mut);font-size:14px}
+.stars{color:#ffd34d;letter-spacing:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fb{min-height:28px;font-weight:bold;font-size:18px;margin:8px 0}
+.opt{display:block;width:100%;margin:6px 0;text-align:left;background:#2c3770;color:var(--ink)}
+.opt.ok{background:var(--good);color:#111}.opt.no{background:var(--bad)}
+.pop{animation:pop .35s}@keyframes pop{50%{transform:scale(1.12)}}
+.shake{animation:shk .35s}@keyframes shk{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:9}
+.bar{height:10px;background:#fff2;border-radius:6px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--acc);transition:width .3s}
+.fact{background:#ffd34d22;border-left:4px solid #ffd34d;padding:8px 12px;border-radius:8px;margin:8px 0}
+svg text{font-family:inherit}
+</style></head><body>
+<header><a href="./index.html">← Learning Lab</a><h1>Quake Lab</h1><span class="pill" id="starTotal">⭐ 0</span><button class="btn alt" id="snd" style="padding:6px 10px">🔊</button></header>
+<main id="app"></main><canvas id="fx"></canvas>
+<script>
+// ---- shared helpers ----
+const $=s=>document.querySelector(s),app=$('#app');
+const SAVEKEY='g1_quakeLab';let SAVE=JSON.parse(localStorage.getItem(SAVEKEY)||'{}');SAVE.stars=SAVE.stars||{};SAVE.best=SAVE.best||{};
+function save(){localStorage.setItem(SAVEKEY,JSON.stringify(SAVE));$('#starTotal').textContent='⭐ '+Object.values(SAVE.stars).reduce((a,b)=>a+b,0)}
+let AC=null,muted=!!SAVE.muted;$('#snd').textContent=muted?'🔇':'🔊';
+$('#snd').onclick=()=>{muted=!muted;SAVE.muted=muted;save();$('#snd').textContent=muted?'🔇':'🔊'};
+function tone(f,d=.12,type='sine',v=.15,slide=0,delay=0){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.02)}catch(e){}}
+function noise(d=.4,v=.2,lp=800){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const n=AC.sampleRate*d,b=AC.createBuffer(1,n,AC.sampleRate),c=b.getChannelData(0);for(let i=0;i<n;i++)c[i]=(Math.random()*2-1)*(1-i/n);const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();f.type='lowpass';f.frequency.value=lp;g.gain.value=v;s.buffer=b;s.connect(f);f.connect(g);g.connect(AC.destination);s.start()}catch(e){}}
+const SFX={click:()=>tone(660,.05,'square',.06),good:()=>{tone(523,.1,'triangle');tone(784,.15,'triangle',.15,0,.08)},bad:()=>tone(200,.25,'sawtooth',.08,-80),
+win:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.15,0,i*.1)),pick:()=>tone(440,.06,'sine',.1,200),drop:()=>tone(330,.08,'sine',.12,-100)};
+// confetti
+const cv=$('#fx'),cx=cv.getContext('2d');let fxp=[];function rs(){cv.width=innerWidth;cv.height=innerHeight}rs();addEventListener('resize',rs);
+function confetti(x=innerWidth/2,y=innerHeight/3,n=60){for(let i=0;i<n;i++)fxp.push({x,y,vx:(Math.random()-.5)*10,vy:-Math.random()*9-2,c:`hsl(${Math.random()*360},90%,60%)`,l:90});}
+(function loop(){cx.clearRect(0,0,cv.width,cv.height);fxp=fxp.filter(p=>p.l-->0);for(const p of fxp){p.vy+=.3;p.x+=p.vx;p.y+=p.vy;cx.fillStyle=p.c;cx.fillRect(p.x,p.y,7,7)}requestAnimationFrame(loop)})();
+function flash(el,ok){el.classList.remove('pop','shake');void el.offsetWidth;el.classList.add(ok?'pop':'shake')}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function award(id,n){if((SAVE.stars[id]||0)<n)SAVE.stars[id]=n;save()}
+// generic timed quiz: qs=[{q,opts,a,fact}] ; a is correct string
+let __QZ=0;function runQuiz(id,title,qs,secs,back){let i=0,score=0,t=secs,timer;const tok=++__QZ;clearInterval(window.__qt);const alive=()=>tok===__QZ&&!!document.getElementById("qz"+tok);qs=shuffle(qs).slice(0,10);
+ function end(){clearInterval(timer);if(!alive())return;const st=score>=9?3:score>=7?2:score>=5?1:0;award(id,st);if(score>(SAVE.best[id]||0))SAVE.best[id]=score;save();if(st)SFX.win(),confetti();
+  app.innerHTML=`<div class="card" style="text-align:center"><h2>${title} — done!</h2><div style="font-size:48px" class="stars">${starStr(st)}</div><p>You got <b>${score}/${qs.length}</b>. Best: ${SAVE.best[id]}</p><div class="row" style="justify-content:center"><button class="btn" id="ag">Play again</button><button class="btn alt" id="bk">Back</button></div></div>`;$('#ag').onclick=()=>runQuiz(id,title,qs,secs,back);$('#bk').onclick=back}
+ function show(){if(i>=qs.length)return end();const q=qs[i];app.innerHTML=`<div class="card" id="qz${tok}"><div class="row"><b style="flex:1">${title} · Q${i+1}/${qs.length}</b>${secs?`<span class="pill">⏱ <span id="tm">${t}</span>s</span>`:''}<span class="pill">✅ ${score}</span></div><div class="bar" style="margin:8px 0"><i style="width:${i/qs.length*100}%"></i></div>${q.svg||''}<h2>${q.q}</h2><div id="os"></div><div class="fb" id="fb"></div></div>`;
+  shuffle(q.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.innerHTML=o;b.onclick=()=>{if(b.parentNode.dataset.done)return;b.parentNode.dataset.done=1;const ok=o==q.a;if(ok){score++;SFX.good();confetti(innerWidth/2,innerHeight/2,20)}else SFX.bad();[...$('#os').children].forEach(x=>{if(x.innerHTML==q.a)x.classList.add('ok')});if(!ok)b.classList.add('no');flash(b,ok);$('#fb').innerHTML=(ok?'✅ Correct! ':'❌ Not quite. ')+(q.fact?`<div class="fact">💡 ${q.fact}</div>`:'');setTimeout(()=>{if(!alive())return;i++;show()},q.fact?2200:1100)};$('#os').appendChild(b)})}
+ if(secs)window.__qt=timer=setInterval(()=>{if(!alive()){clearInterval(timer);return}t--;const e=$('#tm');if(e)e.textContent=t;if(t<=5&&t>0)tone(880,.05);if(t<=0)end()},1000);show()}
+save();
+</script>
+<script>
+// common menu/learn/levels helpers for g1 games
+function learnPage(i){const m=LEARN[i];app.innerHTML=`<div class="card"><div class="row"><b style="flex:1">📖 ${i+1} / ${LEARN.length}</b><button class="btn alt" id="bk">Menu</button></div><div style="text-align:center"><canvas id="lc" width="440" height="200" style="max-width:100%;background:#05081a;border-radius:14px"></canvas></div><h2>${m.h}</h2><p style="line-height:1.5">${m.p}</p>
+ <div class="row"><button class="btn alt" id="pv" ${i?'':'disabled'}>← Prev</button><span style="flex:1"></span><button class="btn" id="nx">${i<LEARN.length-1?'Next →':'Done ✓'}</button></div></div>`;
+ $('#bk').onclick=menu;$('#pv').onclick=()=>learnPage(i-1);$('#nx').onclick=()=>{SFX.click();if(i<LEARN.length-1)learnPage(i+1);else{SAVE.learned=1;save();SFX.win();confetti();menu()}};
+ const c=$('#lc'),g=c.getContext('2d'),t0=performance.now();(function f(n){if(!c.isConnected)return;g.clearRect(0,0,440,200);g.save();m.d(g,(n-t0)/1000);g.restore();requestAnimationFrame(f)})(t0)}
+function unlocked(i){return i==0||(SAVE.stars[LV[i-1].id]||0)>0}
+function levelGrid(title){app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">${title}</h2><button class="btn alt" id="bk">Menu</button></div><p style="color:var(--mut)">Earn a star to unlock the next level.</p><div class="grid" id="lg"></div></div>`;$('#bk').onclick=menu;
+ LV.forEach((l,i)=>{const d=document.createElement('div'),u=unlocked(i);d.className='card tile lv'+i;d.style.opacity=u?1:.45;d.innerHTML=`<div class="em">${u?l.em||'🎯':'🔒'}</div><h3>${i+1}. ${l.n}</h3><p class="stars">${starStr(SAVE.stars[l.id]||0)}</p>`;d.onclick=()=>{if(!u){SFX.bad();flash(d,0);return}SFX.click();play(i)};$('#lg').appendChild(d)})}
+function winLevel(i,st,msg){award(LV[i].id,st);SFX.win();confetti();const last=i>=LV.length-1;
+ $('#fb').innerHTML=`🎉 ${msg} <span class="stars">${starStr(st)}</span><div class="row" style="margin-top:6px"><button class="btn" id="nl">${last?'All levels ✓':'Next level →'}</button><button class="btn alt" id="rl">Retry</button></div>`;
+ $('#nl').onclick=()=>last?levels():play(i+1);$('#rl').onclick=()=>play(i)}
+function mainMenu(em,name,blurb,tiles){const tot=LV.length*3,got=LV.reduce((a,l)=>a+(SAVE.stars[l.id]||0),0);
+ app.innerHTML=`<div class="card" style="text-align:center"><div style="font-size:54px">${em}</div><h2 style="margin:4px">${name}</h2><p style="color:var(--mut)">${blurb}</p><div class="bar"><i style="width:${got/tot*100}%"></i></div><p class="stars">${got}/${tot} ★</p></div><div class="grid" style="margin-top:12px" id="mg"></div>`;
+ tiles.forEach(([id,e,h,p,fn])=>{const d=document.createElement('div');d.className='card tile';d.id=id;d.innerHTML=`<div class="em">${e}</div><h3>${h}</h3><p>${p}</p>`;d.onclick=()=>{SFX.click();fn()};$('#mg').appendChild(d)})}
+function stdTiles(qtitle){return[['mQ','❓','Quiz',`10 questions. <span class="stars">${starStr(SAVE.stars.quiz||0)}</span>`,()=>runQuiz('quiz',qtitle,QS,0,menu)],['mT','⏱️','Timed challenge',`60 seconds! <span class="stars">${starStr(SAVE.stars.timed||0)}</span>`,()=>runQuiz('timed','Timed Challenge',QS,60,menu)]]}
+// ---- Quake Lab ----
+function anim(c,fn){const g=c.getContext('2d'),t0=performance.now();(function f(n){if(!c.isConnected)return;g.clearRect(0,0,c.width,c.height);g.save();fn(g,(n-t0)/1000);g.restore();requestAnimationFrame(f)})(t0)}
+const MAT={wood:{n:'Wood frame',e:'🪵',cap:.35,c:3,col:'#b9824a'},brick:{n:'Plain brick',e:'🧱',cap:.15,c:2,col:'#c0563b'},concrete:{n:'Reinforced concrete',e:'🏢',cap:.45,c:4,col:'#9aa3b0'},steel:{n:'Steel frame',e:'🏗️',cap:.55,c:5,col:'#5f86b8'}};
+const FEAT={brace:{n:'Cross-bracing',e:'❌',c:6},damp:{n:'Tuned damper',e:'⚖️',c:8},iso:{n:'Base isolators',e:'🛞',c:10}};
+function pga(M){return .1*Math.pow(2,M-6)}
+function shakeCalc(d,M,Tg){const T=.1*d.f,r=T/Tg,z=d.damp?.2:.05,R=1/Math.sqrt((1-r*r)**2+(2*z*r)**2);const dem=pga(M)*Math.min(R,6)*(d.iso?.35:1);const cap=MAT[d.m].cap+(d.brace?.25:0)-(d.m=='brick'?d.f*.01:0);return{ratio:dem/cap,R,T}}
+function cost(d){return d.f*MAT[d.m].c+(d.brace?FEAT.brace.c:0)+(d.damp?FEAT.damp.c:0)+(d.iso?FEAT.iso.c:0)}
+function drawBuilding(g,d,x0,ground,sway,fallen,W=90){const fh=Math.min(26,190/d.f);for(let i=0;i<d.f;i++){const k=(i+1)/d.f,dx=sway*k*k,y=ground-(i+1)*fh;let fx=x0+dx,rot=0;if(fallen){fx+=fallen*(i*6);rot=fallen*.03*i}g.save();g.translate(fx+W/2,y+fh/2);g.rotate(rot);g.fillStyle=MAT[d.m].col;g.fillRect(-W/2,-fh/2,W,fh-2);g.fillStyle='#ffe58a';for(let w=0;w<3;w++)g.fillRect(-W/2+10+w*28,-fh/2+5,14,Math.max(4,fh-12));if(d.brace){g.strokeStyle='#222';g.lineWidth=2;g.beginPath();g.moveTo(-W/2,-fh/2);g.lineTo(W/2,fh/2-2);g.moveTo(W/2,-fh/2);g.lineTo(-W/2,fh/2-2);g.stroke()}g.restore()}
+ if(d.damp&&!fallen){g.fillStyle='#ffd34d';g.beginPath();g.arc(x0+W/2+sway*.9,ground-d.f*fh+12,7,0,7);g.fill()}
+ if(d.iso){g.fillStyle='#333';for(let w=0;w<4;w++){g.beginPath();g.arc(x0+10+w*23,ground+4,5,0,7);g.fill()}}}
+// shake-table scene; resolves with result
+function shakeTable(c,d,M,Tg,dur=4){return new Promise(res=>{const g=c.getContext('2d'),W=c.width,H=c.height,r=shakeCalc(d,M,Tg),t0=performance.now();let snd=0;
+ (function f(n){if(!c.isConnected)return res(r);const t=(n-t0)/1000;g.clearRect(0,0,W,H);g.fillStyle='#0b1230';g.fillRect(0,0,W,H);const on=t<dur,amp=on?Math.sin(Math.PI*Math.min(1,t/dur))*pga(M)*120:0,ground=H-40,gx=amp*Math.sin(t*2*Math.PI/Tg);
+  g.fillStyle='#5a4632';g.fillRect(0,ground+10,W,40);g.fillStyle='#777';g.fillRect(W/2-110+gx,ground,220,10);
+  const bs=d.iso?gx*.3:gx;let sway=bs*Math.min(r.R,6)*(d.iso?.35:1)*(d.damp?.6:1)*.6;const fail=r.ratio>1&&t>dur*.55;const fallen=fail?Math.min(1,(t-dur*.55)*1.5)*(gx>=0?1:-1)*1:0;
+  drawBuilding(g,d,W/2-45+bs,ground,Math.max(-60,Math.min(60,sway)),fallen);
+  g.fillStyle='#fff';g.font='bold 16px sans-serif';g.fillText(`Magnitude ${M.toFixed(1)} · ground period ${Tg}s`,10,22);g.fillText(`Building period ≈ ${r.T.toFixed(1)}s`,10,42);
+  // seismogram strip
+  g.strokeStyle='#3ddc84';g.beginPath();for(let k=0;k<200;k++){const tt=t-(200-k)*.02,a=tt>0&&tt<dur?Math.sin(Math.PI*tt/dur)*pga(M)*60*Math.sin(tt*2*Math.PI/Tg+k):0;g.lineTo(W-210+k,70+a)}g.stroke();
+  if(on&&n-snd>140){snd=n;noise(.15,.05+pga(M)*.2,120)}
+  if(t<dur+1.2)requestAnimationFrame(f);else{res(r)}})(t0)})}
+const LV=[
+{n:'Brick or wood?',em:'🧱',k:'shake',M:6,Tg:.3,minF:2,budget:20,goal:'A magnitude 6 quake is coming. Build a 2-floor house that survives.',fact:'Unreinforced brick and stone are brittle — they crack instead of bending. Wood frames are light and flexible, so they often survive quakes well.'},
+{n:'Spread or squeeze?',em:'↔️',k:'plate',want:'ridge',goal:'Make a mid-ocean ridge, like the Mid-Atlantic Ridge.',fact:'At the Mid-Atlantic Ridge the plates move apart about 2–5 cm a year — about as fast as your fingernails grow. Iceland sits right on top of it!'},
+{n:'P before S',em:'📈',k:'seis',gap:5,goal:'The P wave arrived, then the S wave 5 seconds later. About how far away was the quake?',ans:'40 km',opts:['40 km','5 km','400 km','8 km'],fact:'A handy rule: every second between P and S waves ≈ 8 km of distance. P (primary) waves are faster than S (secondary) waves.'},
+{n:'Roof of the world',em:'🏔️',k:'plate',want:'mountains',goal:'Make the Himalayas.',fact:'India crashed into Asia about 50 million years ago. Neither plate sinks easily, so the crust crumples upward — Everest is still rising by a few millimetres a year.'},
+{n:'Bracing',em:'❌',k:'shake',M:6.8,Tg:.4,minF:4,budget:30,goal:'Build a 4-floor school that survives a magnitude 6.8 quake.',fact:'Diagonal cross-bracing makes triangles, which do not squash out of shape, so the frame stays stiff.'},
+{n:'Magnitude math',em:'🔢',k:'mc',q:'A magnitude 7 quake releases about how much more energy than a magnitude 6?',ans:'about 32 times',opts:['about 32 times','2 times','7 times','1,000,000 times'],fact:'Each whole step on the magnitude scale means about 10× bigger shaking on a seismograph and about 32× more energy.'},
+{n:'Ocean trench',em:'🌊',k:'plate',want:'trench',goal:'Make a deep ocean trench, like the Mariana Trench.',fact:'The Mariana Trench is about 11 km deep — the deepest place in the ocean. The Pacific Plate sinks (subducts) under another plate there.'},
+{n:'Sliding past',em:'🛣️',k:'plate',want:'fault',goal:'Make a fault like California\'s San Andreas Fault.',fact:'At a transform boundary plates grind sideways past each other. They stick, build up strain, then slip suddenly — an earthquake!'},
+{n:'Triangulate',em:'🎯',k:'tri',goal:'Three stations measured their distance to the quake (the circles). Tap the epicentre — where all three circles meet.',fact:'Scientists need at least three seismograph stations to pinpoint an epicentre. This is called triangulation.'},
+{n:'Tall tower',em:'🏙️',k:'shake',M:7.2,Tg:.8,minF:8,budget:60,goal:'Build an 8-floor office tower for a magnitude 7.2 quake.',fact:'Taipei 101 has a 660-tonne steel ball (a tuned mass damper) hanging near the top that swings against the sway.'},
+{n:'Volcano chain',em:'🌋',k:'plate',want:'volcanoes',goal:'Make a line of volcanoes on a continent, like the Andes.',fact:'When ocean crust sinks under a continent it melts deep down. The magma rises to build volcanic mountains like the Andes.'},
+{n:'Tsunami!',em:'🌊',k:'mc',anim:'tsu',q:'A tsunami crosses deep ocean (4,000 m). About how fast is it going?',ans:'about 700 km/h — as fast as a jet',opts:['about 700 km/h — as fast as a jet','about 10 km/h — walking speed','about 50 km/h — like a bike','it does not move'],fact:'Tsunami speed ≈ √(g × depth) = √(9.8 × 4000) ≈ 200 m/s ≈ 710 km/h. In deep water the wave may be under 1 m high; it slows and grows huge near the shore.'},
+{n:'Resonance trap',em:'🎶',k:'shake',M:7,Tg:1.2,minF:10,budget:50,goal:'Soft lake-bed soil shakes slowly (1.2 s). Build a 10-floor building that survives a magnitude 7.',fact:'In the 1985 Mexico City quake, soft old lake-bed soil shook slowly, and buildings around 6–15 storeys swayed at the same rhythm (resonance) — many fell while shorter and taller ones stood.'},
+{n:'Rift valley',em:'🦒',k:'plate',want:'rift',goal:'Split a continent apart, like the East African Rift.',fact:'East Africa is slowly splitting. Millions of years from now a new ocean may flood the rift valley.'},
+{n:'Far quake',em:'📡',k:'seis',gap:12,goal:'The S wave arrived 12 seconds after the P wave. About how far away was the quake?',ans:'about 96 km',opts:['about 96 km','12 km','about 960 km','about 1.5 km'],fact:'12 s × 8 km/s ≈ 96 km. Real seismologists use travel-time charts that work for distances thousands of km away.'},
+{n:'The big one',em:'💥',k:'shake',M:8,Tg:.6,minF:6,budget:50,goal:'A magnitude 8 megaquake! Build a 6-floor hospital that keeps standing.',fact:'Base isolators are rubber-and-steel pads under a building. The ground moves underneath while the building moves much less — many hospitals in Japan, New Zealand and California use them.'}];
+LV.forEach((l,i)=>l.id='q'+i);
+const PLATES={ridge:['oo','apart'],mountains:['cc','together'],trench:['oo','together'],fault:['cc','slide'],volcanoes:['oc','together'],rift:['cc','apart']};
+const FEATN={ridge:'Mid-ocean ridge',mountains:'Folded mountains',trench:'Trench + volcanic islands',fault:'Transform fault',volcanoes:'Trench + volcanic mountains',rift:'Rift valley',slideo:'Transform fault on the sea floor'};
+function plateResult(ty,mv){if(mv=='slide')return ty=='oo'?'slideo':'fault';if(mv=='apart')return ty=='oo'?'ridge':ty=='cc'?'rift':'ridge';return ty=='cc'?'mountains':ty=='oo'?'trench':'volcanoes'}
+function drawPlates(g,ty,mv,p){const W=440,H=200,sea=80;g.fillStyle='#071c3a';g.fillRect(0,0,W,H);g.fillStyle='#8a2b10';g.fillRect(0,150,W,50);g.fillStyle='#ff7a2f';g.globalAlpha=.4;g.fillRect(0,165,W,35);g.globalAlpha=1;
+ const L=ty[0],R=ty[1],col=k=>k=='o'?'#3b4a5a':'#7a9a3a',top=k=>k=='o'?sea+30:sea-5;const sh=mv=='apart'?-p*25:mv=='together'?p*20:0;
+ g.fillStyle='#1d5fa8';g.fillRect(0,sea,W,70);
+ g.fillStyle=col(L);g.fillRect(0,top(L),W/2-4+sh,150-top(L));g.fillStyle=col(R);g.fillRect(W/2+4-sh,top(R),W/2,150-top(R));
+ const res=plateResult(ty,mv);g.fillStyle='#ff5a1f';
+ if(res=='ridge'){g.beginPath();g.moveTo(W/2-40,sea+30);g.lineTo(W/2,sea+30-p*25);g.lineTo(W/2+40,sea+30);g.fill()}
+ if(res=='rift'){g.fillStyle='#1d5fa8';g.fillRect(W/2-6-p*25,sea-5,12+p*50,p*35);g.fillStyle='#ff5a1f';g.fillRect(W/2-3,sea+30,6,120)}
+ if(res=='mountains'){g.fillStyle='#d8e0e8';g.beginPath();g.moveTo(W/2-90,sea-5);for(let k=0;k<6;k++)g.lineTo(W/2-75+k*30,sea-5-p*(40+20*Math.sin(k*2)),g.lineTo(W/2-60+k*30,sea-5));g.lineTo(W/2+90,sea-5);g.fill()}
+ if(res=='trench'||res=='volcanoes'){g.fillStyle=col('o');g.save();g.translate(W/2,top(L)+10);g.rotate(.5*p);g.fillRect(0,0,140*p,22);g.restore();g.fillStyle='#000';g.fillRect(W/2-14,sea+30,22,p*14);g.fillStyle='#6b3a1a';const vx=W/2+70;g.beginPath();g.moveTo(vx-30,top(R));g.lineTo(vx,top(R)-p*45);g.lineTo(vx+30,top(R));g.fill();if(p>.7){g.fillStyle='#ff5a1f';g.beginPath();g.arc(vx,top(R)-p*45-6,5+Math.random()*3,0,7);g.fill()}}
+ if(res=='fault'||res=='slideo'){g.strokeStyle='#fff';g.setLineDash([6,4]);g.beginPath();g.moveTo(W/2,top(L)-10);g.lineTo(W/2,150);g.stroke();g.setLineDash([]);g.font='22px serif';g.fillText('⬆️',W/2-60,120-p*30);g.fillText('⬇️',W/2+30,100+p*30)}
+ g.fillStyle='#fff';g.font='bold 13px sans-serif';g.fillText(ty=='oo'?'ocean | ocean':ty=='cc'?'continent | continent':'ocean | continent',8,18);g.fillText('mantle',8,190)}
+function plateLab(L,i){let ty='oo',mv='apart',tries=0;const back=L?levels:menu;
+ app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">${L?`${L.em} ${i+1}. ${L.n}`:'🌍 Plate Lab'}</h2><button class="btn alt" id="bk">${L?'Levels':'Menu'}</button></div><p><b>${L?L.goal:'Pick two plates and how they move, then press Go.'}</b></p>
+ <div class="row" id="ty"><b>Plates:</b></div><div class="row" id="mv" style="margin-top:6px"><b>Motion:</b></div><div class="row" style="margin-top:6px"><button class="btn" id="go">Go! ▶</button></div>
+ <canvas id="cv" width="440" height="200" style="width:100%;max-width:620px;display:block;margin-left:auto;margin-right:auto;border-radius:14px;margin-top:8px"></canvas><div class="fb" id="fb"></div></div>`;
+ $('#bk').onclick=back;const mk=(box,arr,get,set)=>arr.forEach(([k,lab])=>{const b=document.createElement('button');b.className='btn alt'+(get()==k?' sel':'');b.textContent=lab;b.onclick=()=>{SFX.pick();set(k);[...$(box).querySelectorAll('.btn')].forEach(x=>x.classList.remove('sel'));b.classList.add('sel');p=0};$(box).appendChild(b)});
+ let p=0,run=0;mk('#ty',[['oo','🌊|🌊 Ocean–ocean'],['oc','🌊|⛰️ Ocean–continent'],['cc','⛰️|⛰️ Continent–continent']],()=>ty,v=>ty=v);mk('#mv',[['apart','← → Apart'],['together','→ ← Together'],['slide','⇅ Slide past']],()=>mv,v=>mv=v);
+ anim($('#cv'),g=>{if(run&&p<1)p=Math.min(1,p+.012);drawPlates(g,ty,mv,p)});
+ $('#go').onclick=()=>{p=0;run=1;noise(.8,.15,150);tries++;const r=plateResult(ty,mv),bt={apart:'Divergent',together:'Convergent',slide:'Transform'}[mv];
+  setTimeout(()=>{if(!$('#fb'))return;if(!L){$('#fb').innerHTML=`${bt} boundary → <b>${FEATN[r]}</b>`;SFX.good();return}
+   if(r==L.want)winLevel(i,tries<=1?3:tries<=2?2:1,`${bt} boundary → ${FEATN[r]}!<div class="fact">💡 ${L.fact}</div>`);else{SFX.bad();$('#fb').innerHTML=`❌ That made: ${FEATN[r]} (${bt}). Try another combination.`}},1400)}}
+function seisDraw(g,t,gap){const W=440;g.fillStyle='#f4efe2';g.fillRect(0,0,W,200);g.strokeStyle='#c8bfa8';for(let x=0;x<W;x+=22){g.beginPath();g.moveTo(x,0);g.lineTo(x,200);g.stroke()}
+ const sp=22,tp=2,ts=tp+gap,end=Math.min(t*6,W/sp);g.strokeStyle='#222';g.lineWidth=1.5;g.beginPath();for(let x=0;x<end*sp;x++){const s=x/sp;let a=Math.sin(s*37)*1;if(s>tp)a+=Math.sin(s*40)*12*Math.exp(-(s-tp)*.4);if(s>ts)a+=Math.sin(s*18)*45*Math.exp(-(s-ts)*.3);g.lineTo(x,100+a)}g.stroke();
+ g.fillStyle='#c0392b';g.font='bold 13px sans-serif';if(end>tp){g.fillText('P',tp*sp-4,30)}if(end>ts){g.fillText('S',ts*sp-4,30);g.strokeStyle='#c0392b';g.beginPath();g.moveTo(tp*sp,40);g.lineTo(ts*sp,40);g.stroke();g.fillText(gap+' s',(tp+ts)/2*sp-8,55)}g.fillStyle='#555';g.font='11px sans-serif';g.fillText('each square = 1 second',W-140,195)}
+function triLevel(L,i,head){let tries=0;const st=[[90,60,110],[330,50,130],[200,170,85]],E=[170,110],cand=[[170,110,'A'],[260,150,'B'],[110,150,'C'],[300,110,'D']];
+ app.innerHTML=head+`<p><b>${L.goal}</b></p><canvas id="cv" width="440" height="240" style="width:100%;max-width:620px;display:block;margin-left:auto;margin-right:auto;border-radius:14px;cursor:pointer"></canvas><div class="fb" id="fb"></div></div>`;
+ st.forEach(s=>s[2]=Math.hypot(s[0]-E[0],s[1]-E[1]));const c=$('#cv');anim(c,(g,t)=>{g.fillStyle='#d9c99a';g.fillRect(0,0,440,240);st.forEach(([x,y,r],k)=>{g.strokeStyle=['#c0392b','#2a6fdb','#1e8a4a'][k];g.lineWidth=2;g.beginPath();g.arc(x,y,r*Math.min(1,t/1.5),0,7);g.stroke();g.font='20px serif';g.fillText('📡',x-10,y+7)});cand.forEach(([x,y,n])=>{g.fillStyle='#0008';g.beginPath();g.arc(x,y,12,0,7);g.fill();g.fillStyle='#fff';g.font='bold 13px sans-serif';g.fillText(n,x-5,y+5)})});
+ const pick=(ex,ey)=>{const b=c.getBoundingClientRect(),x=(ex-b.left)*440/b.width,y=(ey-b.top)*240/b.height;const h=cand.find(([cx,cy])=>Math.hypot(cx-x,cy-y)<22);if(!h)return;tries++;if(h[2]=='A')winLevel(i,tries<=1?3:tries<=2?2:1,`Point A is on all three circles!<div class="fact">💡 ${L.fact}</div>`);else{SFX.bad();$('#fb').textContent=`❌ ${h[2]} is not on all three circles.`}};
+ c.addEventListener('click',e=>pick(e.clientX,e.clientY))}
+function tsuDraw(g,t){const W=440;g.fillStyle='#9fd3ff';g.fillRect(0,0,W,200);const x=(t*60)%(W+60)-30;g.fillStyle='#e8d29a';g.beginPath();g.moveTo(300,200);g.lineTo(W,90);g.lineTo(W,200);g.fill();g.fillStyle='#1d5fa8';g.beginPath();g.moveTo(0,200);for(let k=0;k<=W;k+=4){const depth=k<300?1:Math.max(.1,1-(k-300)/140),h=Math.exp(-(((k-x)/(25*depth+8))**2))*(6/Math.sqrt(depth));g.lineTo(k,110-h*(k<300?1:3))}g.lineTo(W,200);g.fill();g.fillStyle='#fff';g.font='12px sans-serif';g.fillText('deep ocean: fast, low wave',10,20);g.fillText('shallow: slows & grows',300,20);g.font='22px serif';g.fillText('🏠',W-40,92)}
+function sandbox(L,i){let d={f:L?L.minF:3,m:'wood',brace:0,damp:0,iso:0},M=L?L.M:6.5,Tg=L?L.Tg:.4,tries=0,busy=0;
+ app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">${L?`${L.em} ${i+1}. ${L.n}`:'🏗️ Shake Table'}</h2><button class="btn alt" id="bk">${L?'Levels':'Menu'}</button></div><p><b>${L?L.goal:'Design a building, set the quake and shake it!'}</b></p>
+ <div class="row"><label style="flex:1;min-width:150px">Floors: <b id="fv"></b><input type="range" id="fs" min="${L?L.minF:1}" max="14" value="${d.f}" style="width:100%"></label>${L?'':`<label style="flex:1;min-width:150px">Magnitude: <b id="mvv">6.5</b><input type="range" id="ms" min="4" max="9" step=".1" value="6.5" style="width:100%"></label><label style="flex:1;min-width:150px">Ground period: <b id="tv">0.4</b>s<input type="range" id="ts" min=".2" max="1.6" step=".1" value=".4" style="width:100%"></label>`}</div>
+ <div class="row" id="mt" style="margin-top:6px"><b>Material:</b></div><div class="row" id="ft" style="margin-top:6px"><b>Extras:</b></div>
+ <div class="row" style="margin-top:8px"><span class="pill" id="cst"></span><span style="flex:1"></span><button class="btn" id="go">Shake! 🌋</button></div>
+ <canvas id="cv" width="440" height="300" style="width:100%;max-width:620px;display:block;margin-left:auto;margin-right:auto;border-radius:14px;margin-top:8px;background:#0b1230"></canvas><div class="fb" id="fb"></div></div>`;
+ $('#bk').onclick=L?levels:menu;const upd=()=>{$('#fv').textContent=d.f;const k=cost(d);$('#cst').innerHTML=`💰 Cost ${k}${L?` / ${L.budget}`:''}`;$('#cst').style.background=L&&k>L.budget?'#ff5c7a88':'';const g=$('#cv').getContext('2d');g.clearRect(0,0,440,300);g.fillStyle='#5a4632';g.fillRect(0,270,440,30);drawBuilding(g,d,175,260,0,0)};
+ Object.entries(MAT).forEach(([k,m])=>{const b=document.createElement('button');b.className='btn alt'+(d.m==k?' sel':'');b.innerHTML=`${m.e} ${m.n} <small>(${m.c}/floor)</small>`;b.onclick=()=>{SFX.pick();d.m=k;[...$('#mt').querySelectorAll('.btn')].forEach(x=>x.classList.remove('sel'));b.classList.add('sel');upd()};$('#mt').appendChild(b)});
+ Object.entries(FEAT).forEach(([k,m])=>{const b=document.createElement('button');b.className='btn alt';b.id='f_'+k;b.innerHTML=`${m.e} ${m.n} <small>(${m.c})</small>`;b.onclick=()=>{SFX.pick();d[k]=d[k]?0:1;b.classList.toggle('sel',!!d[k]);upd()};$('#ft').appendChild(b)});
+ $('#fs').oninput=e=>{d.f=+e.target.value;upd()};if(!L){$('#ms').oninput=e=>{M=+e.target.value;$('#mvv').textContent=M.toFixed(1)};$('#ts').oninput=e=>{Tg=+e.target.value;$('#tv').textContent=Tg}}
+ upd();$('#go').onclick=async()=>{if(busy)return;if(L&&cost(d)>L.budget){SFX.bad();$('#fb').textContent='❌ Over budget! Remove something.';flash($('#cst'),0);return}busy=1;$('#go').disabled=true;$('#fb').textContent='Shaking…';tries++;const r=await shakeTable($('#cv'),{...d},M,Tg);busy=0;if(!$('#fb'))return;$('#go').disabled=false;
+  const msg=r.ratio>1?'💥 Collapsed!':r.ratio>.7?'⚠️ Standing, but badly damaged.':'✅ Survived with little damage!';const tip=r.R>2.5?' The building swayed in rhythm with the ground (resonance) — change its height or add a damper/isolators.':'';
+  if(L&&r.ratio<=.7){winLevel(i,tries<=1?3:tries<=2?2:1,`Survived! Stress ${Math.round(r.ratio*100)}%.<div class="fact">💡 ${L.fact}</div>`)}else{if(r.ratio>.7)SFX.bad();else SFX.good();$('#fb').textContent=`${msg} Stress ${Math.round(r.ratio*100)}% of strength.${r.ratio>.7?tip:''}`}}}
+const LEARN=[
+{h:'🌍 Earth\'s layers',p:'Earth has a solid <b>inner core</b>, a liquid metal <b>outer core</b>, a thick hot <b>mantle</b> and a thin rocky <b>crust</b>. If Earth were an apple, the crust would be about as thick as the skin!',d:(g,t)=>{[[95,'#5a8a3a','crust'],[88,'#c4502a','mantle'],[50,'#f0a030','outer core'],[24,'#fff07a','inner core']].forEach(([r,c,n],k)=>{g.fillStyle=c;g.beginPath();g.moveTo(220,100);g.arc(220,100,r,-1.2+Math.sin(t)*.05,4.6);g.fill();g.fillStyle='#fff';g.font='12px sans-serif';g.fillText(n,330,40+k*35)})}},
+{h:'🧩 Tectonic plates',p:'The crust and top of the mantle are broken into about 15 big <b>tectonic plates</b>. They float on hot, slowly flowing mantle rock and move 2–10 cm a year. 250 million years ago the continents were joined in one supercontinent, <b>Pangaea</b>.',d:(g,t)=>{const s=(Math.sin(t*.8)+1)/2*40;g.fillStyle='#1d5fa8';g.fillRect(0,0,440,200);g.fillStyle='#7a9a3a';g.beginPath();g.ellipse(180-s,90,60,50,0,0,7);g.fill();g.beginPath();g.ellipse(260+s,110,55,45,0,0,7);g.fill();g.fillStyle='#fff';g.font='14px sans-serif';g.fillText(s<5?'Pangaea!':'drifting apart…',180,190)}},
+{h:'↔️ Three boundary types',p:'<b>Divergent</b>: plates move apart and new crust forms (mid-ocean ridges, rift valleys). <b>Convergent</b>: plates push together, making mountains, trenches and volcanoes. <b>Transform</b>: plates slide past each other, causing earthquakes.',d:(g,t)=>{const mv=['apart','together','slide'][Math.floor(t/3)%3],ty=mv=='apart'?'oo':mv=='together'?'cc':'cc';drawPlates(g,ty,mv,Math.min(1,(t%3)/2))}},
+{h:'📈 Earthquakes & seismographs',p:'When stuck plates suddenly slip, energy spreads out as <b>seismic waves</b>. The spot underground is the <b>focus</b>; the spot above it on the surface is the <b>epicentre</b>. A <b>seismograph</b> records the shaking: fast <b>P waves</b> arrive first, then stronger <b>S waves</b>.',d:(g,t)=>seisDraw(g,t%4*1.5,4)},
+{h:'🔢 Magnitude',p:'Magnitude measures the energy of a quake. Each whole number is about <b>10× more shaking</b> and about <b>32× more energy</b>. The biggest ever recorded was magnitude 9.5 in Chile in 1960.',d:(g,t)=>{[4,5,6,7].forEach((m,k)=>{const h=Math.pow(10,k)/1000*150+4;g.fillStyle=`hsl(${40-k*12},90%,55%)`;g.fillRect(40+k*95,180-Math.min(h,170)*Math.min(1,t/2),60,Math.min(h,170)*Math.min(1,t/2));g.fillStyle='#fff';g.font='14px sans-serif';g.fillText('M'+m,55+k*95,195)});g.fillText('shaking size (×10 each step)',120,20)}},
+{h:'🌊 Tsunamis',p:'An undersea quake can lift the sea floor and push up the whole ocean above it, making a <b>tsunami</b>. In deep water it races at jet-plane speed but is low; near the shore it slows and piles up into a huge wall of water. If the ground shakes hard at the beach, or the sea suddenly pulls back, <b>go to high ground</b>!',d:tsuDraw},
+{h:'🏗️ Quake-safe buildings',p:'Engineers make buildings <b>flexible but strong</b>: steel frames, cross-bracing, <b>dampers</b> that fight sway, and <b>base isolators</b> that let the ground move under the building. They also avoid <b>resonance</b> — when a building sways at the same rhythm as the ground.',d:(g,t)=>{const d={f:6,m:'steel',brace:1,damp:1,iso:1};g.fillStyle='#5a4632';g.fillRect(0,185,440,15);drawBuilding(g,d,175+Math.sin(t*8)*6,180,Math.sin(t*8)*-4,0)}},
+{h:'🔥 Ring of Fire',p:'About 90% of the world\'s earthquakes happen around the edge of the Pacific Ocean, in a horseshoe of trenches and volcanoes called the <b>Ring of Fire</b>. Japan, Chile, Alaska and New Zealand are all on it.',d:(g,t)=>{g.fillStyle='#1d5fa8';g.fillRect(0,0,440,200);g.strokeStyle='#ff5a1f';g.lineWidth=4;g.beginPath();g.ellipse(220,100,170,80,0,0,7);g.stroke();for(let k=0;k<20;k++){const a=k/20*7+t*.3;g.font='14px serif';g.fillText('🌋',220+Math.cos(a)*170-7,100+Math.sin(a)*80+5)}g.fillStyle='#fff';g.font='14px sans-serif';g.fillText('Pacific Ocean',180,105)}}];
+const QS=[
+{q:'What is the outermost layer of Earth called?',a:'the crust',opts:['the crust','the core','the mantle','the magma']},
+{q:'Which layer of Earth is liquid metal?',a:'the outer core',opts:['the outer core','the inner core','the crust','the mantle']},
+{q:'Plates moving APART form a…',a:'divergent boundary',opts:['divergent boundary','convergent boundary','transform boundary','hot spot']},
+{q:'Plates sliding PAST each other form a…',a:'transform boundary',opts:['transform boundary','divergent boundary','convergent boundary','trench']},
+{q:'The Himalayas formed when…',a:'India collided with Asia',opts:['India collided with Asia','a volcano erupted','plates moved apart','a meteor hit']},
+{q:'The San Andreas Fault is a…',a:'transform boundary',opts:['transform boundary','divergent boundary','mid-ocean ridge','volcano']},
+{q:'Which seismic waves arrive first?',a:'P waves',opts:['P waves','S waves','surface waves','tsunami waves']},
+{q:'The point on the surface above an earthquake\'s focus is the…',a:'epicentre',opts:['epicentre','core','fault line','magnitude']},
+{q:'What records earthquake shaking?',a:'a seismograph',opts:['a seismograph','a barometer','a thermometer','a telescope']},
+{q:'One step up in magnitude means about how much more energy?',a:'32×',opts:['32×','2×','100×','10,000×']},
+{q:'The largest earthquake ever recorded (1960) was in…',a:'Chile',opts:['Chile','Japan','California','Italy']},
+{q:'Tectonic plates move about…',a:'2–10 cm per year',opts:['2–10 cm per year','1 km per year','1 m per day','they never move']},
+{q:'The supercontinent from 250 million years ago was…',a:'Pangaea',opts:['Pangaea','Atlantis','Gondwana City','Laurasia Town']},
+{q:'If the sea suddenly pulls far back after a quake, you should…',a:'go to high ground fast',opts:['go to high ground fast','collect shells','go swimming','wait on the beach']},
+{q:'Where do about 90% of earthquakes happen?',a:'the Ring of Fire around the Pacific',opts:['the Ring of Fire around the Pacific','the middle of Africa','Antarctica','the Sahara']},
+{q:'The deepest ocean trench is the…',a:'Mariana Trench',opts:['Mariana Trench','Grand Canyon','Mid-Atlantic Ridge','Dead Sea']},
+{q:'Which building material is most dangerous in a quake?',a:'unreinforced brick',opts:['unreinforced brick','wood frame','steel frame','reinforced concrete']},
+{q:'Base isolators work by…',a:'letting the ground move under the building',opts:['letting the ground move under the building','making walls thicker','adding windows','gluing the building to rock']},
+{q:'When a building sways in rhythm with the ground, it is called…',a:'resonance',opts:['resonance','erosion','subduction','gravity']},
+{q:'When one plate sinks under another it is called…',a:'subduction',opts:['subduction','erosion','convection','divergence']},
+{q:'In an earthquake indoors you should…',a:'drop, cover and hold on',opts:['drop, cover and hold on','run outside past windows','stand in a lift','hide under the stairs only']}];
+function menu(){mainMenu('🌋📈🏗️','Quake Lab','Move tectonic plates, read seismographs, outrun tsunamis and engineer buildings that survive the shake!',[['mL','📖','Learn','Layers, plates, boundaries, quakes, tsunamis.',()=>learnPage(0)],['mS','🏗️','Shake Table','Build and test any design.',()=>sandbox(null)],['mB','🌍','Plate Lab','Push plates and see what forms.',()=>plateLab(null)],['mP','🧩','Levels',`${LV.length} quake challenges.`,()=>levels()],...stdTiles('Quake Quiz')])}
+function levels(){levelGrid('🧩 Quake challenges')}
+function play(i){const L=LV[i];let tries=0;if(L.k=='shake')return sandbox(L,i);if(L.k=='plate')return plateLab(L,i);
+ const head=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">${L.em} ${i+1}. ${L.n}</h2><button class="btn alt" id="bk">Levels</button></div>`;
+ if(L.k=='tri'){triLevel(L,i,head);$('#bk').onclick=levels;return}
+ app.innerHTML=head+`${L.k=='seis'||L.anim?'<canvas id="cv" width="440" height="200" style="width:100%;max-width:620px;display:block;margin-left:auto;margin-right:auto;border-radius:14px"></canvas>':''}<h3>${L.goal||L.q}</h3><div id="os"></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=levels;
+ if(L.k=='seis')anim($('#cv'),(g,t)=>seisDraw(g,t,L.gap));if(L.anim)anim($('#cv'),tsuDraw);
+ shuffle(L.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.textContent=o;b.onclick=()=>{tries++;if(o==L.ans){b.classList.add('ok');winLevel(i,tries<=1?3:tries<=2?2:1,`Correct!<div class="fact">💡 ${L.fact}</div>`)}else{b.classList.add('no');SFX.bad();$('#fb').textContent='❌ Not quite — try again.'}};$('#os').appendChild(b)})}
+menu();
+</script></body></html>

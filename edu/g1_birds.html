@@ -1,0 +1,244 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>Bird Watch</title>
+<style>
+:root{--bg:#0f1530;--card:#1b2350;--ink:#f4f6ff;--mut:#9aa6d8;--acc:#7ad0ff;--good:#3ddc84;--bad:#ff5c7a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:"Trebuchet MS",system-ui,sans-serif;background:radial-gradient(circle at 20% 0%,#2a3480,var(--bg) 60%);color:var(--ink);min-height:100vh;user-select:none;-webkit-user-select:none;overflow-x:hidden}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0008;position:sticky;top:0;z-index:5;backdrop-filter:blur(4px)}
+header a{color:var(--ink);text-decoration:none;background:#fff1;padding:6px 12px;border-radius:20px;font-weight:bold}
+header h1{font-size:20px;margin:0;flex:1;color:var(--acc);text-shadow:0 2px 0 #0006}
+.pill{background:#fff1;padding:5px 10px;border-radius:14px;font-size:14px}
+main{max-width:980px;margin:0 auto;padding:14px}
+.btn{font:inherit;font-weight:bold;border:0;border-radius:14px;padding:10px 16px;background:var(--acc);color:#111;cursor:pointer;box-shadow:0 4px 0 #0007;transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #0007}.btn.alt{background:#2c3770;color:var(--ink)}.btn.sel{outline:3px solid #fff}
+.btn:disabled{opacity:.4}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border-radius:18px;padding:14px;box-shadow:0 6px 18px #0005;border:2px solid #ffffff10}
+.tile{cursor:pointer;transition:transform .15s}.tile:hover{transform:translateY(-4px) rotate(-1deg)}
+.tile .em{font-size:40px}.tile h3{margin:6px 0}.tile p{margin:0;color:var(--mut);font-size:14px}
+.stars{color:#ffd34d;letter-spacing:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fb{min-height:28px;font-weight:bold;font-size:18px;margin:8px 0}
+.opt{display:block;width:100%;margin:6px 0;text-align:left;background:#2c3770;color:var(--ink)}
+.opt.ok{background:var(--good);color:#111}.opt.no{background:var(--bad)}
+.pop{animation:pop .35s}@keyframes pop{50%{transform:scale(1.12)}}
+.shake{animation:shk .35s}@keyframes shk{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:9}
+.bar{height:10px;background:#fff2;border-radius:6px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--acc);transition:width .3s}
+.fact{background:#ffd34d22;border-left:4px solid #ffd34d;padding:8px 12px;border-radius:8px;margin:8px 0}
+svg text{font-family:inherit}
+</style></head><body>
+<header><a href="./index.html">← Learning Lab</a><h1>Bird Watch</h1><span class="pill" id="starTotal">⭐ 0</span><button class="btn alt" id="snd" style="padding:6px 10px">🔊</button></header>
+<main id="app"></main><canvas id="fx"></canvas>
+<script>
+// ---- shared helpers ----
+const $=s=>document.querySelector(s),app=$('#app');
+const SAVEKEY='g1_birdWatch';let SAVE=JSON.parse(localStorage.getItem(SAVEKEY)||'{}');SAVE.stars=SAVE.stars||{};SAVE.best=SAVE.best||{};
+function save(){localStorage.setItem(SAVEKEY,JSON.stringify(SAVE));$('#starTotal').textContent='⭐ '+Object.values(SAVE.stars).reduce((a,b)=>a+b,0)}
+let AC=null,muted=!!SAVE.muted;$('#snd').textContent=muted?'🔇':'🔊';
+$('#snd').onclick=()=>{muted=!muted;SAVE.muted=muted;save();$('#snd').textContent=muted?'🔇':'🔊'};
+function tone(f,d=.12,type='sine',v=.15,slide=0,delay=0){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.02)}catch(e){}}
+function noise(d=.4,v=.2,lp=800){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const n=AC.sampleRate*d,b=AC.createBuffer(1,n,AC.sampleRate),c=b.getChannelData(0);for(let i=0;i<n;i++)c[i]=(Math.random()*2-1)*(1-i/n);const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();f.type='lowpass';f.frequency.value=lp;g.gain.value=v;s.buffer=b;s.connect(f);f.connect(g);g.connect(AC.destination);s.start()}catch(e){}}
+const SFX={click:()=>tone(660,.05,'square',.06),good:()=>{tone(523,.1,'triangle');tone(784,.15,'triangle',.15,0,.08)},bad:()=>tone(200,.25,'sawtooth',.08,-80),
+win:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.15,0,i*.1)),pick:()=>tone(440,.06,'sine',.1,200),drop:()=>tone(330,.08,'sine',.12,-100)};
+// confetti
+const cv=$('#fx'),cx=cv.getContext('2d');let fxp=[];function rs(){cv.width=innerWidth;cv.height=innerHeight}rs();addEventListener('resize',rs);
+function confetti(x=innerWidth/2,y=innerHeight/3,n=60){for(let i=0;i<n;i++)fxp.push({x,y,vx:(Math.random()-.5)*10,vy:-Math.random()*9-2,c:`hsl(${Math.random()*360},90%,60%)`,l:90});}
+(function loop(){cx.clearRect(0,0,cv.width,cv.height);fxp=fxp.filter(p=>p.l-->0);for(const p of fxp){p.vy+=.3;p.x+=p.vx;p.y+=p.vy;cx.fillStyle=p.c;cx.fillRect(p.x,p.y,7,7)}requestAnimationFrame(loop)})();
+function flash(el,ok){el.classList.remove('pop','shake');void el.offsetWidth;el.classList.add(ok?'pop':'shake')}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function award(id,n){if((SAVE.stars[id]||0)<n)SAVE.stars[id]=n;save()}
+// generic timed quiz: qs=[{q,opts,a,fact}] ; a is correct string
+let __QZ=0;function runQuiz(id,title,qs,secs,back){let i=0,score=0,t=secs,timer;const tok=++__QZ;clearInterval(window.__qt);const alive=()=>tok===__QZ&&!!document.getElementById("qz"+tok);qs=shuffle(qs).slice(0,10);
+ function end(){clearInterval(timer);if(!alive())return;const st=score>=9?3:score>=7?2:score>=5?1:0;award(id,st);if(score>(SAVE.best[id]||0))SAVE.best[id]=score;save();if(st)SFX.win(),confetti();
+  app.innerHTML=`<div class="card" style="text-align:center"><h2>${title} — done!</h2><div style="font-size:48px" class="stars">${starStr(st)}</div><p>You got <b>${score}/${qs.length}</b>. Best: ${SAVE.best[id]}</p><div class="row" style="justify-content:center"><button class="btn" id="ag">Play again</button><button class="btn alt" id="bk">Back</button></div></div>`;$('#ag').onclick=()=>runQuiz(id,title,qs,secs,back);$('#bk').onclick=back}
+ function show(){if(i>=qs.length)return end();const q=qs[i];app.innerHTML=`<div class="card" id="qz${tok}"><div class="row"><b style="flex:1">${title} · Q${i+1}/${qs.length}</b>${secs?`<span class="pill">⏱ <span id="tm">${t}</span>s</span>`:''}<span class="pill">✅ ${score}</span></div><div class="bar" style="margin:8px 0"><i style="width:${i/qs.length*100}%"></i></div>${q.svg||''}<h2>${q.q}</h2><div id="os"></div><div class="fb" id="fb"></div></div>`;
+  shuffle(q.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.innerHTML=o;b.onclick=()=>{if(b.parentNode.dataset.done)return;b.parentNode.dataset.done=1;const ok=o==q.a;if(ok){score++;SFX.good();confetti(innerWidth/2,innerHeight/2,20)}else SFX.bad();[...$('#os').children].forEach(x=>{if(x.innerHTML==q.a)x.classList.add('ok')});if(!ok)b.classList.add('no');flash(b,ok);$('#fb').innerHTML=(ok?'✅ Correct! ':'❌ Not quite. ')+(q.fact?`<div class="fact">💡 ${q.fact}</div>`:'');setTimeout(()=>{if(!alive())return;i++;show()},q.fact?2200:1100)};$('#os').appendChild(b)})}
+ if(secs)window.__qt=timer=setInterval(()=>{if(!alive()){clearInterval(timer);return}t--;const e=$('#tm');if(e)e.textContent=t;if(t<=5&&t>0)tone(880,.05);if(t<=0)end()},1000);show()}
+save();
+</script>
+<script>
+// common menu/learn/levels helpers for g1 games
+function learnPage(i){const m=LEARN[i];app.innerHTML=`<div class="card"><div class="row"><b style="flex:1">📖 ${i+1} / ${LEARN.length}</b><button class="btn alt" id="bk">Menu</button></div><div style="text-align:center"><canvas id="lc" width="440" height="200" style="max-width:100%;background:#05081a;border-radius:14px"></canvas></div><h2>${m.h}</h2><p style="line-height:1.5">${m.p}</p>
+ <div class="row"><button class="btn alt" id="pv" ${i?'':'disabled'}>← Prev</button><span style="flex:1"></span><button class="btn" id="nx">${i<LEARN.length-1?'Next →':'Done ✓'}</button></div></div>`;
+ $('#bk').onclick=menu;$('#pv').onclick=()=>learnPage(i-1);$('#nx').onclick=()=>{SFX.click();if(i<LEARN.length-1)learnPage(i+1);else{SAVE.learned=1;save();SFX.win();confetti();menu()}};
+ const c=$('#lc'),g=c.getContext('2d'),t0=performance.now();(function f(n){if(!c.isConnected)return;g.clearRect(0,0,440,200);g.save();m.d(g,(n-t0)/1000);g.restore();requestAnimationFrame(f)})(t0)}
+function unlocked(i){return i==0||(SAVE.stars[LV[i-1].id]||0)>0}
+function levelGrid(title){app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">${title}</h2><button class="btn alt" id="bk">Menu</button></div><p style="color:var(--mut)">Earn a star to unlock the next level.</p><div class="grid" id="lg"></div></div>`;$('#bk').onclick=menu;
+ LV.forEach((l,i)=>{const d=document.createElement('div'),u=unlocked(i);d.className='card tile lv'+i;d.style.opacity=u?1:.45;d.innerHTML=`<div class="em">${u?l.em||'🎯':'🔒'}</div><h3>${i+1}. ${l.n}</h3><p class="stars">${starStr(SAVE.stars[l.id]||0)}</p>`;d.onclick=()=>{if(!u){SFX.bad();flash(d,0);return}SFX.click();play(i)};$('#lg').appendChild(d)})}
+function winLevel(i,st,msg){award(LV[i].id,st);SFX.win();confetti();const last=i>=LV.length-1;
+ $('#fb').innerHTML=`🎉 ${msg} <span class="stars">${starStr(st)}</span><div class="row" style="margin-top:6px"><button class="btn" id="nl">${last?'All levels ✓':'Next level →'}</button><button class="btn alt" id="rl">Retry</button></div>`;
+ $('#nl').onclick=()=>last?levels():play(i+1);$('#rl').onclick=()=>play(i)}
+function mainMenu(em,name,blurb,tiles){const tot=LV.length*3,got=LV.reduce((a,l)=>a+(SAVE.stars[l.id]||0),0);
+ app.innerHTML=`<div class="card" style="text-align:center"><div style="font-size:54px">${em}</div><h2 style="margin:4px">${name}</h2><p style="color:var(--mut)">${blurb}</p><div class="bar"><i style="width:${got/tot*100}%"></i></div><p class="stars">${got}/${tot} ★</p></div><div class="grid" style="margin-top:12px" id="mg"></div>`;
+ tiles.forEach(([id,e,h,p,fn])=>{const d=document.createElement('div');d.className='card tile';d.id=id;d.innerHTML=`<div class="em">${e}</div><h3>${h}</h3><p>${p}</p>`;d.onclick=()=>{SFX.click();fn()};$('#mg').appendChild(d)})}
+function stdTiles(qtitle){return[['mQ','❓','Quiz',`10 questions. <span class="stars">${starStr(SAVE.stars.quiz||0)}</span>`,()=>runQuiz('quiz',qtitle,QS,0,menu)],['mT','⏱️','Timed challenge',`60 seconds! <span class="stars">${starStr(SAVE.stars.timed||0)}</span>`,()=>runQuiz('timed','Timed Challenge',QS,60,menu)]]}
+// ---- Bird Watch ----
+function anim(c,fn){const g=c.getContext('2d'),t0=performance.now();(function f(n){if(!c.isConnected)return;g.clearRect(0,0,c.width,c.height);g.save();fn(g,(n-t0)/1000);g.restore();requestAnimationFrame(f)})(t0)}
+const T=(f,d,ty,v,sl,dl)=>tone(f,d,ty,v,sl,dl);
+const BIRDS={
+robin:{n:'American Robin',body:'#5b5048',belly:'#d9662b',head:'#2b2622',wing:'#4a413a',beak:'thin',bc:'#e8b400',feet:'perch',eats:'worms, insects and berries',call:'"Cheerily, cheer-up, cheerily" — a rich, whistled warble.',
+ play:()=>[[2400,300],[2800,-400],[2300,200],[2600,-300],[2200,300],[2700,-500]].forEach(([f,s],k)=>T(f,.16,'sine',.12,s,k*.22+(k>2?.25:0))),fact:'Robins hunt worms by sight, tilting their head to look at the ground.'},
+cardinal:{n:'Northern Cardinal',body:'#d42020',belly:'#e23030',head:'#d42020',wing:'#b01818',beak:'cone',bc:'#ff7a3a',crest:1,mask:1,feet:'perch',eats:'seeds',call:'Loud, clear slurred whistles: "birdie, birdie, birdie".',
+ play:()=>{for(let k=0;k<5;k++)T(3600,.18,'sine',.12,-1600,k*.24)},fact:'Only the male cardinal is bright red; the female is tan with red tinges — and both sing.'},
+bluejay:{n:'Blue Jay',body:'#3a7bd5',belly:'#eef2f8',head:'#3a7bd5',wing:'#2a5fb0',beak:'thin',bc:'#222',crest:1,necklace:1,feet:'perch',eats:'acorns, nuts, seeds and insects',call:'A loud, harsh "jay! jay!" — they can also copy hawk calls.',
+ play:()=>{T(1100,.28,'square',.05,-500,0);T(1100,.28,'square',.05,-500,.4);noise(.25,.05,3000)},fact:'Blue Jays bury acorns to eat later and help oak forests spread.'},
+chickadee:{n:'Black-capped Chickadee',body:'#8a8f96',belly:'#efe6d6',head:'#111',wing:'#6b7078',beak:'thin',bc:'#222',cap:1,bib:1,cheek:1,feet:'perch',small:1,eats:'insects and seeds',call:'A clear "fee-bee" whistle, and the "chick-a-dee-dee-dee" alarm call.',
+ play:()=>{T(3950,.38,'sine',.13,0,0);T(3400,.38,'sine',.13,0,.48)},fact:'More "dee" notes in a chickadee\'s alarm call can mean a more dangerous predator.'},
+goldfinch:{n:'American Goldfinch',body:'#f5d000',belly:'#ffe14a',head:'#f5d000',wing:'#111',beak:'cone',bc:'#f08a3a',cap:1,feet:'perch',small:1,eats:'seeds, especially thistle and sunflower',call:'A bouncy "po-ta-to-chip" in flight.',
+ play:()=>[3000,3500,3200,3900].forEach((f,k)=>T(f,.08,'sine',.12,500,k*.11)),fact:'Goldfinches eat almost only seeds — even feeding seeds to their chicks.'},
+eagle:{n:'Bald Eagle',body:'#3b2615',belly:'#3b2615',head:'#fff',wing:'#2b1a0e',beak:'hook',bc:'#f5c400',tailc:'#fff',feet:'talon',big:1,eats:'fish and other animals',call:'Surprisingly weak, high-pitched chittering whistles.',
+ play:()=>{for(let k=0;k<8;k++)T(3200-k*120,.07,'sine',.1,-200,k*.09)},fact:'Movies often dub a Red-tailed Hawk\'s scream over eagles, because the real call sounds so gentle!'},
+mallard:{n:'Mallard',body:'#9aa0a6',belly:'#8b4a2b',head:'#1f7a3a',wing:'#7d8389',beak:'flat',bc:'#e8c33a',ring:1,feet:'web',eats:'water plants, seeds and small creatures (dabbling)',call:'"Quack!" — the loud quacks are made by the female.',
+ play:()=>[0,.3,.55].forEach(d=>T(380,.22,'sawtooth',.07,-120,d)),fact:'Dabbling ducks tip bottom-up to feed and strain food with comb-like edges on their bills.'},
+heron:{n:'Great Blue Heron',body:'#6f86a3',belly:'#8ea0b8',head:'#dfe6ee',wing:'#5d7290',beak:'spear',bc:'#e8b400',neck:1,feet:'wade',big:1,eats:'fish and frogs',call:'A deep, harsh croak: "frahnk".',
+ play:()=>{T(170,.45,'sawtooth',.12,-70,0);noise(.4,.08,500)},fact:'Herons stand perfectly still in the shallows, then stab fish with their dagger-like beak.'},
+humming:{n:'Ruby-throated Hummingbird',body:'#2f9a52',belly:'#e8efe6',head:'#2f9a52',wing:'#58606a',beak:'needle',bc:'#222',throat:1,feet:'perch',tiny:1,eats:'flower nectar and tiny insects',call:'A buzzing hum from its wings plus quick "chee-dit" chips.',
+ play:()=>{T(170,1,'sawtooth',.04,0,0);T(4200,.05,'sine',.1,-800,.2);T(4500,.05,'sine',.1,-800,.35)},fact:'Its wings beat about 50 times a second, and it is the only hummingbird that nests in eastern North America.'},
+woodpecker:{n:'Downy Woodpecker',body:'#222',belly:'#f2f2f2',head:'#fff',wing:'#222',beak:'chisel',bc:'#333',spots:1,redpatch:1,feet:'climb',small:1,eats:'insects hiding in tree bark',call:'A sharp "pik!" and fast drumming on wood.',
+ play:()=>{T(2600,.05,'square',.06,-400,0);for(let k=0;k<14;k++)setTimeout(()=>noise(.03,.25,1800),300+k*55)},fact:'Woodpeckers drum to claim territory. Special skull bones and muscles cushion their brain.'},
+owl:{n:'Barn Owl',body:'#d9a560',belly:'#fff6e8',head:'#d9a560',wing:'#c08a48',beak:'hook',bc:'#e8d8c0',face:1,feet:'talon',eats:'mice, voles and other small animals',call:'Not a hoot — a long, harsh screech.',
+ play:()=>{noise(1.1,.18,6000);T(1800,1,'sawtooth',.03,-300,0)},fact:'A Barn Owl\'s heart-shaped face funnels sound to its ears, so it can catch mice in total darkness.'},
+dove:{n:'Mourning Dove',body:'#b39a80',belly:'#d4bca0',head:'#b39a80',wing:'#9c8468',beak:'thin',bc:'#333',spots:1,feet:'perch',eats:'seeds',call:'A soft, sad "coo-OO-oo, oo, oo".',
+ play:()=>{T(480,.35,'sine',.15,60,0);T(560,.45,'sine',.15,-80,.4);[1,1.6,2.2].forEach(d=>T(470,.45,'sine',.13,-20,d))},fact:'Their wings make a whistling sound when they take off, warning other doves.'},
+loon:{n:'Common Loon',body:'#111',belly:'#fff',head:'#0e2a20',wing:'#111',beak:'spear',bc:'#111',spots:1,ring:1,redeye:1,feet:'web',big:1,eats:'fish',call:'An eerie wailing call that echoes across northern lakes.',
+ play:()=>{T(700,.9,'sine',.13,450,0);T(1150,1,'sine',.13,-350,.9);T(800,.8,'sine',.12,0,1.9)},fact:'Loons have solid (not hollow) bones that help them dive as deep as 60 m. They can barely walk on land.'},
+pelican:{n:'Brown Pelican',body:'#7a6a58',belly:'#8a7a66',head:'#f2ead8',wing:'#5e5040',beak:'pouch',bc:'#c9a86a',feet:'web',big:1,eats:'fish scooped in its pouch',call:null,fact:'Brown Pelicans plunge-dive from the air. Adults are almost silent.'},
+flamingo:{n:'American Flamingo',body:'#ff6f91',belly:'#ff8aa6',head:'#ff6f91',wing:'#e84a70',beak:'filter',bc:'#222',neck:1,feet:'wade',big:1,eats:'tiny shrimp and algae filtered from water',call:'Goose-like honking.',
+ play:()=>[0,.3].forEach(d=>T(330,.25,'square',.05,80,d)),fact:'Flamingos are pink because of pigments in the shrimp and algae they eat.'},
+goose:{n:'Canada Goose',body:'#7a6450',belly:'#d8cdbd',head:'#111',wing:'#5e4c3c',beak:'flat',bc:'#111',chin:1,neck:1,feet:'web',big:1,eats:'grass, grain and water plants',call:'Loud "honk-a-lonk" honking, often in flying V flocks.',
+ play:()=>[0,.32,.6].forEach(d=>T(420,.24,'square',.06,140,d)),fact:'Flying in a V saves energy: each goose rides the swirling air off the wingtip of the one ahead.'},
+tern:{n:'Arctic Tern',body:'#e8eef2',belly:'#fff',head:'#e8eef2',wing:'#c8d2da',beak:'spear',bc:'#d42020',cap:1,feet:'web',eats:'small fish',call:'A harsh, grating "kee-arr".',
+ play:()=>{T(3000,.35,'sawtooth',.05,-1500,0);T(3000,.35,'sawtooth',.05,-1500,.5)},fact:'Arctic Terns see two summers a year and more daylight than any other animal.'},
+godwit:{n:'Bar-tailed Godwit',body:'#a9764a',belly:'#c98a55',head:'#a9764a',wing:'#7a5636',beak:'probe',bc:'#d4806a',spots:1,feet:'wade',eats:'worms and shellfish probed from mud',call:'A nasal "kew-kew".',
+ play:()=>[0,.22].forEach(d=>T(2100,.12,'square',.05,-300,d)),fact:'One young godwit flew about 13,500 km from Alaska to Tasmania without stopping — no food, no rest, for 11 days.'}};
+const BEAK={cone:'Cone — cracks seeds',hook:'Hooked — tears meat',needle:'Needle — sips nectar',chisel:'Chisel — drills wood',flat:'Flat bill — dabbles & grazes',spear:'Spear — catches fish',pouch:'Pouch — scoops fish',filter:'Filter — strains tiny food',probe:'Long probe — digs in mud',thin:'Thin all-purpose — insects, worms, seeds'};
+const FEET={perch:'Perching — 3 toes forward, 1 back, to grip branches',talon:'Talons — sharp claws to grab prey',web:'Webbed — paddles for swimming',wade:'Long legs & toes — wading in shallow water',climb:'Climbing — 2 toes forward, 2 back, to climb trunks'};
+function drawBird(g,k,cx,cy,s=1,t=0){const b=BIRDS[k];g.save();g.translate(cx,cy);g.scale(s,s);const bob=Math.sin(t*3)*1.5;
+ const legL=b.feet=='wade'?45:20,hx=b.neck?42:30,hy=b.neck?-48:-18;
+ // legs/feet
+ g.strokeStyle=b.feet=='web'||b.k=='flamingo'?'#e08a2a':'#5a4a3a';if(k=='flamingo')g.strokeStyle='#ff8aa6';g.lineWidth=3;[-6,6].forEach(o=>{g.beginPath();g.moveTo(o,18);g.lineTo(o,18+legL);g.stroke();
+  if(b.feet=='web'){g.fillStyle=g.strokeStyle;g.beginPath();g.moveTo(o,18+legL);g.lineTo(o+12,22+legL);g.lineTo(o+4,25+legL);g.fill()}
+  else if(b.feet=='talon'){g.strokeStyle='#f5c400';g.beginPath();for(const a of[-.9,-.2,.5,2.8]){g.moveTo(o,18+legL);g.lineTo(o+Math.cos(a)*10,18+legL+Math.abs(Math.sin(a))*6+3)}g.stroke();g.strokeStyle='#5a4a3a'}
+  else if(b.feet=='climb'){g.beginPath();for(const a of[-.6,-.2,2.9,3.3]){g.moveTo(o,18+legL);g.lineTo(o+Math.cos(a)*8,18+legL+Math.sin(a)*5)}g.stroke()}
+  else{g.beginPath();for(const a of[-.5,0,.4,3.1]){g.moveTo(o,18+legL);g.lineTo(o+Math.cos(a)*(b.feet=='wade'?13:8),18+legL+Math.abs(Math.sin(a))*3)}g.stroke()}});
+ // tail
+ g.fillStyle=b.tailc||b.wing;g.beginPath();g.moveTo(-28,0);g.lineTo(-58,b.feet=='climb'?20:-6);g.lineTo(-52,10);g.fill();
+ // body
+ g.fillStyle=b.body;g.beginPath();g.ellipse(0,0,36,22,-.1,0,7);g.fill();g.fillStyle=b.belly;g.beginPath();g.ellipse(8,8,26,13,-.2,0,7);g.fill();
+ g.fillStyle=b.wing;g.beginPath();g.ellipse(-8,-2,26,13,-.2+Math.sin(t*2)*.03,0,7);g.fill();if(b.spots){g.fillStyle=k=='loon'?'#fff':'#0006';for(let i=0;i<9;i++){g.beginPath();g.arc(-24+(i%3)*9+(i>5?4:0),-8+Math.floor(i/3)*6,1.8,0,7);g.fill()}}
+ // neck
+ if(b.neck){g.strokeStyle=b.head==b.body?b.body:b.head;g.lineWidth=11;g.beginPath();g.moveTo(22,-8);g.quadraticCurveTo(28+(k=='flamingo'?15:0),-28,hx,hy+bob);g.stroke();if(k=='goose'){g.strokeStyle='#111';g.stroke()}}
+ // head
+ const hr=b.big?12:11;g.fillStyle=b.head;g.beginPath();g.arc(hx,hy+bob,hr,0,7);g.fill();
+ if(b.crest){g.beginPath();g.moveTo(hx-8,hy-6+bob);g.lineTo(hx-16,hy-22+bob);g.lineTo(hx+3,hy-9+bob);g.fill()}
+ if(b.cap){g.fillStyle='#111';g.beginPath();g.arc(hx,hy+bob,hr,Math.PI*1.05,Math.PI*1.95);g.fill()}
+ if(b.cheek){g.fillStyle='#fff';g.beginPath();g.ellipse(hx,hy+3+bob,7,4,0,0,7);g.fill()}
+ if(b.bib){g.fillStyle='#111';g.beginPath();g.ellipse(hx+2,hy+11+bob,6,5,0,0,7);g.fill()}
+ if(b.mask){g.fillStyle='#111';g.beginPath();g.ellipse(hx+6,hy+2+bob,6,5,0,0,7);g.fill()}
+ if(b.ring){g.strokeStyle='#fff';g.lineWidth=2;g.beginPath();g.arc(hx-2,hy+bob+4,hr-1,1,2.3);g.stroke()}
+ if(b.necklace){g.strokeStyle='#111';g.lineWidth=3;g.beginPath();g.arc(hx-4,hy+bob,hr+3,.6,2.2);g.stroke()}
+ if(b.chin){g.fillStyle='#fff';g.beginPath();g.ellipse(hx-1,hy+5+bob,5,7,.3,0,7);g.fill()}
+ if(b.throat){g.fillStyle='#d4143a';g.beginPath();g.ellipse(hx+3,hy+9+bob,6,4,0,0,7);g.fill()}
+ if(b.redpatch){g.fillStyle='#d42020';g.fillRect(hx-10,hy-6+bob,5,5);g.fillStyle='#111';g.fillRect(hx-6,hy-2+bob,14,3)}
+ if(b.face){g.fillStyle='#fff6e8';g.beginPath();g.moveTo(hx,hy-10+bob);g.bezierCurveTo(hx+14,hy-16+bob,hx+14,hy+8+bob,hx,hy+12+bob);g.bezierCurveTo(hx-14,hy+8+bob,hx-14,hy-16+bob,hx,hy-10+bob);g.fill()}
+ // eye
+ g.fillStyle=b.redeye?'#d42020':'#000';g.beginPath();g.arc(hx+4,hy-2+bob,b.face?2.5:2.2,0,7);g.fill();if(b.face){g.beginPath();g.arc(hx-4,hy-2+bob,2.5,0,7);g.fill()}
+ // beak
+ g.fillStyle=b.bc;g.strokeStyle=b.bc;const bx=hx+hr-2,by=hy+bob;g.beginPath();
+ ({thin:()=>{g.moveTo(bx,by-3);g.lineTo(bx+12,by);g.lineTo(bx,by+2)},cone:()=>{g.moveTo(bx-2,by-6);g.lineTo(bx+11,by);g.lineTo(bx-2,by+6)},hook:()=>{g.moveTo(bx-2,by-5);g.quadraticCurveTo(bx+14,by-6,bx+10,by+7);g.lineTo(bx+7,by+2);g.lineTo(bx-2,by+4)},
+  needle:()=>{g.moveTo(bx,by-1.5);g.lineTo(bx+28,by);g.lineTo(bx,by+1.5)},chisel:()=>{g.moveTo(bx,by-3);g.lineTo(bx+13,by-1);g.lineTo(bx+13,by+1);g.lineTo(bx,by+3)},flat:()=>{g.moveTo(bx-2,by-3);g.lineTo(bx+15,by-1);g.quadraticCurveTo(bx+18,by+3,bx+14,by+4);g.lineTo(bx-2,by+4)},
+  spear:()=>{g.moveTo(bx,by-3);g.lineTo(bx+(b.big?26:18),by+1);g.lineTo(bx,by+3)},pouch:()=>{g.moveTo(bx-2,by-3);g.lineTo(bx+40,by-1);g.lineTo(bx+38,by+3);g.quadraticCurveTo(bx+18,by+18,bx-2,by+5)},
+  filter:()=>{g.moveTo(bx-2,by-4);g.lineTo(bx+9,by-3);g.lineTo(bx+13,by+10);g.lineTo(bx+8,by+12);g.lineTo(bx+5,by+3);g.lineTo(bx-2,by+4)},probe:()=>{g.moveTo(bx,by-2);g.quadraticCurveTo(bx+20,by,bx+32,by-5);g.lineTo(bx+32,by-3);g.quadraticCurveTo(bx+20,by+3,bx,by+2)}})[b.beak]();g.fill();
+ g.restore()}
+function birdCanvas(k,w=220,h=160,s){const c=document.createElement('canvas');c.width=w;c.height=h;c.style.cssText='width:100%;max-width:'+w+'px;border-radius:12px;background:linear-gradient(#bfe6ff,#e9f7ff 70%,#9fd08a 70%)';const sc=s||(BIRDS[k].tiny?.7:BIRDS[k].small?.85:1);setTimeout(()=>anim(c,(g,t)=>{g.fillStyle='#6b4a2a';if(BIRDS[k].feet=='perch')g.fillRect(0,h*.5+44*sc,w,6);if(BIRDS[k].feet=='climb'){g.fillRect(w*.5-75*sc,0,14,h)}if(BIRDS[k].feet=='web'||BIRDS[k].feet=='wade'){g.fillStyle='#4a90d9aa';g.fillRect(0,h*.5+(BIRDS[k].feet=='wade'?55:30)*sc,w,h)}drawBird(g,k,w*.42,h*.5-(BIRDS[k].neck?-10:0),sc,t)}),0);return c}
+// ---- migration map ----
+const LAND=[[[-168,66],[-140,70],[-95,72],[-80,63],[-60,55],[-55,48],[-75,35],[-81,25],[-97,26],[-105,20],[-85,10],[-78,8],[-90,15],[-110,23],[-117,32],[-124,40],[-125,49],[-140,60],[-165,55]],
+[[-78,8],[-60,10],[-35,-6],[-40,-22],[-58,-38],[-68,-55],[-75,-45],[-72,-18],[-81,-3]],[[-50,82],[-20,82],[-20,70],[-45,60],[-55,70]],
+[[-10,36],[-5,44],[-10,52],[0,60],[10,58],[30,70],[60,70],[100,76],[140,72],[180,68],[165,60],[140,55],[130,40],[122,30],[110,20],[100,8],[95,18],[80,10],[72,20],[57,24],[48,30],[35,36],[28,40],[10,44],[3,42]],
+[[-17,15],[-10,35],[10,37],[32,31],[43,12],[51,11],[40,-15],[32,-28],[20,-35],[13,-20],[8,4]],[[113,-22],[130,-12],[145,-15],[153,-28],[146,-38],[135,-34],[115,-34]],[[166,-46],[174,-41],[178,-38],[172,-34]],[[-180,-72],[180,-72],[180,-90],[-180,-90]]];
+const ROUTES={tern:{c:'#ff5a1f',pts:[[-40,75],[-30,55],[-20,30],[-15,0],[0,-30],[10,-60],[30,-68]],info:'Arctic → Antarctic and back: up to about 70,000–90,000 km a year — the longest migration of any animal.'},
+humming:{c:'#2f9a52',pts:[[-80,45],[-85,35],[-89,29],[-90,22],[-89,15],[-86,12]],info:'Eastern North America → Central America. Many cross the Gulf of Mexico non-stop: about 800 km in roughly 20 hours.'},
+godwit:{c:'#a9764a',pts:[[-162,62],[-170,40],[-178,10],[178,-15],[174,-38]],info:'Alaska → New Zealand non-stop, over 11,000 km across the Pacific in about 9–11 days.'},
+goose:{c:'#7a6450',pts:[[-95,62],[-92,50],[-90,40],[-90,32]],info:'Northern Canada → southern USA, flying in V formations. Some city geese don\'t migrate at all now.'}};
+function mp(lon,lat){return[(lon+180)/360*440,(90-lat)/180*240]}
+function drawMap(g,t,keys,lab){g.fillStyle='#1d5fa8';g.fillRect(0,0,440,240);g.fillStyle='#6fa04a';LAND.forEach(p=>{g.beginPath();p.forEach(([lo,la],i)=>{const[x,y]=mp(lo,la);i?g.lineTo(x,y):g.moveTo(x,y)});g.fill()});
+ keys.forEach((k,j)=>{const r=ROUTES[k];g.strokeStyle=lab?['#ff5a1f','#ffd34d','#e84aff','#fff'][j]:r.c;g.lineWidth=3;g.setLineDash([6,4]);g.beginPath();r.pts.forEach(([lo,la],i)=>{const[x,y]=mp(lo,la);if(i&&Math.abs(lo-r.pts[i-1][0])>180){const[px,py]=mp(...r.pts[i-1]),my=(py+y)/2;g.lineTo(px<220?0:440,my);g.moveTo(px<220?440:0,my);g.lineTo(x,y)}else i?g.lineTo(x,y):g.moveTo(x,y)});g.stroke();g.setLineDash([]);
+  const n=r.pts.length-1,p=(t*.25+j*.2)%1*n,a=Math.floor(p),f=p-a,[x1,y1]=mp(...r.pts[a]),[x2,y2]=mp(...r.pts[Math.min(n,a+1)]);g.font='16px serif';g.fillText('🐦',x1+(x2-x1)*f-8,y1+(y2-y1)*f+6);
+  if(lab){const[x,y]=mp(...r.pts[0]);g.fillStyle='#000';g.beginPath();g.arc(x,y,10,0,7);g.fill();g.fillStyle='#fff';g.font='bold 13px sans-serif';g.fillText('ABCD'[j],x-5,y+5)}})}
+function migLab(){let k='tern';app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">🗺️ Migration Map</h2><button class="btn alt" id="bk">Menu</button></div><div class="row" id="bl"></div><canvas id="cv" width="440" height="240" style="width:100%;max-width:620px;display:block;margin-left:auto;margin-right:auto;border-radius:14px;margin-top:8px"></canvas><div class="fact" id="inf"></div></div>`;$('#bk').onclick=menu;
+ const sh=()=>$('#inf').innerHTML=`<b>${BIRDS[k].n}</b>: ${ROUTES[k].info}`;Object.keys(ROUTES).forEach(r=>{const b=document.createElement('button');b.className='btn alt'+(r==k?' sel':'');b.textContent=BIRDS[r].n;b.onclick=()=>{k=r;SFX.pick();[...$('#bl').children].forEach(x=>x.classList.remove('sel'));b.classList.add('sel');sh()};$('#bl').appendChild(b)});sh();anim($('#cv'),(g,t)=>drawMap(g,t,[k]))}
+function logBird(k){SAVE.journal=SAVE.journal||{};if(!SAVE.journal[k]){SAVE.journal[k]=new Date().toLocaleDateString();save();return 1}return 0}
+function journal(){const J=SAVE.journal||{},ks=Object.keys(BIRDS);app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">📓 Field Journal · ${Object.keys(J).length}/${ks.length}</h2><button class="btn alt" id="bk">Menu</button></div><p style="color:var(--mut)">Identify birds in Spotting or Levels to add them.</p><div class="grid" id="jg"></div></div>`;$('#bk').onclick=menu;
+ ks.forEach(k=>{const b=BIRDS[k],d=document.createElement('div');d.className='card';if(J[k]){d.appendChild(birdCanvas(k,200,140));d.insertAdjacentHTML('beforeend',`<h3 style="margin:6px 0">${b.n}</h3><p style="font-size:13px;margin:2px 0">👄 ${BEAK[b.beak]}<br>🦶 ${FEET[b.feet]}<br>🍽️ Eats ${b.eats}<br>🔊 ${b.call||'Mostly silent'}<br>📅 Spotted ${J[k]}</p>`);if(b.play){const p=document.createElement('button');p.className='btn';p.textContent='▶ Play call';p.onclick=()=>b.play();d.appendChild(p)}}else d.innerHTML='<div style="font-size:60px;text-align:center;filter:brightness(0)">🐦</div><h3 style="text-align:center">???</h3>';$('#jg').appendChild(d)})}
+function spot(){const ks=Object.keys(BIRDS),k=ks[Math.random()*ks.length|0],opts=shuffle([k,...shuffle(ks.filter(x=>x!=k)).slice(0,3)]);
+ app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">🔭 Bird Spotting</h2><button class="btn alt" id="bk">Menu</button></div><p>A bird landed nearby! Look closely${BIRDS[k].play?' and listen':''} — which is it?</p><div style="text-align:center" id="bc"></div>${BIRDS[k].play?'<button class="btn alt" id="pc">🔊 Hear call</button>':''}<div id="os"></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=menu;
+ $('#bc').appendChild(birdCanvas(k,300,200));if(BIRDS[k].play){$('#pc').onclick=()=>BIRDS[k].play();setTimeout(()=>{if($('#pc'))BIRDS[k].play()},400)}
+ opts.forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.textContent=BIRDS[o].n;b.onclick=()=>{if($('#os').dataset.done)return;$('#os').dataset.done=1;if(o==k){b.classList.add('ok');SFX.good();confetti();const nw=logBird(k);$('#fb').innerHTML=`✅ ${BIRDS[k].n}! ${nw?'📓 New journal entry!':''}<div class="fact">💡 ${BIRDS[k].fact}</div>`}else{b.classList.add('no');SFX.bad();$('#fb').innerHTML=`❌ It was a <b>${BIRDS[k].n}</b>.`}$('#fb').insertAdjacentHTML('beforeend','<button class="btn" id="nx2">Next bird →</button>');$('#nx2').onclick=spot};$('#os').appendChild(b)})}
+const LV=[
+{n:'Backyard robin',em:'🐦',k:'id',b:'robin',o:['robin','cardinal','bluejay','dove']},
+{n:'Seed cracker',em:'🌻',k:'eat',b:'cardinal'},
+{n:'Fee-bee!',em:'🔊',k:'call',b:'chickadee',o:['chickadee','mallard','owl','goose']},
+{n:'Fancy feet',em:'🦶',k:'feet',b:'mallard'},
+{n:'Raptor',em:'🦅',k:'pick',q:'Tap the bird with talons and a hooked beak for catching and tearing prey.',b:'eagle',o:['eagle','goldfinch','mallard','heron']},
+{n:'Longest journey',em:'🌍',k:'mig',b:'tern',o:['tern','humming','godwit','goose']},
+{n:'Soft cooing',em:'🔊',k:'call',b:'dove',o:['dove','bluejay','loon','woodpecker']},
+{n:'Nectar sipper',em:'🌺',k:'eat',b:'humming'},
+{n:'Who\'s that?',em:'🐦',k:'id',b:'goldfinch',o:['goldfinch','cardinal','chickadee','robin']},
+{n:'Lake wail',em:'🔊',k:'call',b:'loon',o:['loon','owl','goose','cardinal']},
+{n:'Tree climber',em:'🌳',k:'feet',b:'woodpecker'},
+{n:'Gulf crossing',em:'🌊',k:'mig',b:'humming',o:['goose','humming','tern','godwit']},
+{n:'Strainer',em:'🦩',k:'pick',q:'Tap the bird whose bent beak filters tiny food out of water.',b:'flamingo',o:['flamingo','pelican','heron','goose']},
+{n:'Drum roll',em:'🔊',k:'call',b:'woodpecker',o:['woodpecker','chickadee','eagle','mallard']},
+{n:'Fisher',em:'🐟',k:'eat',b:'heron'},
+{n:'Non-stop',em:'✈️',k:'mig',b:'godwit',o:['tern','goose','godwit','humming']},
+{n:'Night hunter',em:'🌙',k:'call',b:'owl',o:['owl','loon','bluejay','dove']},
+{n:'Expert birder',em:'🏆',k:'id',b:'tern',o:['tern','loon','heron','godwit']}];
+LV.forEach((l,i)=>l.id='b'+i);
+const EATS=['seeds','flower nectar','fish','insects in tree bark','meat (other animals)','tiny food strained from water','water plants'];
+const EATOF={cardinal:'seeds',humming:'flower nectar',heron:'fish',woodpecker:'insects in tree bark',eagle:'meat (other animals)',flamingo:'tiny food strained from water',mallard:'water plants'};
+function play(i){const L=LV[i],b=BIRDS[L.b];let tries=0;const head=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">${L.em} ${i+1}. ${L.n}</h2><button class="btn alt" id="bk">Levels</button></div>`;
+ const win=()=>{logBird(L.b);winLevel(i,tries<=1?3:tries<=2?2:1,`${b.n}!<div class="fact">💡 ${b.fact}${L.k=='mig'?' '+ROUTES[L.b].info:''}</div>`)};const miss=m=>{SFX.bad();$('#fb').textContent='❌ '+m};
+ const opts=(arr,lab,ok,m)=>arr.forEach(o=>{const x=document.createElement('button');x.className='btn opt';x.textContent=lab(o);x.onclick=()=>{if(x.disabled)return;tries++;if(ok(o)){x.classList.add('ok');win()}else{x.classList.add('no');x.disabled=true;miss(m(o))}};$('#os').appendChild(x)});
+ if(L.k=='id'){app.innerHTML=head+`<h3>Identify this bird by its colours, markings and beak.</h3><div style="text-align:center" id="bc"></div><div id="os"></div><div class="fb" id="fb"></div></div>`;$('#bc').appendChild(birdCanvas(L.b,300,200));opts(shuffle(L.o),o=>BIRDS[o].n,o=>o==L.b,o=>`A ${BIRDS[o].n} looks different — check the colours and beak.`)}
+ if(L.k=='call'){app.innerHTML=head+`<h3>Listen to the call. Which bird is it?</h3><button class="btn" id="pc" style="font-size:22px">🔊 Play call</button><div id="os" class="grid" style="margin-top:8px"></div><div class="fb" id="fb"></div></div>`;$('#pc').onclick=()=>{b.play();flash($('#pc'),1)};
+  shuffle(L.o).forEach(o=>{const d=document.createElement('div');d.className='card tile';d.style.padding='6px';d.appendChild(birdCanvas(o,200,140));d.insertAdjacentHTML('beforeend',`<h3 style="text-align:center;margin:4px">${BIRDS[o].n}</h3>`);d.onclick=()=>{if(d.dataset.no)return;tries++;if(o==L.b){d.style.outline='4px solid var(--good)';win()}else{d.dataset.no=1;d.style.opacity=.5;flash(d,0);miss(`${BIRDS[o].n} says: ${BIRDS[o].call}`)}};$('#os').appendChild(d)})}
+ if(L.k=='pick'){app.innerHTML=head+`<h3>${L.q}</h3><div id="os" class="grid"></div><div class="fb" id="fb"></div></div>`;
+  shuffle(L.o).forEach(o=>{const d=document.createElement('div');d.className='card tile';d.style.padding='6px';d.appendChild(birdCanvas(o,200,140));d.onclick=()=>{if(d.dataset.no)return;tries++;if(o==L.b){d.style.outline='4px solid var(--good)';win()}else{d.dataset.no=1;d.style.opacity=.5;flash(d,0);miss(`That's a ${BIRDS[o].n}: ${BEAK[BIRDS[o].beak]}.`)}};$('#os').appendChild(d)})}
+ if(L.k=='eat'){app.innerHTML=head+`<h3>Look at this ${b.n}'s beak. What is it built to eat?</h3><div style="text-align:center" id="bc"></div><div id="os"></div><div class="fb" id="fb"></div></div>`;$('#bc').appendChild(birdCanvas(L.b,300,200));const a=EATOF[L.b];opts(shuffle([a,...shuffle(EATS.filter(e=>e!=a)).slice(0,3)]),o=>o,o=>o==a,()=>'Look at the beak shape again.')}
+ if(L.k=='feet'){app.innerHTML=head+`<h3>Look at this ${b.n}'s feet and legs. What are they best for?</h3><div style="text-align:center" id="bc"></div><div id="os"></div><div class="fb" id="fb"></div></div>`;$('#bc').appendChild(birdCanvas(L.b,300,200));const a=FEET[b.feet];opts(shuffle([a,...shuffle(Object.values(FEET).filter(v=>v!=a)).slice(0,3)]),o=>o,o=>o==a,()=>'Look at the toes again.')}
+ if(L.k=='mig'){app.innerHTML=head+`<h3>Which route belongs to the <b>${b.n}</b>?</h3><canvas id="cv" width="440" height="240" style="width:100%;max-width:620px;display:block;margin-left:auto;margin-right:auto;border-radius:14px"></canvas><div id="os"></div><div class="fb" id="fb"></div></div>`;anim($('#cv'),(g,t)=>drawMap(g,t,L.o,1));opts(['A','B','C','D'],o=>'Route '+o,o=>L.o['ABCD'.indexOf(o)]==L.b,o=>`Route ${o} is the ${BIRDS[L.o['ABCD'.indexOf(o)]].n}'s.`)}
+ $('#bk').onclick=levels}
+const LEARN=[
+{h:'🐦 What makes a bird?',p:'All birds have <b>feathers</b>, a <b>beak</b> with no teeth, two legs, wings, and lay hard-shelled <b>eggs</b>. Most fly, thanks to hollow bones and powerful chest muscles. Birds are living dinosaurs!',d:(g,t)=>drawBird(g,'robin',200,100,1.4,t)},
+{h:'👄 Beaks are tools',p:'A beak\'s shape tells you what a bird eats. <b>Cone</b> beaks crack seeds, <b>hooked</b> beaks tear meat, <b>needle</b> beaks sip nectar, <b>chisel</b> beaks drill wood, <b>spear</b> beaks catch fish, and <b>filter</b> beaks strain tiny food from water.',d:(g,t)=>{['cardinal','eagle','humming','heron'].forEach((k,j)=>drawBird(g,k,60+j*105,110,.75,t))}},
+{h:'🦶 Feet fit the habitat',p:'<b>Perching</b> feet (3 toes forward, 1 back) lock onto branches. <b>Talons</b> grab prey. <b>Webbed</b> feet paddle. <b>Long legs</b> let waders stand in water. Woodpeckers have <b>2 toes forward, 2 back</b> to climb tree trunks.',d:(g,t)=>{['chickadee','owl','mallard','woodpecker'].forEach((k,j)=>drawBird(g,k,60+j*105,80,.75,t))}},
+{h:'🎵 Songs and calls',p:'Birds use <b>songs</b> to attract mates and claim territory, and short <b>calls</b> to warn of danger or stay in touch. Birders often hear a bird before they see it — learning calls is a great way to identify birds.',d:(g,t)=>{drawBird(g,'chickadee',120,110,1.1,t);g.fillStyle='#ffd34d';g.font='26px serif';for(let k=0;k<3;k++){const p=(t+k*.5)%1.5;g.globalAlpha=1-p/1.5;g.fillText('♪',180+p*120,90-p*40+k*10)}g.globalAlpha=1}},
+{h:'🌍 Migration',p:'Many birds fly south for winter where food is easier to find, then return to nest. <b>Arctic Terns</b> fly from the Arctic to Antarctica and back each year. Birds navigate using the sun, stars, Earth\'s magnetic field and landmarks.',d:(g,t)=>{g.scale(1,200/240);drawMap(g,t,['tern','humming','godwit','goose'])}},
+{h:'🔭 Being a birder',p:'Look for <b>size, shape, colours, markings, beak and feet</b>, and listen for the call. Notice the habitat: water, forest or backyard. Write it all in a <b>field journal</b> with the date and place. Watch quietly from a distance and never disturb nests.',d:(g,t)=>{g.fillStyle='#9fd08a';g.fillRect(0,150,440,50);drawBird(g,'cardinal',300,100,1,t);g.font='60px serif';g.fillText('🔭',40,150);g.font='40px serif';g.fillText('📓',140,170)}}];
+const QS=[
+{q:'A cone-shaped beak is best for…',a:'cracking seeds',opts:['cracking seeds','tearing meat','sipping nectar','catching fish']},
+{q:'A hooked beak is best for…',a:'tearing meat',opts:['tearing meat','cracking seeds','drilling wood','straining mud']},
+{q:'Which bird has a needle-like beak for nectar?',a:'hummingbird',opts:['hummingbird','eagle','duck','owl']},
+{q:'Webbed feet help a bird…',a:'swim',opts:['swim','climb trees','grab prey','perch on wires']},
+{q:'Sharp, curved claws for catching prey are called…',a:'talons',opts:['talons','webs','crests','bills']},
+{q:'Woodpeckers have 2 toes forward and 2 back to…',a:'climb tree trunks',opts:['climb tree trunks','swim fast','run on sand','dig burrows']},
+{q:'Which bird makes the longest migration?',a:'Arctic Tern',opts:['Arctic Tern','Mallard','Northern Cardinal','Blue Jay']},
+{q:'Why do flamingos look pink?',a:'pigments in the food they eat',opts:['pigments in the food they eat','they are sunburnt','pink paint','pink blood']},
+{q:'Only the male Northern Cardinal is…',a:'bright red',opts:['bright red','blue','green','pure white']},
+{q:'A Barn Owl\'s call sounds like a…',a:'screech',opts:['screech','hoot','quack','honk']},
+{q:'Canada Geese fly in a V shape to…',a:'save energy',opts:['save energy','look pretty','scare hawks','follow the sun\'s shadow']},
+{q:'Which is true of ALL birds?',a:'they have feathers',opts:['they have feathers','they can fly','they sing','they eat seeds']},
+{q:'Birds are the living relatives of…',a:'dinosaurs',opts:['dinosaurs','frogs','mammals','sharks']},
+{q:'A chickadee\'s "chick-a-dee-dee-dee" with MORE dees means…',a:'a more dangerous predator',opts:['a more dangerous predator','it is hungry','it is happy','it is lost']},
+{q:'Most bird bones are…',a:'hollow and light',opts:['hollow and light','solid and heavy','made of cartilage','missing']},
+{q:'A Bar-tailed Godwit can fly from Alaska to New Zealand…',a:'without stopping',opts:['without stopping','in one hour','by walking','with 50 stops']},
+{q:'What does a Great Blue Heron mainly eat?',a:'fish and frogs',opts:['fish and frogs','seeds','nectar','acorns']},
+{q:'Hummingbird wings beat about how many times a second?',a:'about 50',opts:['about 50','about 2','about 5,000','about 1']},
+{q:'Blue Jays help oak forests grow because they…',a:'bury acorns',opts:['bury acorns','eat leaves','build nests in roots','water trees']},
+{q:'A good birder should…',a:'watch quietly and not disturb nests',opts:['watch quietly and not disturb nests','catch birds to look closely','take eggs home','chase birds to see them fly']},
+{q:'Loons can barely walk on land because their legs are…',a:'set far back for diving',opts:['set far back for diving','too short to reach','made for perching','very weak bones']}];
+function menu(){mainMenu('🐦🔭📓','Bird Watch','Spot real birds by their look, beak, feet and call, follow epic migrations, and fill your field journal!',[['mL','📖','Learn','Beaks, feet, songs, migration, birding.',()=>learnPage(0)],['mS','🔭','Bird Spotting','Endless random birds to identify.',()=>spot()],['mM','🗺️','Migration Map','Follow four amazing journeys.',()=>migLab()],['mJ','📓','Field Journal',`${Object.keys(SAVE.journal||{}).length}/${Object.keys(BIRDS).length} birds logged.`,()=>journal()],['mP','🧩','Levels',`${LV.length} birding challenges.`,()=>levels()],...stdTiles('Bird Quiz')])}
+function levels(){levelGrid('🧩 Birding challenges')}
+menu();
+</script></body></html>

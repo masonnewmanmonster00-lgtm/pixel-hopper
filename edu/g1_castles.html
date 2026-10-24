@@ -1,0 +1,183 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>Castle Quest</title>
+<style>
+:root{--bg:#0f1530;--card:#1b2350;--ink:#f4f6ff;--mut:#9aa6d8;--acc:#7ad0ff;--good:#3ddc84;--bad:#ff5c7a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:"Trebuchet MS",system-ui,sans-serif;background:radial-gradient(circle at 20% 0%,#2a3480,var(--bg) 60%);color:var(--ink);min-height:100vh;user-select:none;-webkit-user-select:none;overflow-x:hidden}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0008;position:sticky;top:0;z-index:5;backdrop-filter:blur(4px)}
+header a{color:var(--ink);text-decoration:none;background:#fff1;padding:6px 12px;border-radius:20px;font-weight:bold}
+header h1{font-size:20px;margin:0;flex:1;color:var(--acc);text-shadow:0 2px 0 #0006}
+.pill{background:#fff1;padding:5px 10px;border-radius:14px;font-size:14px}
+main{max-width:980px;margin:0 auto;padding:14px}
+.btn{font:inherit;font-weight:bold;border:0;border-radius:14px;padding:10px 16px;background:var(--acc);color:#111;cursor:pointer;box-shadow:0 4px 0 #0007;transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #0007}.btn.alt{background:#2c3770;color:var(--ink)}.btn.sel{outline:3px solid #fff}
+.btn:disabled{opacity:.4}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border-radius:18px;padding:14px;box-shadow:0 6px 18px #0005;border:2px solid #ffffff10}
+.tile{cursor:pointer;transition:transform .15s}.tile:hover{transform:translateY(-4px) rotate(-1deg)}
+.tile .em{font-size:40px}.tile h3{margin:6px 0}.tile p{margin:0;color:var(--mut);font-size:14px}
+.stars{color:#ffd34d;letter-spacing:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fb{min-height:28px;font-weight:bold;font-size:18px;margin:8px 0}
+.opt{display:block;width:100%;margin:6px 0;text-align:left;background:#2c3770;color:var(--ink)}
+.opt.ok{background:var(--good);color:#111}.opt.no{background:var(--bad)}
+.pop{animation:pop .35s}@keyframes pop{50%{transform:scale(1.12)}}
+.shake{animation:shk .35s}@keyframes shk{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:9}
+.bar{height:10px;background:#fff2;border-radius:6px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--acc);transition:width .3s}
+.fact{background:#ffd34d22;border-left:4px solid #ffd34d;padding:8px 12px;border-radius:8px;margin:8px 0}
+svg text{font-family:inherit}
+</style></head><body>
+<header><a href="./index.html">← Learning Lab</a><h1>Castle Quest</h1><span class="pill" id="starTotal">⭐ 0</span><button class="btn alt" id="snd" style="padding:6px 10px">🔊</button></header>
+<main id="app"></main><canvas id="fx"></canvas>
+<script>
+// ---- shared helpers ----
+const $=s=>document.querySelector(s),app=$('#app');
+const SAVEKEY='g1_castleQuest';let SAVE=JSON.parse(localStorage.getItem(SAVEKEY)||'{}');SAVE.stars=SAVE.stars||{};SAVE.best=SAVE.best||{};
+function save(){localStorage.setItem(SAVEKEY,JSON.stringify(SAVE));$('#starTotal').textContent='⭐ '+Object.values(SAVE.stars).reduce((a,b)=>a+b,0)}
+let AC=null,muted=!!SAVE.muted;$('#snd').textContent=muted?'🔇':'🔊';
+$('#snd').onclick=()=>{muted=!muted;SAVE.muted=muted;save();$('#snd').textContent=muted?'🔇':'🔊'};
+function tone(f,d=.12,type='sine',v=.15,slide=0,delay=0){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.02)}catch(e){}}
+function noise(d=.4,v=.2,lp=800){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const n=AC.sampleRate*d,b=AC.createBuffer(1,n,AC.sampleRate),c=b.getChannelData(0);for(let i=0;i<n;i++)c[i]=(Math.random()*2-1)*(1-i/n);const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();f.type='lowpass';f.frequency.value=lp;g.gain.value=v;s.buffer=b;s.connect(f);f.connect(g);g.connect(AC.destination);s.start()}catch(e){}}
+const SFX={click:()=>tone(660,.05,'square',.06),good:()=>{tone(523,.1,'triangle');tone(784,.15,'triangle',.15,0,.08)},bad:()=>tone(200,.25,'sawtooth',.08,-80),
+win:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.15,0,i*.1)),pick:()=>tone(440,.06,'sine',.1,200),drop:()=>tone(330,.08,'sine',.12,-100)};
+// confetti
+const cv=$('#fx'),cx=cv.getContext('2d');let fxp=[];function rs(){cv.width=innerWidth;cv.height=innerHeight}rs();addEventListener('resize',rs);
+function confetti(x=innerWidth/2,y=innerHeight/3,n=60){for(let i=0;i<n;i++)fxp.push({x,y,vx:(Math.random()-.5)*10,vy:-Math.random()*9-2,c:`hsl(${Math.random()*360},90%,60%)`,l:90});}
+(function loop(){cx.clearRect(0,0,cv.width,cv.height);fxp=fxp.filter(p=>p.l-->0);for(const p of fxp){p.vy+=.3;p.x+=p.vx;p.y+=p.vy;cx.fillStyle=p.c;cx.fillRect(p.x,p.y,7,7)}requestAnimationFrame(loop)})();
+function flash(el,ok){el.classList.remove('pop','shake');void el.offsetWidth;el.classList.add(ok?'pop':'shake')}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function award(id,n){if((SAVE.stars[id]||0)<n)SAVE.stars[id]=n;save()}
+// generic timed quiz: qs=[{q,opts,a,fact}] ; a is correct string
+let __QZ=0;function runQuiz(id,title,qs,secs,back){let i=0,score=0,t=secs,timer;const tok=++__QZ;clearInterval(window.__qt);const alive=()=>tok===__QZ&&!!document.getElementById("qz"+tok);qs=shuffle(qs).slice(0,10);
+ function end(){clearInterval(timer);if(!alive())return;const st=score>=9?3:score>=7?2:score>=5?1:0;award(id,st);if(score>(SAVE.best[id]||0))SAVE.best[id]=score;save();if(st)SFX.win(),confetti();
+  app.innerHTML=`<div class="card" style="text-align:center"><h2>${title} — done!</h2><div style="font-size:48px" class="stars">${starStr(st)}</div><p>You got <b>${score}/${qs.length}</b>. Best: ${SAVE.best[id]}</p><div class="row" style="justify-content:center"><button class="btn" id="ag">Play again</button><button class="btn alt" id="bk">Back</button></div></div>`;$('#ag').onclick=()=>runQuiz(id,title,qs,secs,back);$('#bk').onclick=back}
+ function show(){if(i>=qs.length)return end();const q=qs[i];app.innerHTML=`<div class="card" id="qz${tok}"><div class="row"><b style="flex:1">${title} · Q${i+1}/${qs.length}</b>${secs?`<span class="pill">⏱ <span id="tm">${t}</span>s</span>`:''}<span class="pill">✅ ${score}</span></div><div class="bar" style="margin:8px 0"><i style="width:${i/qs.length*100}%"></i></div>${q.svg||''}<h2>${q.q}</h2><div id="os"></div><div class="fb" id="fb"></div></div>`;
+  shuffle(q.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.innerHTML=o;b.onclick=()=>{if(b.parentNode.dataset.done)return;b.parentNode.dataset.done=1;const ok=o==q.a;if(ok){score++;SFX.good();confetti(innerWidth/2,innerHeight/2,20)}else SFX.bad();[...$('#os').children].forEach(x=>{if(x.innerHTML==q.a)x.classList.add('ok')});if(!ok)b.classList.add('no');flash(b,ok);$('#fb').innerHTML=(ok?'✅ Correct! ':'❌ Not quite. ')+(q.fact?`<div class="fact">💡 ${q.fact}</div>`:'');setTimeout(()=>{if(!alive())return;i++;show()},q.fact?2200:1100)};$('#os').appendChild(b)})}
+ if(secs)window.__qt=timer=setInterval(()=>{if(!alive()){clearInterval(timer);return}t--;const e=$('#tm');if(e)e.textContent=t;if(t<=5&&t>0)tone(880,.05);if(t<=0)end()},1000);show()}
+save();
+</script>
+<script>
+// common menu/learn/levels helpers for g1 games
+function learnPage(i){const m=LEARN[i];app.innerHTML=`<div class="card"><div class="row"><b style="flex:1">📖 ${i+1} / ${LEARN.length}</b><button class="btn alt" id="bk">Menu</button></div><div style="text-align:center"><canvas id="lc" width="440" height="200" style="max-width:100%;background:#05081a;border-radius:14px"></canvas></div><h2>${m.h}</h2><p style="line-height:1.5">${m.p}</p>
+ <div class="row"><button class="btn alt" id="pv" ${i?'':'disabled'}>← Prev</button><span style="flex:1"></span><button class="btn" id="nx">${i<LEARN.length-1?'Next →':'Done ✓'}</button></div></div>`;
+ $('#bk').onclick=menu;$('#pv').onclick=()=>learnPage(i-1);$('#nx').onclick=()=>{SFX.click();if(i<LEARN.length-1)learnPage(i+1);else{SAVE.learned=1;save();SFX.win();confetti();menu()}};
+ const c=$('#lc'),g=c.getContext('2d'),t0=performance.now();(function f(n){if(!c.isConnected)return;g.clearRect(0,0,440,200);g.save();m.d(g,(n-t0)/1000);g.restore();requestAnimationFrame(f)})(t0)}
+function unlocked(i){return i==0||(SAVE.stars[LV[i-1].id]||0)>0}
+function levelGrid(title){app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">${title}</h2><button class="btn alt" id="bk">Menu</button></div><p style="color:var(--mut)">Earn a star to unlock the next level.</p><div class="grid" id="lg"></div></div>`;$('#bk').onclick=menu;
+ LV.forEach((l,i)=>{const d=document.createElement('div'),u=unlocked(i);d.className='card tile lv'+i;d.style.opacity=u?1:.45;d.innerHTML=`<div class="em">${u?l.em||'🎯':'🔒'}</div><h3>${i+1}. ${l.n}</h3><p class="stars">${starStr(SAVE.stars[l.id]||0)}</p>`;d.onclick=()=>{if(!u){SFX.bad();flash(d,0);return}SFX.click();play(i)};$('#lg').appendChild(d)})}
+function winLevel(i,st,msg){award(LV[i].id,st);SFX.win();confetti();const last=i>=LV.length-1;
+ $('#fb').innerHTML=`🎉 ${msg} <span class="stars">${starStr(st)}</span><div class="row" style="margin-top:6px"><button class="btn" id="nl">${last?'All levels ✓':'Next level →'}</button><button class="btn alt" id="rl">Retry</button></div>`;
+ $('#nl').onclick=()=>last?levels():play(i+1);$('#rl').onclick=()=>play(i)}
+function mainMenu(em,name,blurb,tiles){const tot=LV.length*3,got=LV.reduce((a,l)=>a+(SAVE.stars[l.id]||0),0);
+ app.innerHTML=`<div class="card" style="text-align:center"><div style="font-size:54px">${em}</div><h2 style="margin:4px">${name}</h2><p style="color:var(--mut)">${blurb}</p><div class="bar"><i style="width:${got/tot*100}%"></i></div><p class="stars">${got}/${tot} ★</p></div><div class="grid" style="margin-top:12px" id="mg"></div>`;
+ tiles.forEach(([id,e,h,p,fn])=>{const d=document.createElement('div');d.className='card tile';d.id=id;d.innerHTML=`<div class="em">${e}</div><h3>${h}</h3><p>${p}</p>`;d.onclick=()=>{SFX.click();fn()};$('#mg').appendChild(d)})}
+function stdTiles(qtitle){return[['mQ','❓','Quiz',`10 questions. <span class="stars">${starStr(SAVE.stars.quiz||0)}</span>`,()=>runQuiz('quiz',qtitle,QS,0,menu)],['mT','⏱️','Timed challenge',`60 seconds! <span class="stars">${starStr(SAVE.stars.timed||0)}</span>`,()=>runQuiz('timed','Timed Challenge',QS,60,menu)]]}
+// ---- Castle Quest ----
+function anim(c,fn){const g=c.getContext('2d'),t0=performance.now();(function f(n){if(!c.isConnected)return;g.clearRect(0,0,c.width,c.height);g.save();fn(g,(n-t0)/1000);g.restore();requestAnimationFrame(f)})(t0)}
+const DEF={stone:{n:'Stone walls',e:'🧱',c:8},moat:{n:'Moat',e:'💧',c:6},towers:{n:'Round towers',e:'🗼',c:5},slits:{n:'Arrow slits',e:'🏹',c:3},portc:{n:'Portcullis',e:'⛓️',c:3},murder:{n:'Murder holes',e:'🕳️',c:2},well:{n:'Well',e:'🪣',c:3},food:{n:'Food stores',e:'🍞',c:3},concentric:{n:'Second (concentric) wall',e:'⭕',c:10}};
+const ATK={ram:{n:'Battering ram',e:'🪵',beat:[['moat'],['portc','murder']],tip:'A moat keeps rams away from the gate; a portcullis plus murder holes stops them at the gate.'},
+ ladders:{n:'Scaling ladders',e:'🪜',beat:[['towers','slits'],['moat','slits']],tip:'Archers in towers with arrow slits shoot attackers on ladders. A moat makes ladders hard to place.'},
+ trebuchet:{n:'Trebuchet',e:'🪨',beat:[['stone','concentric'],['stone','towers']],tip:'Wooden walls shatter. Thick stone walls with round towers or a second wall can take the boulders.'},
+ fire:{n:'Flaming arrows',e:'🔥',beat:[['stone','well']],tip:'Stone does not burn, and a well gives water to put out fires inside.'},
+ starve:{n:'Long siege (starving you out)',e:'⏳',beat:[['food','well']],tip:'Defenders need food stores and their own well to outlast a blockade.'},
+ tower:{n:'Siege tower',e:'🏯',beat:[['moat'],['towers','slits']],tip:'A wheeled siege tower can\'t cross a moat. Archers in towers can also stop it.'},
+ mining:{n:'Tunnel under the walls',e:'⛏️',beat:[['moat'],['concentric']],tip:'Miners can\'t dig under a water-filled moat. A second wall means one collapsed section isn\'t the end.'}};
+function siegeOK(d,a){return ATK[a].beat.some(s=>s.every(k=>d[k]))}
+function dcost(d){return Object.keys(DEF).reduce((s,k)=>s+(d[k]?DEF[k].c:0),0)}
+function drawCastle(g,d,t=0){const sky=g.createLinearGradient(0,0,0,200);sky.addColorStop(0,'#7ec8ff');sky.addColorStop(1,'#d8f0ff');g.fillStyle=sky;g.fillRect(0,0,440,240);g.fillStyle='#5c9a3a';g.fillRect(0,196,440,44);
+ const wall=d.stone?'#a8a29a':'#9b6b3c',dark=d.stone?'#7d776f':'#6e4a28';
+ if(d.concentric){g.fillStyle=dark;g.fillRect(20,150,400,50)}
+ // keep
+ g.fillStyle=wall;g.fillRect(165,40,110,90);for(let x=165;x<275;x+=16)g.fillRect(x,30,10,12);g.fillStyle='#c0392b';g.fillRect(219,8,2,24);g.beginPath();g.moveTo(221,8);g.lineTo(240+Math.sin(t*4)*3,14);g.lineTo(221,20);g.fill();
+ // curtain wall
+ g.fillStyle=wall;g.fillRect(60,120,320,80);for(let x=60;x<380;x+=18)g.fillRect(x,110,11,12);if(!d.stone){g.strokeStyle=dark;for(let x=60;x<380;x+=9){g.beginPath();g.moveTo(x,112);g.lineTo(x,200);g.stroke()}}
+ // towers
+ if(d.towers)[[60],[380]].forEach(([x])=>{g.fillStyle=wall;g.fillRect(x-25,85,50,115);for(let k=-25;k<25;k+=14)g.fillRect(x+k,75,9,12);if(d.slits){g.fillStyle='#222';g.fillRect(x-2,110,4,18);g.fillRect(x-2,150,4,18)}});
+ // gatehouse
+ g.fillStyle=dark;g.fillRect(190,100,60,100);for(let x=190;x<250;x+=15)g.fillRect(x,92,9,10);g.fillStyle='#2a1a0e';g.beginPath();g.moveTo(200,200);g.lineTo(200,170);g.arc(220,170,20,Math.PI,0);g.lineTo(240,200);g.fill();
+ if(d.portc){g.strokeStyle='#333';g.lineWidth=2;for(let x=203;x<240;x+=7){g.beginPath();g.moveTo(x,155);g.lineTo(x,198);g.stroke()}for(let y=165;y<200;y+=8){g.beginPath();g.moveTo(200,y);g.lineTo(240,y);g.stroke()}g.lineWidth=1}
+ if(d.murder){g.fillStyle='#111';[206,220,234].forEach(x=>{g.beginPath();g.arc(x,146,3,0,7);g.fill()})}
+ if(d.slits){g.fillStyle='#222';[110,150,290,330].forEach(x=>g.fillRect(x,140,4,18))}
+ if(d.moat){g.fillStyle='#2a6fdb';g.fillRect(0,204,440,18);g.fillStyle='#fff3';g.fillRect((t*30)%440,210,40,2);g.fillStyle='#7a5230';g.fillRect(200,200,40,24)}
+ if(d.well){g.font='16px serif';g.fillText('🪣',130,105)}if(d.food){g.font='16px serif';g.fillText('🍞',290,105)}}
+const PARTS={keep:[220,75,'Keep'],tower:[60,105,'Tower'],wall:[130,178,'Curtain wall'],battl:[130,113,'Battlements'],gate:[220,118,'Gatehouse'],portc:[220,182,'Portcullis'],bridge:[220,214,'Drawbridge'],moat:[340,214,'Moat'],slit:[60,155,'Arrow slit'],murder:[220,146,'Murder holes']};
+const ALL={stone:1,moat:1,towers:1,slits:1,portc:1,murder:1};
+const LV=[
+{n:'Name the parts',em:'🏰',k:'label',parts:['keep','wall','moat','tower'],goal:'Tap a name, then tap where it goes on the castle.',fact:'The keep was the strongest building — the lord\'s home and the last place to retreat to.'},
+{n:'Who\'s who?',em:'👑',k:'order',items:['👑 King','🛡️ Nobles (lords & barons)','⚔️ Knights','🌾 Peasants & serfs'],goal:'Feudal system: tap from MOST powerful to LEAST.',fact:'The king granted land (a fief) to nobles. In return they promised loyalty and knights. Peasants farmed the land and gave crops and work — most people were peasants.'},
+{n:'Stop the ram',em:'🪵',k:'siege',atk:['ram'],budget:6,goal:'An army brings a battering ram. Defend your gate!',fact:'Murder holes were openings above the gate passage. Defenders dropped stones or shot arrows through them.'},
+{n:'Gate guards',em:'⛓️',k:'label',parts:['gate','portc','bridge','murder'],goal:'Label the parts that guard the entrance.',fact:'A portcullis is a heavy wooden or iron grille that drops down in grooves to seal the gate fast.'},
+{n:'Knight school',em:'🐴',k:'order',items:['🧒 Page (about age 7)','🧑 Squire (about age 14)','⚔️ Knight (about age 21)'],goal:'Put a knight\'s training in order, from first step to last.',fact:'Pages served in a lord\'s house and learned manners and riding. Squires looked after a knight\'s armour and horse and trained for battle before being "dubbed" a knight.'},
+{n:'Up the walls!',em:'🪜',k:'siege',atk:['ladders'],budget:9,goal:'Attackers are climbing ladders. Stop them!',fact:'Arrow slits (loops) were narrow outside but wide inside, so archers could aim while staying well protected.'},
+{n:'Motte & bailey',em:'⛰️',k:'mc',q:'What were the first Norman castles in England, built after 1066, mostly made of?',ans:'wood and earth',opts:['wood and earth','stone and glass','brick and steel','ice'],fact:'A motte was a big earth mound with a wooden tower; the bailey was a fenced yard below. They could be built in weeks. Stone castles came later.'},
+{n:'Fire!',em:'🔥',k:'siege',atk:['fire','ladders'],budget:20,goal:'Flaming arrows AND ladders! Build a castle that survives both.',fact:'Wooden castles burned easily, which is one big reason lords rebuilt them in stone.'},
+{n:'Top of the wall',em:'🏹',k:'label',parts:['battl','slit','tower','keep'],goal:'Label the defences at the top of the castle.',fact:'Battlements have gaps (crenels) and solid bits (merlons), so defenders could shoot then duck behind cover.'},
+{n:'Boulder storm',em:'🪨',k:'siege',atk:['trebuchet','ram'],budget:22,goal:'A trebuchet is hurling boulders and a ram is coming. Hold out!',fact:'A big trebuchet used a heavy counterweight to fling stones of 100 kg or more at walls hundreds of metres away.'},
+{n:'Castle life',em:'🍗',k:'mc',q:'What was a garderobe in a castle?',ans:'a toilet',opts:['a toilet','a wardrobe for armour','a garden','a guard tower'],fact:'Garderobes often dropped straight down the outside wall — sometimes into the moat! Clothes were sometimes hung there because the smell kept moths away.'},
+{n:'Under siege',em:'⏳',k:'siege',atk:['starve','tower'],budget:12,goal:'The enemy surrounds you with a siege tower and plans to starve you out.',fact:'Sieges could last months. In 1215 at Rochester Castle, King John\'s miners dug under a tower and burned the props with the fat of 40 pigs to bring it down!'},
+{n:'Big dates',em:'📜',k:'mc',q:'In 1215 English barons forced King John to agree to a document limiting his power. What was it?',ans:'Magna Carta',opts:['Magna Carta','The Domesday Book','The Bayeux Tapestry','The Declaration of Independence'],fact:'Magna Carta said even the king had to follow the law. Ideas from it inspired later laws around the world.'},
+{n:'Full castle',em:'🗺️',k:'label',parts:['keep','tower','wall','battl','gate','portc','bridge','moat','slit','murder'],goal:'Label all ten castle parts!',fact:'Castles were homes, army bases, prisons and courts all in one.'},
+{n:'The great siege',em:'🏆',k:'siege',atk:['trebuchet','mining','fire','starve','ladders'],budget:32,goal:'The final siege: boulders, tunnels, fire, ladders AND a blockade!',fact:'Concentric castles like Beaumaris in Wales (begun 1295) had one ring of walls inside another, so attackers who broke through the first were trapped under fire from the second.'}];
+LV.forEach((l,i)=>l.id='c'+i);
+function labelLevel(L,i,head){let sel=null,done={},miss=0;
+ app.innerHTML=head+`<p><b>${L.goal}</b></p><div class="row" id="lb"></div><canvas id="cv" width="440" height="240" style="width:100%;max-width:620px;display:block;margin-left:auto;margin-right:auto;border-radius:14px;margin-top:8px;cursor:pointer;touch-action:manipulation"></canvas><div class="fb" id="fb"></div></div>`;
+ shuffle(L.parts).forEach(p=>{const b=document.createElement('button');b.className='btn alt';b.textContent=PARTS[p][2];b.dataset.p=p;b.onclick=()=>{if(done[p])return;SFX.pick();sel=p;[...$('#lb').children].forEach(x=>x.classList.remove('sel'));b.classList.add('sel')};$('#lb').appendChild(b)});
+ const c=$('#cv');anim(c,(g,t)=>{drawCastle(g,ALL,t);L.parts.forEach(p=>{const[x,y,n]=PARTS[p];g.fillStyle=done[p]?'#3ddc84':'#ffd34d';g.beginPath();g.arc(x,y,9+(done[p]?0:Math.sin(t*5)*2),0,7);g.fill();g.strokeStyle='#000';g.stroke();if(done[p]){g.font='bold 11px sans-serif';const w=g.measureText(n).width;g.fillStyle='#000a';g.fillRect(Math.min(440-w-6,Math.max(0,x-w/2-3)),y-26,w+6,15);g.fillStyle='#fff';g.fillText(n,Math.min(437-w,Math.max(3,x-w/2)),y-15)}})});
+ c.addEventListener('click',e=>{const b=c.getBoundingClientRect(),x=(e.clientX-b.left)*440/b.width,y=(e.clientY-b.top)*240/b.height;const h=L.parts.filter(p=>!done[p]).find(p=>Math.hypot(PARTS[p][0]-x,PARTS[p][1]-y)<18);if(!h)return;if(!sel){$('#fb').textContent='Pick a name first.';return}
+  if(h==sel){done[h]=1;SFX.good();const bb=$('#lb').querySelector(`[data-p="${h}"]`);bb.disabled=true;bb.classList.remove('sel');sel=null;$('#fb').textContent='✅ '+PARTS[h][2];if(Object.keys(done).length==L.parts.length)winLevel(i,miss==0?3:miss<=2?2:1,`All labelled!<div class="fact">💡 ${L.fact}</div>`)}else{miss++;SFX.bad();$('#fb').textContent='❌ That spot isn\'t the '+PARTS[sel][2]+'.'}})}
+function orderLevel(L,i,head){let n=0,miss=0;app.innerHTML=head+`<p><b>${L.goal}</b></p><div id="ol" style="margin-bottom:8px"></div><div id="os"></div><div class="fb" id="fb"></div></div>`;
+ shuffle(L.items).forEach(it=>{const b=document.createElement('button');b.className='btn opt';b.textContent=it;b.onclick=()=>{if(b.disabled)return;if(it==L.items[n]){n++;b.disabled=true;b.classList.add('ok');SFX.good();const d=document.createElement('div');d.className='card pop';d.style.margin='4px auto';d.style.width=(100-n*12)+'%';d.style.textAlign='center';d.textContent=n+'. '+it;$('#ol').appendChild(d);if(n==L.items.length)winLevel(i,miss==0?3:miss<=1?2:1,`Perfect order!<div class="fact">💡 ${L.fact}</div>`)}else{miss++;SFX.bad();flash(b,0);$('#fb').textContent='❌ Not next — think again.'}};$('#os').appendChild(b)})}
+function siege(L,i){let d={},tries=0,busy=0,atks=L?L.atk:['ram'];
+ const head=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">${L?`${L.em} ${i+1}. ${L.n}`:'🛡️ Castle Builder'}</h2><button class="btn alt" id="bk">${L?'Levels':'Menu'}</button></div>`;
+ app.innerHTML=head+`<p><b>${L?L.goal:'Build your castle, choose the attacks, then start the siege.'}</b></p><p>Attackers: <span id="al"></span></p>${L?'':'<div class="row" id="ap"></div>'}<div class="row" id="dl" style="margin-top:6px"></div>
+ <div class="row" style="margin-top:8px"><span class="pill" id="cst"></span><span style="flex:1"></span><button class="btn" id="go">Start siege ⚔️</button></div><canvas id="cv" width="440" height="240" style="width:100%;max-width:620px;display:block;margin-left:auto;margin-right:auto;border-radius:14px;margin-top:8px"></canvas><div class="fb" id="fb"></div></div>`;
+ $('#bk').onclick=L?levels:menu;const al=()=>$('#al').innerHTML=atks.map(a=>`<b>${ATK[a].e} ${ATK[a].n}</b>`).join(', ')||'none';al();
+ const upd=()=>{const k=dcost(d);$('#cst').innerHTML=`💰 ${k}${L?` / ${L.budget} gold`:' gold'}`;$('#cst').style.background=L&&k>L.budget?'#ff5c7a88':''};upd();
+ Object.entries(DEF).forEach(([k,m])=>{const b=document.createElement('button');b.className='btn alt';b.id='d_'+k;b.innerHTML=`${m.e} ${m.n} <small>(${m.c})</small>`;b.onclick=()=>{SFX.pick();d[k]=d[k]?0:1;b.classList.toggle('sel',!!d[k]);upd()};$('#dl').appendChild(b)});
+ if(!L)Object.entries(ATK).forEach(([k,m])=>{const b=document.createElement('button');b.className='btn alt'+(atks.includes(k)?' sel':'');b.textContent=m.e+' '+m.n;b.onclick=()=>{atks=atks.includes(k)?atks.filter(x=>x!=k):[...atks,k];b.classList.toggle('sel');al()};$('#ap').appendChild(b)});
+ let phase=-1,t0=0,res=[],animT=0;anim($('#cv'),(g,t)=>{animT=t;drawCastle(g,d,t);if(phase<0)return;const a=atks[phase];if(!a)return;const p=Math.min(1,(t-t0)/1.6);g.font='34px serif';const x=440-p*160,ok=res[phase];g.fillText(ATK[a].e,x,190);if(p>=1){g.font='bold 22px sans-serif';g.fillStyle=ok?'#1e8a4a':'#c0392b';g.fillText(ok?'Held! 🛡️':'Broke through! 💥',150,60)}});
+ $('#go').onclick=async()=>{if(busy)return;if(!atks.length)return;if(L&&dcost(d)>L.budget){SFX.bad();$('#fb').textContent='❌ Over budget! Remove something.';return}busy=1;tries++;$('#go').disabled=true;res=atks.map(a=>siegeOK(d,a));const S=ms=>new Promise(r=>setTimeout(r,ms));
+  for(phase=0;phase<atks.length;phase++){t0=animT;await S(1900);if(!$('#fb'))return;res[phase]?SFX.good():(SFX.bad(),noise(.4,.2,300))}
+  busy=0;$('#go').disabled=false;const fails=atks.filter((a,k)=>!res[k]);
+  if(!fails.length){if(L)winLevel(i,tries<=1?3:tries<=2?2:1,`Your castle held against everything!<div class="fact">💡 ${L.fact}</div>`);else{SFX.win();confetti();$('#fb').textContent='🏰 The castle held!'}}else $('#fb').innerHTML='❌ Broken by: '+fails.map(a=>`${ATK[a].e} ${ATK[a].n} — <i>${ATK[a].tip}</i>`).join('<br>')}}
+const LEARN=[
+{h:'🏰 What is a castle?',p:'A castle was a fortified home for a lord or king, built mostly in Europe between about 1000 and 1500 AD, during the <b>Middle Ages</b>. It was a house, a fort, a prison and a law court all in one.',d:(g,t)=>{g.scale(1,200/240);drawCastle(g,ALL,t)}},
+{h:'⛰️ Motte and bailey',p:'After the Normans conquered England in <b>1066</b>, they quickly built <b>motte-and-bailey</b> castles: a wooden tower on an earth mound (motte), above a fenced yard (bailey). Later, lords rebuilt in <b>stone</b>, which did not burn or rot.',d:(g,t)=>{g.fillStyle='#7ec8ff';g.fillRect(0,0,440,200);g.fillStyle='#6a8f3a';g.beginPath();g.moveTo(40,180);g.quadraticCurveTo(130,40,220,180);g.fill();g.fillStyle='#9b6b3c';g.fillRect(105,70,50,45);g.fillRect(220,140,190,8);for(let x=220;x<410;x+=10)g.fillRect(x,125,6,40);g.fillStyle='#5c9a3a';g.fillRect(0,180,440,20);g.fillStyle='#000';g.font='13px sans-serif';g.fillText('motte',110,150);g.fillText('bailey',300,175)}},
+{h:'🧱 Castle parts',p:'The <b>keep</b> was the strongest tower. A <b>curtain wall</b> with <b>battlements</b> ringed the castle, with <b>towers</b> and narrow <b>arrow slits</b>. The <b>gatehouse</b> had a <b>drawbridge</b> over the <b>moat</b>, a dropping <b>portcullis</b> and <b>murder holes</b> overhead.',d:(g,t)=>{g.scale(1,200/240);drawCastle(g,ALL,t)}},
+{h:'👑 The feudal system',p:'The <b>king</b> owned all the land. He gave land to <b>nobles</b>, who promised loyalty and soldiers. Nobles gave land to <b>knights</b> who fought for them. <b>Peasants</b> and <b>serfs</b> farmed the land; serfs could not leave without permission.',d:(g,t)=>{['👑 King','🛡️ Nobles','⚔️ Knights','🌾 Peasants'].forEach((s,k)=>{const w=80+k*90;g.fillStyle=`hsl(${45-k*10},70%,${55-k*6}%)`;g.fillRect(220-w/2,15+k*45,w*Math.min(1,t-k*.4>0?t-k*.4:0),40);g.fillStyle='#000';g.font='15px sans-serif';if(t>k*.4+.5)g.fillText(s,220-35,40+k*45)})}},
+{h:'⚔️ Becoming a knight',p:'Boys from noble families became a <b>page</b> at about 7, a <b>squire</b> at about 14, and could be knighted at about 21. Knights followed a code called <b>chivalry</b>: be brave, loyal and protect the weak.',d:(g,t)=>{['🧒','🧑','🛡️'].forEach((e,k)=>{g.font='50px serif';g.globalAlpha=Math.min(1,Math.max(0,t-k*.6));g.fillText(e,70+k*130,110);g.font='14px sans-serif';g.fillStyle='#fff';g.fillText(['Page ~7','Squire ~14','Knight ~21'][k],70+k*130,150)});g.globalAlpha=1}},
+{h:'🪨 Sieges',p:'Attackers used <b>battering rams</b>, <b>ladders</b>, wheeled <b>siege towers</b>, <b>trebuchets</b> that hurled boulders, and <b>miners</b> who dug tunnels under walls. Often they just surrounded the castle and waited until the defenders ran out of food and water.',d:(g,t)=>{g.fillStyle='#7ec8ff';g.fillRect(0,0,440,200);g.fillStyle='#5c9a3a';g.fillRect(0,170,440,30);g.fillStyle='#a8a29a';g.fillRect(330,60,90,110);const p=(t%2)/2;g.fillStyle='#555';g.beginPath();g.arc(80+p*260,150-Math.sin(p*Math.PI)*120,7,0,7);g.fill();g.font='40px serif';g.fillText('🪨',40,170);g.font='13px sans-serif';g.fillStyle='#000';g.fillText('trebuchet',30,190)}},
+{h:'🍞 Daily life',p:'Castles were busy: cooks, blacksmiths, grooms, guards and servants. People ate in the <b>great hall</b>. Bread, pottage (thick stew) and ale were common; nobles also ate meat and spices. Toilets were called <b>garderobes</b>. In 1347–1351 the <b>Black Death</b> killed about a third of Europe\'s people.',d:(g,t)=>{['🍞','🍗','🍺','🕯️','🐓','🔨'].forEach((e,k)=>{g.font='36px serif';g.fillText(e,40+k*65,100+Math.sin(t*3+k)*10)})}},
+{h:'📜 End of the castle age',p:'In 1215 the barons made King John seal <b>Magna Carta</b>, limiting a king\'s power. By the 1400s–1500s, powerful <b>cannons</b> could smash stone walls, so castles slowly gave way to forts and grand country houses.',d:(g,t)=>{g.font='60px serif';g.fillText('📜',90,120);g.fillText('💣',270,120+Math.sin(t*4)*5);g.fillStyle='#fff';g.font='14px sans-serif';g.fillText('1215 Magna Carta',60,170);g.fillText('cannons 1400s',250,170)}}];
+const QS=[
+{q:'The strongest tower in a castle was the…',a:'keep',opts:['keep','moat','bailey','garderobe']},
+{q:'A heavy grille that drops to block the gate is a…',a:'portcullis',opts:['portcullis','drawbridge','trebuchet','battlement']},
+{q:'A ditch of water around a castle is a…',a:'moat',opts:['moat','keep','motte','well']},
+{q:'Who was at the top of the feudal system?',a:'the king',opts:['the king','knights','peasants','merchants']},
+{q:'Peasants who could not leave their lord\'s land were called…',a:'serfs',opts:['serfs','squires','pages','barons']},
+{q:'At about what age did a boy become a page?',a:'7',opts:['7','14','21','30']},
+{q:'A squire\'s job was to…',a:'help a knight and train for battle',opts:['help a knight and train for battle','cook in the kitchen','farm the land','rule the kingdom']},
+{q:'The knights\' code of honour was called…',a:'chivalry',opts:['chivalry','feudalism','Magna Carta','heraldry']},
+{q:'A trebuchet was used to…',a:'hurl heavy stones at walls',opts:['hurl heavy stones at walls','carry water','lift the drawbridge','cook food']},
+{q:'Magna Carta was sealed in…',a:'1215',opts:['1215','1066','1492','1776']},
+{q:'Motte-and-bailey castles were first made of…',a:'wood and earth',opts:['wood and earth','stone','brick','concrete']},
+{q:'Who brought motte-and-bailey castles to England in 1066?',a:'the Normans',opts:['the Normans','the Romans','the Vikings','the Aztecs']},
+{q:'Openings above a gate passage for dropping things were…',a:'murder holes',opts:['murder holes','arrow slits','garderobes','crenels']},
+{q:'Why were arrow slits narrow on the outside?',a:'so archers were hard to hit',opts:['so archers were hard to hit','to let in light','to save stone','for pigeons']},
+{q:'The gaps in battlements are called…',a:'crenels',opts:['crenels','merlons','moats','keeps']},
+{q:'What made castles less useful by the 1500s?',a:'powerful cannons',opts:['powerful cannons','bows and arrows','horses','rain']},
+{q:'The Black Death (1347–1351) killed about how much of Europe\'s population?',a:'about a third',opts:['about a third','about 1%','everyone','nobody']},
+{q:'A garderobe was a…',a:'toilet',opts:['toilet','wardrobe','guard','garden']},
+{q:'A castle with one ring of walls inside another is…',a:'concentric',opts:['concentric','motte-and-bailey','a keep','a manor']},
+{q:'Where did a lord\'s household eat together?',a:'the great hall',opts:['the great hall','the moat','the dungeon','the gatehouse']},
+{q:'Roughly when were most castles built?',a:'about 1000–1500 AD',opts:['about 1000–1500 AD','about 3000 BC','about 1800–1900 AD','about 200 AD']}];
+function menu(){mainMenu('🏰⚔️👑','Castle Quest','Explore medieval life, label castle parts, climb the feudal ladder and build a castle that survives a siege!',[['mL','📖','Learn','Castles, feudalism, knights, sieges, daily life.',()=>learnPage(0)],['mB','🛡️','Castle Builder','Build defences and pick the attack.',()=>siege(null)],['mP','🧩','Levels',`${LV.length} castle challenges.`,()=>levels()],...stdTiles('Castle Quiz')])}
+function levels(){levelGrid('🧩 Castle challenges')}
+function play(i){const L=LV[i];let tries=0;if(L.k=='siege')return siege(L,i);
+ const head=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">${L.em} ${i+1}. ${L.n}</h2><button class="btn alt" id="bk">Levels</button></div>`;
+ if(L.k=='label'){labelLevel(L,i,head);$('#bk').onclick=levels;return}if(L.k=='order'){orderLevel(L,i,head);$('#bk').onclick=levels;return}
+ app.innerHTML=head+`<h3>${L.q}</h3><div id="os"></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=levels;
+ shuffle(L.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.textContent=o;b.onclick=()=>{tries++;if(o==L.ans){b.classList.add('ok');winLevel(i,tries<=1?3:tries<=2?2:1,`Correct!<div class="fact">💡 ${L.fact}</div>`)}else{b.classList.add('no');SFX.bad();$('#fb').textContent='❌ Not quite — try again.'}};$('#os').appendChild(b)})}
+menu();
+</script></body></html>

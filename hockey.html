@@ -65,7 +65,7 @@ const $=id=>document.getElementById(id);
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const SK='iceHockeySave';
 let save=Object.assign({muted:false,diff:1,plen:2,stats:{gp:0,w:0,l:0,otl:0,gf:0,ga:0},season:null,titles:0},LS.get(SK,null)||{});
-function saveHub(){const n=Math.round(Number(save.stats&&save.stats.w)||0);if(!(n>0))return;let prev=NaN;try{prev=Number(localStorage.getItem('arcade-hockey-best'))}catch(e){}if(Number.isFinite(prev)&&prev>=n)return;try{localStorage.setItem('arcade-hockey-best',String(n))}catch(e){}}
+function saveHub(){const n=Math.round(Number(save.stats&&save.stats.w)||0);if(!(n>0))return;let prev=NaN;try{prev=Number(localStorage.getItem('arcade-ice-best'))}catch(e){}if(Number.isFinite(prev)&&prev>=n)return;try{localStorage.setItem('arcade-ice-best',String(n))}catch(e){}}
 function store(){LS.set(SK,save);saveHub()}
 saveHub();
 // ---------- audio ----------

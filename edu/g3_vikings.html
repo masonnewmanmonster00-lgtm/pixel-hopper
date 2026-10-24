@@ -1,0 +1,144 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Viking Voyage</title><style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;height:100%;background:#1d1630;color:#eef;font-family:system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden;user-select:none}
+#top{position:absolute;top:0;left:0;right:0;height:40px;display:flex;align-items:center;gap:6px;padding:0 8px;background:#0008;z-index:3}
+#top a,#top button{color:#fff;background:#283070;border:0;border-radius:8px;padding:6px 10px;font-size:13px;text-decoration:none;cursor:pointer;white-space:nowrap}
+#title{flex:1;font-weight:800;white-space:nowrap;overflow:hidden}#title b{color:#ffcf5a}#st{font-size:13px;white-space:nowrap}
+canvas{position:absolute;top:40px;left:0;touch-action:none}
+.btn{background:linear-gradient(#ffb340,#e07a10);color:#fff;border:0;border-radius:12px;padding:9px 13px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 #8a4a00;margin:3px}
+.btn:active{transform:translateY(2px)}
+#ov{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:9}
+#ov>div{background:#121a4a;border:2px solid #ffcf5a;border-radius:16px;padding:12px 16px;text-align:center;max-width:96%;max-height:94%;overflow:auto}
+#ov h2{margin:4px 0}#ov p{margin:6px 0;font-size:14px}
+.lv{display:inline-block;margin:3px;padding:5px 8px;border-radius:8px;background:#283070;font-size:13px;cursor:pointer;min-width:120px}
+.lv:hover{background:#e07a10}.lv.lock{opacity:.45;cursor:default}.stars{font-size:34px;color:#ffd54a}
+</style></head><body>
+<div id="top"><a id="lz" href="./index.html">◀ Learning Lab</a><a id="menu" href="../index.html">🏠</a><div id="title">⛵ Viking <b>Voyage</b></div><span id="st"></span><button id="lvB">Levels</button><button id="pB">⏸</button><button id="mu">🔊</button></div>
+<canvas id="c"></canvas><div id="ov"><div id="ovc"></div></div>
+<script>
+const SAVEKEY='g3VikingsSave',TITLE='⛵ Viking Voyage',INTRO='Join the Viking Age (about AD 793–1066)! Sail a longship across the North Atlantic, carve your name in runes, explore daily life and trade, and bust the myths — no horned helmets here!';
+// shared skeleton injected into both games
+const $=id=>document.getElementById(id);
+const cv=$('c'),cx=cv.getContext('2d');let W=0,H=0,DPR=1;
+let save={mute:false,stars:{},unlocked:1};
+try{const s=JSON.parse(localStorage.getItem(SAVEKEY)||'null');if(s)save=Object.assign(save,s)}catch(e){}
+function persist(){try{localStorage.setItem(SAVEKEY,JSON.stringify(save))}catch(e){}}
+let AC=null;function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(AC&&AC.state==='suspended')AC.resume();return AC}
+function tone(f,d=0.12,t='sine',v=0.15,dl=0){if(save.mute)return;const a=ac();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type=t;o.frequency.value=f;const s=a.currentTime+dl;g.gain.setValueAtTime(v,s);g.gain.exponentialRampToValueAtTime(0.001,s+d);o.connect(g);g.connect(a.destination);o.start(s);o.stop(s+d+0.02)}
+const sfx={ok(){tone(660,.1,'triangle');tone(990,.15,'triangle',.15,.08)},bad(){tone(200,.25,'sawtooth',.08)},tap(){tone(500,.05,'square',.05)},win(){[523,659,784,1046].forEach((f,i)=>tone(f,.2,'triangle',.15,i*.12))}};
+function resize(){DPR=window.devicePixelRatio||1;W=innerWidth;H=innerHeight-40;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);cv.style.width=W+'px';cv.style.height=H+'px';cx.setTransform(DPR,0,0,DPR,0,0)}
+function rr(x,y,w,h,r){cx.beginPath();cx.roundRect?cx.roundRect(x,y,w,h,r):cx.rect(x,y,w,h)}
+function txt(s,x,y,sz,col='#fff',al='center',wt='700'){cx.font=wt+' '+sz+'px system-ui,Segoe UI,Roboto,sans-serif';cx.fillStyle=col;cx.textAlign=al;cx.textBaseline='middle';cx.fillText(s,x,y)}
+function fit(s,maxw,sz){cx.font='700 '+sz+'px system-ui';while(sz>9&&cx.measureText(s).width>maxw){sz--;cx.font='700 '+sz+'px system-ui'}return sz}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function pick(a){return a[Math.random()*a.length|0]}
+let paused=false,btns=[];
+function hit(x,y){for(let i=btns.length-1;i>=0;i--){const b=btns[i];if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){b.f();return true}}return false}
+function ptr(e){ac();if(paused||$('ov').style.display==='flex')return;const r=cv.getBoundingClientRect();const p=e.changedTouches?e.changedTouches[0]:e;onTap(p.clientX-r.left,p.clientY-r.top)}
+cv.addEventListener('pointerdown',e=>{e.preventDefault();ptr(e)});
+function ov(html){$('ovc').innerHTML=html;$('ov').style.display=html?'flex':'none'}
+function setPause(p){if($('ov').style.display==='flex'&&!paused)return;paused=p;$('pB').textContent=p?'▶':'⏸';ov(p?'<h2>⏸ Paused</h2><p>Press P or tap to resume. R restarts the level.</p><button class="btn" onclick="setPause(false)">▶ Resume</button> <button class="btn" onclick="setPause(false);restart()">↻ Restart</button>':'')}
+$('pB').onclick=()=>setPause(!paused);
+$('mu').textContent=save.mute?'🔇':'🔊';$('mu').onclick=()=>{save.mute=!save.mute;$('mu').textContent=save.mute?'🔇':'🔊';persist()};
+$('lvB').onclick=()=>{paused=false;showLevels()};
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function showLevels(){let h='<h2>'+TITLE+'</h2><p>'+INTRO+'</p>';LV.forEach((L,i)=>{const ok=i<save.unlocked;h+='<span class="lv'+(ok?'':' lock')+'" data-lv="'+i+'" '+(ok?'onclick="startLevel('+i+')"':'')+'>'+(ok?'':'🔒 ')+(i+1)+'. '+L.name+'<br><small>'+starStr(save.stars[i]||0)+'</small></span>'});h+='<p><small>Keys: 1-4 choose · arrows sail · letters write runes · P pause · R restart · M mute</small></p>';ov(h)}
+function finishLevel(stars){sfx.win();const i=cur;save.stars[i]=Math.max(save.stars[i]||0,stars);save.unlocked=Math.max(save.unlocked,Math.min(LV.length,i+2));persist();
+ ov('<h2>Level complete!</h2><div class="stars">'+starStr(stars)+'</div><p>'+LV[i].name+'</p>'+(i+1<LV.length?'<button class="btn" id="nextB" onclick="startLevel('+(i+1)+')">Next level ▶</button> ':'')+'<button class="btn" onclick="restart()">↻ Replay</button> <button class="btn" onclick="showLevels()">Levels</button>')}
+function restart(){ov('');startLevel(cur)}
+addEventListener('keydown',e=>{const k=e.key;if(k==='p'||k==='P'){setPause(!paused);return}if(paused)return;if($('ov').style.display==='flex'){if(k==='Enter'&&$('nextB'))$('nextB').click();return}
+ if(keyTyping()&&k.length===1&&k!=='p'&&k!=='P'){onKey(e);return}
+ if(k==='r'||k==='R'){restart();return}if(k==='m'||k==='M'){$('mu').click();return}onKey(e)});
+addEventListener('resize',()=>{resize();draw()});
+function ri(a,b){return a+Math.floor(Math.random()*(b-a+1))}
+// Younger Futhark (long-branch), drawn as strokes in a 0..1 box
+const RS={f:[[.4,0,.4,1],[.4,.3,.8,.06],[.4,.56,.8,.32]],u:[[.3,0,.3,1],[.3,0,.72,.32],[.72,.32,.72,1]],th:[[.35,0,.35,1],[.35,.28,.72,.5],[.72,.5,.35,.72]],o:[[.5,0,.5,1],[.2,.18,.8,.52]],r:[[.3,0,.3,1],[.3,0,.7,.22],[.7,.22,.3,.45],[.3,.45,.75,1]],k:[[.45,0,.45,1],[.45,.4,.8,.08]],h:[[.5,0,.5,1],[.2,.25,.8,.65],[.8,.25,.2,.65]],n:[[.5,0,.5,1],[.3,.35,.7,.6]],i:[[.5,0,.5,1]],a:[[.5,0,.5,1],[.2,.62,.8,.32]],s:[[.35,0,.35,.42],[.35,.42,.65,.58],[.65,.58,.65,1]],t:[[.5,0,.5,1],[.5,0,.2,.3],[.5,0,.8,.3]],b:[[.3,0,.3,1],[.3,0,.7,.25],[.7,.25,.3,.5],[.3,.5,.7,.75],[.7,.75,.3,1]],m:[[.5,0,.5,1],[.5,.3,.2,0],[.5,.3,.8,0]],l:[[.4,0,.4,1],[.4,0,.78,.32]],R:[[.5,0,.5,1],[.5,.7,.2,1],[.5,.7,.8,1]]};
+const RNAME={f:'fé (wealth)',u:'úr (rain)',th:'þurs (giant)',o:'áss (a god)',r:'reið (ride)',k:'kaun (ulcer)',h:'hagall (hail)',n:'nauðr (need)',i:'íss (ice)',a:'ár (plenty)',s:'sól (sun)',t:'Týr (a god)',b:'bjarkan (birch)',m:'maðr (man)',l:'lǫgr (sea)',R:'ýr (yew)'};
+const RSND={f:'F',u:'U / V / W / O / Y',th:'TH',o:'Ą (nasal A) / O',r:'R',k:'K / G / C / Q',h:'H',n:'N',i:'I / E / J',a:'A',s:'S / Z',t:'T / D',b:'B / P',m:'M',l:'L',R:'final -R'};
+const ROW=['f','u','th','o','r','k','h','n','i','a','s','t','b','m','l','R'];
+function rune(k,x,y,s,col='#2b1d0e'){cx.strokeStyle=col;cx.lineWidth=Math.max(2,s*.09);cx.lineCap='round';RS[k].forEach(l=>{cx.beginPath();cx.moveTo(x+l[0]*s*.7+s*.15,y+l[1]*s);cx.lineTo(x+l[2]*s*.7+s*.15,y+l[3]*s);cx.stroke()})}
+const LMAP={A:'a',B:'b',C:'k',D:'t',E:'i',F:'f',G:'k',H:'h',I:'i',J:'i',K:'k',L:'l',M:'m',N:'n',O:'u',P:'b',Q:'k',R:'r',S:'s',T:'t',U:'u',V:'u',W:'u',Y:'u',Z:'s'};
+function enc(w){w=w.toUpperCase().replace(/[^A-Z]/g,'');const o=[];for(let i=0;i<w.length;i++){if(w[i]==='T'&&w[i+1]==='H'){o.push('th');i++;continue}if(w[i]==='X'){o.push('k','s');continue}const r=LMAP[w[i]];if(o[o.length-1]!==r)o.push(r)}return o}
+const NAMES=['THOR','ODIN','LOKI','FREYJA','LEIF','ERIK','RAGNAR','ASTRID','SIGRID','HARALD','BJORN','SAGA','RUNE','SHIP','FJORD','HELGA','OLAF','SVEN','FREY'];
+// ---- sea map ----
+const MAPR=['GGGG............','GGGg......i...##','GG.......II...##','..............n#','........o.....##','v......##y.....#','##....#d##.....#','##......##......','##......#.......'];
+const PORT={n:['Norway (home)','Vikings sailed from the fjords of Norway, Denmark and Sweden.'],i:['Iceland','Settled from about AD 874. Its Althing (970s? no — 930) is one of the oldest parliaments.'],g:['Greenland','Erik the Red founded settlements here around AD 985.'],v:['Vinland (Newfoundland)','Leif Erikson reached North America around AD 1000. Remains were found at L\'Anse aux Meadows.'],o:['Orkney','These islands north of Scotland became a Norse earldom.'],y:['Jórvík (York)','Vikings captured York in AD 866 and made it a busy trading town.'],d:['Dublin','Vikings founded Dublin as a base in AD 841.']};
+PORT.i[1]='Settled from about AD 874. Its Althing, founded in AD 930, is one of the world\'s oldest parliaments.';
+const MC=16,MR=9;const cellAt=(c,r)=>(MAPR[r]||'')[c]||'.';const isLand=(c,r)=>c<0||r<0||c>=MC||r>=MR||'#GI'.includes(cellAt(c,r));
+function findP(k){for(let r=0;r<MR;r++)for(let c=0;c<MC;c++)if(cellAt(c,r)===k)return{c,r}}
+// ---- question banks ----
+const Q_WHO=[['When was the Viking Age?','About AD 793 to 1066',['About 3000 BC','AD 1500 to 1600','Last century'],'It began with the raid on Lindisfarne (793) and ended around 1066.'],['Where did the Vikings come from?','Scandinavia: Norway, Denmark and Sweden',['Italy','Egypt','China'],'They lived in what is now Norway, Denmark and Sweden.'],['What does "going a-viking" mean?','Going on a sea raid or voyage',['Going to sleep','Farming','Fishing for fun'],'Most Norse people were farmers; "viking" was an expedition overseas.'],['What language did Vikings speak?','Old Norse',['Latin','English','Greek'],'Modern Icelandic is still very close to Old Norse.'],['Which English words come from Old Norse?','Sky, egg, knife and window',['Pizza and robot','Piano','Kangaroo'],'English borrowed hundreds of Norse words.'],['What was the first famous Viking raid?','Lindisfarne monastery, AD 793',['Rome, AD 410','Paris, AD 1500','Troy'],'The attack on the island monastery shocked Christian Europe.']];
+const MYTH=[['Vikings wore horned helmets into battle.','Myth','No Viking-Age horned battle helmet has ever been found. The idea comes from 1800s costumes and opera.'],['Vikings combed their hair and took weekly baths.','Fact','Lots of Viking combs have been found; Saturday was "laugardagr" — washing day.'],['All Vikings were raiders.','Myth','Most were farmers, traders and craftspeople.'],['Viking women could own property and ask for divorce.','Fact','Norse women had more rights than in many places at the time.'],['Vikings reached North America before Columbus.','Fact','Leif Erikson landed around AD 1000 — nearly 500 years earlier.'],['Vikings drank from the skulls of their enemies.','Myth','This came from a mistranslation of a poem — they used drinking horns.'],['Viking ships could sail in very shallow water.','Fact','Longships had a shallow draught, so they could go up rivers and land on beaches.'],['Vikings called themselves "Vikings" as a nation.','Myth','They thought of themselves by home regions; "viking" meant a sea expedition.'],['Vikings played board games.','Fact','Hnefatafl was a popular strategy board game.'],['Every Viking was huge and tall.','Myth','Skeletons show they were about the same size as other Europeans of the time.']];
+const Q_LIFE=[['What were most Viking homes?','Longhouses',['Castles','Igloos','Pyramids'],'A longhouse was one big room with a fire down the middle; animals sometimes lived at one end.'],['What did most Vikings do for a living?','Farming',['Mining gold','Banking','Building pyramids'],'They grew barley, oats and rye and kept cattle, sheep and pigs.'],['What was a Thing (þing)?','A meeting to make laws and settle arguments',['A sword','A boat','A god'],'Free men met at the Thing; Iceland\'s Althing began in AD 930.'],['What did Vikings drink at feasts?','Ale and mead',['Coffee','Cola','Tea'],'Mead is made from honey.'],['Who were skalds?','Poets who told stories and praise poems',['Shipbuilders','Farm animals','Spies'],'Skalds kept history alive by memorising long poems.'],['What were Viking clothes mostly made of?','Wool and linen',['Plastic','Cotton from America','Silk only'],'Women spun and wove wool on looms.'],['How were Viking children taught?','By working with adults at home',['At big schools','Online','They were not taught'],'Children learned farming, crafts, and sagas from their families.']];
+const Q_TRADE=[['Vikings called Constantinople…','Miklagarðr (the great city)',['Jórvík','Vinland','Valhalla'],'Some Vikings even served the Byzantine emperor in the Varangian Guard.'],['What did Vikings trade from the north?','Furs, amber, walrus ivory and slaves',['Bananas','Coffee','Paper money'],'Sadly the slave trade was a big part of Viking trade.'],['Lots of Arabic silver coins (dirhams) found in Scandinavia show…','Trade reached as far as Baghdad',['Vikings made them','They fell from the sky','Trade only within Norway'],'Rus Vikings travelled the rivers of eastern Europe to the Caspian Sea.'],['The Rus Vikings travelled east mostly…','Along rivers like the Volga and Dnieper',['By camel only','Through tunnels','By air'],'They carried boats overland between rivers.'],['Hedeby and Birka were…','Big Viking trading towns',['Gods','Weapons','Ships'],'Merchants weighed silver on small folding scales there.'],['How did Vikings often pay?','With silver weighed on scales (hacksilver)',['Credit cards','Paper notes','Gold bars only'],'Silver jewellery was chopped up and weighed.']];
+const Q_NAV=[['Did Vikings have a magnetic compass?','No',['Yes, a GPS','Yes, made of gold','Only on Sundays'],'The magnetic compass reached Europe only later, around AD 1200.'],['How did Vikings find their way at sea?','Sun, stars, coastlines, birds and whales',['Maps on phones','Lighthouses everywhere','Radio'],'Sailors read nature and passed on directions by memory.'],['A sunstone may have helped Vikings…','Find the sun on cloudy days',['Make fire','Catch fish','Cool drinks'],'Crystals like Iceland spar show where the hidden sun is — a theory backed by experiments.'],['Sailors sailed along a fixed line of latitude by…','Checking the height of the sun at noon',['Counting fish','Guessing','Asking gulls'],'Keeping the noon sun at the same height kept them heading east or west.'],['Why did Vikings take ravens to sea (says a saga)?','A raven flying off showed which way land was',['For dinner','As pets for luck only','To scare whales'],'Flóki of the Ravens used them to find Iceland.'],['A longship was powered by…','A square wool sail and oars',['Engines','Paddle wheels','Horses'],'Oars were used near land and when the wind dropped.']];
+const Q_GODS=[['Who was the chief Norse god?','Odin',['Zeus','Ra','Thor'],'Odin gave an eye for wisdom and had two ravens, Huginn and Muninn.'],['Thor carried a hammer called…','Mjölnir',['Excalibur','Gungnir','Yggdrasil'],'Thor was the god of thunder; our word Thursday comes from his name.'],['Valhalla was…','Odin\'s hall for warriors who died in battle',['A ship','A trading town','A rune'],'Valkyries carried chosen warriors there.'],['Yggdrasil was…','The world tree linking the nine worlds',['A sea monster','A sword','Thor\'s goat'],'Its roots and branches held the Norse cosmos together.'],['Loki was known as…','A trickster',['The god of farming','A king of Norway','A runestone'],'His tricks cause trouble for the gods — and lead to Ragnarök.'],['Which weekday is named after Odin (Woden)?','Wednesday',['Monday','Friday','Sunday'],'Friday is named after Frigg, Odin\'s wife.']];
+const SHIP=['🌳 Choose and fell a tall oak tree','🪵 Lay the long oak keel','🔺 Fix the curved stem and stern posts','🧱 Add overlapping planks with iron rivets (clinker)','🦴 Fit the ribs inside to strengthen it','🧶 Seal gaps with tarred wool or animal hair','⛵ Raise the mast and the woollen sail'];
+const TL=[[793,'⛪ Raid on Lindisfarne'],[841,'🏘️ Dublin founded'],[865,'⚔️ Great Heathen Army lands in England'],[874,'🌋 Settlement of Iceland begins'],[911,'🏰 Rollo is given Normandy'],[930,'⚖️ Iceland\'s Althing founded'],[985,'❄️ Erik the Red settles Greenland'],[1000,'🌲 Leif Erikson reaches Vinland'],[1066,'🛡️ Battle of Stamford Bridge']];
+const LV=[
+{name:'Who were the Vikings?',m:'quiz',k:Q_WHO},
+{name:'The rune row (futhark)',m:'learn'},
+{name:'Myth or fact?',m:'myth'},
+{name:'Sail to Iceland',m:'sail',to:['i','i','o']},
+{name:'Carve your name in runes',m:'write',own:1},
+{name:'Daily life',m:'quiz',k:Q_LIFE},
+{name:'Build a longship',m:'order',list:SHIP},
+{name:'Trade routes',m:'quiz',k:Q_TRADE},
+{name:'Read the runestone',m:'decode'},
+{name:'How Vikings navigated',m:'quiz',k:Q_NAV},
+{name:'Voyages west & south',m:'sail',to:['d','y','g','v']},
+{name:'Viking timeline',m:'tl'},
+{name:'Gods & sagas',m:'quiz',k:Q_GODS},
+{name:'Viking master',m:'mix'}];
+const TIPS={1:'Vikings wrote with the YOUNGER FUTHARK: just 16 runes, named after its first six letters f-u-þ-ą-r-k. Straight lines were easy to carve in wood and stone.',2:'Lots of what people "know" about Vikings comes from 1800s paintings and operas. Be a historian: myth or fact?',3:'Tap N, E, S or W (or arrow keys) to sail one square. Don\'t hit land!',4:'With only 16 runes, some letters share a rune: E is written like I, D like T, G like K, and O/W/V like U. Double letters were carved once.'};
+let cur=0,qi=0,miss=0,Q=null,msg='',msgCol='#fff',lock=false,myName='';
+const NQ=()=>{const L=LV[cur];return L.to?L.to.length:L.m==='order'?1:L.m==='write'?1:L.m==='tl'?4:L.m==='mix'?8:6};
+function mo(ans,pool){return shuffle([ans,...shuffle([...new Set(pool)].filter(x=>x!==ans)).slice(0,3)])}
+function fromList(list,q){const u=(Q&&Q.used)||[],left=list.filter(x=>!u.includes(x[0]));const f=pick(left.length?left:list);q.used=u.concat(f[0]);return f}
+function makeQ(){const L=LV[cur];let m=L.m;if(m==='mix')m=pick(['quiz','learn','myth','decode','sail','tl']);const q={m,used:(Q&&Q.used)||[]};
+ if(m==='quiz'){const f=fromList(L.k||pick([Q_WHO,Q_LIFE,Q_TRADE,Q_NAV,Q_GODS]),q);q.text=f[0];q.opts=shuffle([f[1],...f[2]]);q.ans=f[1];q.why=f[3]}
+ else if(m==='myth'){const f=fromList(MYTH,q);q.text='"'+f[0]+'"';q.opts=['Fact','Myth'];q.ans=f[1];q.why=f[2]}
+ else if(m==='learn'){const r=pick(ROW);if(Math.random()<.5){q.runes=[r];q.text='This rune is '+RNAME[r].split(' ')[0]+'. Which sound does it make?';q.opts=mo(RSND[r],ROW.map(x=>RSND[x]));q.ans=RSND[r]}else{q.text='Which rune makes the sound "'+RSND[r].split(' ')[0]+'"?';q.ropts=mo(r,ROW);q.ans=r}q.why=RNAME[r].split(' ')[0]+' '+RNAME[r].split(' ').slice(1).join(' ')+' = '+RSND[r]+'.'}
+ else if(m==='decode'){const w=pick(NAMES);q.runes=enc(w);q.stone=1;q.text='This runestone says…';q.opts=mo(w,NAMES.filter(n=>enc(n).join()!==q.runes.join()||n===w));q.ans=w;q.why=w+' is carved '+q.runes.map(r=>RSND[r].split(' ')[0]).join('-')+'.'}
+ else if(m==='write'){q.w=L.own?(myName||'LEIF'):pick(NAMES);q.seq=enc(q.w);q.i=0;q.err=0;q.text='Carve "'+q.w+'" in runes — tap the runes in order.'}
+ else if(m==='order'){q.stages=shuffle(L.list.map((s,i)=>({s,i})));q.next=0;q.list=L.list;q.text='Tap the steps IN ORDER, first to last.'}
+ else if(m==='tl'){const ev=shuffle(TL).slice(0,4).sort((a,b)=>a[0]-b[0]);q.list=ev.map(e=>e[1]+' (AD '+e[0]+')');q.stages=shuffle(ev.map((e,i)=>({s:e[1],i})));q.next=0;q.text='Tap these events from OLDEST to NEWEST.'}
+ else{const to=L.to?L.to[qi]:pick(['i','d','y','g','o']);q.to=to;q.me=findP('n');q.goal=findP(to);q.text='Sail from Norway to '+PORT[to][0]+'.';q.moves=0;q.trail=[]}
+ return q}
+function askName(){ov('<h2>ᚱ Your name</h2><p>Type your name (letters only) to carve it in runes:</p><input id="nm" maxlength="10" style="font-size:20px;padding:6px;border-radius:8px;text-transform:uppercase;width:200px" value="'+(save.name||'')+'"><br><button class="btn" id="nmGo">Carve it ▶</button>');const go=()=>{const v=($('nm').value||'').toUpperCase().replace(/[^A-Z]/g,'').slice(0,10);myName=v||'LEIF';save.name=myName;persist();ov('');Q=makeQ();draw()};$('nmGo').onclick=go;$('nm').onkeydown=e=>{e.stopPropagation();if(e.key==='Enter')go()}}
+function startLevel(i){ov('');paused=false;cur=i;qi=0;miss=0;msg='';lock=false;Q=null;Q=makeQ();draw();if(LV[i].own){if(TIPS[i])save['tip'+i]=1;askName();return}if(TIPS[i]&&!save['tip'+i]){save['tip'+i]=1;persist();ov('<h2>⛵ '+LV[i].name+'</h2><p>'+TIPS[i]+'</p><button class="btn" onclick="ov(\'\')">Let\'s go ▶</button>')}}
+function keyTyping(){return Q&&Q.m==='write'}
+function card(x,y,w,h,col,stroke){cx.fillStyle=col;rr(x,y,w,h,12);cx.fill();if(stroke){cx.strokeStyle=stroke;cx.lineWidth=3;cx.stroke()}}
+function wrapC(s,x,y,w,sz,col){cx.font='700 '+sz+'px system-ui';const ws=s.split(' ');let lines=[],l='';for(const wd of ws){const t=l?l+' '+wd:wd;if(cx.measureText(t).width>w&&l){lines.push(l);l=wd}else l=t}lines.push(l);if(lines.length>3&&sz>10)return wrapC(s,x,y,w,sz-1,col);lines.forEach((ln,i)=>txt(ln,x,y+(i-(lines.length-1)/2)*(sz+3),sz,col))}
+function stone(rs,x,y,s){const w=rs.length*s+30;cx.fillStyle='#8f8f86';rr(x-w/2,y-14,w,s+28,20);cx.fill();cx.strokeStyle='#5a5a52';cx.lineWidth=3;cx.stroke();rs.forEach((r,i)=>rune(r,x-w/2+15+i*s,y,s,'#b3261e'))}
+function mapGrid(){const cs=Math.floor(Math.min((W*.62)/MC,(H-16)/MR));return{cs,x:8,y:Math.round((H-cs*MR)/2)+2}}
+const DIRS=[['N',0,-1],['E',1,0],['S',0,1],['W',-1,0]];
+function draw(){btns=[];cx.clearRect(0,0,W,H);const g=cx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#1c2f45');g.addColorStop(1,'#0f1a29');cx.fillStyle=g;cx.fillRect(0,0,W,H);if(!Q)return;const q=Q;
+ $('st').textContent='Lv '+(cur+1)+' · '+Math.min(qi+1,NQ())+'/'+NQ()+' · ✗'+miss;txt(LV[cur].name,W/2,14,13,'#ffcf5a');
+ if(q.m==='sail'){const G=mapGrid(),cs=G.cs;for(let r=0;r<MR;r++)for(let c=0;c<MC;c++){const k=cellAt(c,r),land=isLand(c,r);cx.fillStyle=land?(k==='G'?'#e6eef2':k==='I'?'#9fb89a':'#6f9a5a'):'#2d6a96';cx.fillRect(G.x+c*cs,G.y+r*cs,cs,cs);if(PORT[k]){txt('⚓',G.x+(c+.5)*cs,G.y+(r+.5)*cs,cs*.5);txt(PORT[k][0].split(' ')[0],G.x+(c+.5)*cs,G.y+r*cs+cs*.92,8,'#fff')}}
+  cx.strokeStyle='#0003';cx.lineWidth=1;for(let c=0;c<=MC;c++){cx.beginPath();cx.moveTo(G.x+c*cs,G.y);cx.lineTo(G.x+c*cs,G.y+MR*cs);cx.stroke()}for(let r=0;r<=MR;r++){cx.beginPath();cx.moveTo(G.x,G.y+r*cs);cx.lineTo(G.x+MC*cs,G.y+r*cs);cx.stroke()}
+  cx.strokeStyle='#ffcf5a';cx.setLineDash([4,3]);cx.lineWidth=2;cx.beginPath();const s0=findP('n');cx.moveTo(G.x+(s0.c+.5)*cs,G.y+(s0.r+.5)*cs);q.trail.forEach(p=>cx.lineTo(G.x+(p.c+.5)*cs,G.y+(p.r+.5)*cs));cx.stroke();cx.setLineDash([]);
+  cx.strokeStyle='#ffcf5a';cx.lineWidth=3;cx.strokeRect(G.x+q.goal.c*cs+2,G.y+q.goal.r*cs+2,cs-4,cs-4);txt('⛵',G.x+(q.me.c+.5)*cs,G.y+(q.me.r+.5)*cs,cs*.8);txt('N↑',G.x+MC*cs-14,G.y+10,11,'#fff');
+  const px=G.x+cs*MC+12,pw=W-px-10;wrapC(q.text,px+pw/2,44,pw,15,'#fff');const cxp=px+pw/2,cyp=150,s=44;DIRS.forEach(d=>{const bx=cxp+d[1]*(s+6)-s/2,by=cyp+d[2]*(s+6)-s/2;card(bx,by,s,s,'#283070');txt(d[0],bx+s/2,by+s/2,16);btns.push({x:bx,y:by,w:s,h:s,f:()=>sail(d)})});txt('🧭',cxp,cyp,22);txt('Moves: '+q.moves,cxp,cyp+84,12,'#9ab');if(msg)wrapC(msg,px+pw/2,H-44,pw,12,msgCol);return}
+ if(q.stages){wrapC(q.text,W/2,36,W-40,16,'#fff');const n=q.stages.length,gap=8,bw=Math.min(180,(W-20-gap*(n-1))/n),x0=(W-(n*bw+gap*(n-1)))/2;for(let i=0;i<n;i++){const x=x0+i*(bw+gap);card(x,56,bw,40,'#0005');wrapC(i<q.next?q.list[i]:(i+1)+'. ?',x+bw/2,76,bw-8,11,i<q.next?'#7f7':'#ccd')}
+  q.stages.forEach((st,i)=>{const x=x0+i*(bw+gap),y=110,done=st.i<q.next;card(x,y,bw,120,done?'#2a5a3a':'#fdf6e3',st.bad?'#e74c3c':null);const [em,...rest]=st.s.split(' ');txt(em,x+bw/2,y+30,26);wrapC(rest.join(' '),x+bw/2,y+80,bw-10,12,done?'#cfc':'#2b1d0e');if(!done)btns.push({x,y,w:bw,h:120,f:()=>pickStage(st)})});if(msg)wrapC(msg,W/2,H-36,W-40,14,msgCol);return}
+ if(q.m==='write'){wrapC(q.text,W/2,34,W-40,15,'#fff');const s=Math.min(46,(W-80)/Math.max(3,q.seq.length));stone(q.seq.slice(0,q.i).concat(Array(q.seq.length-q.i).fill(null)).map(r=>r||'i'),W/2,62,s);for(let i=q.i;i<q.seq.length;i++){const w=q.seq.length*s+30;cx.fillStyle='#8f8f86';cx.fillRect(W/2-w/2+15+i*s+2,60,s-4,s+4);txt('?',W/2-w/2+15+i*s+s/2,62+s/2,18,'#fff')}
+  const cols=8,bw=Math.min(84,(W-20)/cols),bh=56,x0=(W-cols*bw)/2,y0=H-2*bh-6;ROW.forEach((r,i)=>{const x=x0+(i%cols)*bw,y=y0+Math.floor(i/cols)*bh;card(x+2,y+2,bw-4,bh-4,'#d8cfb8');rune(r,x+bw/2-15,y+5,30);txt(RSND[r].split(' ')[0],x+bw/2,y+bh-10,10,'#3a2a10');btns.push({x,y,w:bw,h:bh,f:()=>tapRune(r)})});if(msg)wrapC(msg,W/2,y0-12,W-40,13,msgCol);return}
+ if(q.runes){if(q.stone)stone(q.runes,W*.22,H/2-40,Math.min(46,(W*.38-30)/q.runes.length));else{card(W*.22-60,H/2-80,120,150,'#d8cfb8');rune(q.runes[0],W*.22-45,H/2-65,100)}}else if(!q.ropts)txt(q.m==='myth'?'🪖❓':'🛡️',W*.22,H/2,72);
+ const px=q.ropts?20:W*.46,pw=W-px-14;wrapC(q.text,px+pw/2,46,pw,16,'#fff');
+ if(q.ropts){const bw=100;q.ropts.forEach((o,i)=>{const bx=W/2-2*(bw+12)+i*(bw+12)+6,by=86;let col='#d8cfb8';if(q.picked!=null){if(o===q.ans)col='#7bd389';else if(o===q.picked)col='#e88'}card(bx,by,bw,120,col);rune(o,bx+10,by+12,80);txt(String(i+1),bx+12,by+12,11,'#3a2a10');btns.push({x:bx,y:by,w:bw,h:120,f:()=>choose(o)})})}
+ else{const two=q.opts.length===2,bw=two?pw:(pw-10)/2,bh=44;q.opts.forEach((o,i)=>{const bx=px+(two?0:(i%2)*(bw+10)),by=96+(two?i*(bh+10):Math.floor(i/2)*(bh+10));let col='#283070';if(q.picked!=null){if(o===q.ans)col='#2a8a3a';else if(o===q.picked)col='#a33'}card(bx,by,bw,bh,col);const s=(i+1)+'  '+o;txt(s,bx+bw/2,by+bh/2,fit(s,bw-10,15));btns.push({x:bx,y:by,w:bw,h:bh,f:()=>choose(o)})})}
+ if(msg)wrapC(msg,W/2,H-30,W-40,13,msgCol)}
+function sail(d){const q=Q;if(lock)return;const c=q.me.c+d[1],r=q.me.r+d[2];if(isLand(c,r)){sfx.bad();miss++;msg='💥 Land ahoy! You can\'t sail onto land — go around.';msgCol='#f99';draw();return}q.me={c,r};q.trail.push({c,r});q.moves++;sfx.tap();msg='';if(c===q.goal.c&&r===q.goal.r){sfx.ok();lock=true;msg='✔ Arrived at '+PORT[q.to][0]+'! '+PORT[q.to][1];msgCol='#7f7';draw();setTimeout(next,2600);return}draw()}
+function tapRune(r){const q=Q;if(lock||q.m!=='write')return;const want=q.seq[q.i];if(r===want){q.i++;sfx.tap();msg='';if(q.i>=q.seq.length){sfx.ok();lock=true;msg='✔ You carved '+q.w+' in runes!';msgCol='#7f7';draw();setTimeout(next,2000);return}}else{sfx.bad();if(!q.err)miss++;q.err++;msg='✘ Not that one — you need '+RNAME[want].split(' ')[0]+' ('+RSND[want].split(' ')[0]+').';msgCol='#f99'}draw()}
+function pickStage(st){if(lock)return;const q=Q;if(st.i===q.next){q.next++;st.bad=0;sfx.ok();if(q.next>=q.stages.length){lock=true;msg='✔ Perfect order!';msgCol='#7f7';draw();setTimeout(next,1800);return}msg='✔ Yes!';msgCol='#7f7'}else{sfx.bad();miss++;st.bad=1;msg='✘ Not yet — what comes next?';msgCol='#f99'}draw()}
+function choose(v){if(lock)return;Q.picked=v;lock=true;const ok=v===Q.ans;if(ok)sfx.ok();else{sfx.bad();miss++}msg=(ok?'✔ Correct! ':'✘ ')+(Q.why||'');msgCol=ok?'#7f7':'#f99';draw();setTimeout(next,ok?1600:3200)}
+function next(){msg='';lock=false;qi++;if(qi>=NQ()){finishLevel(miss===0?3:miss<=2?2:1);return}Q=makeQ();draw()}
+function onTap(x,y){hit(x,y)}
+function onKey(e){const k=e.key,q=Q;if(!q||lock)return;const n=+k;if(q.opts&&n>=1&&n<=q.opts.length)return choose(q.opts[n-1]);if(q.ropts&&n>=1&&n<=4)return choose(q.ropts[n-1]);if(q.stages&&n>=1&&n<=q.stages.length&&q.stages[n-1].i>=q.next)return pickStage(q.stages[n-1]);
+ if(q.m==='sail'){const m={ArrowUp:0,ArrowRight:1,ArrowDown:2,ArrowLeft:3}[k];if(m!=null){e.preventDefault();sail(DIRS[m])}}
+ if(q.m==='write'&&/^[a-zA-Z]$/.test(k)){const want=q.seq[q.i],K=k.toUpperCase();let r=LMAP[K];if(K==='T'&&want==='th')r='th';if(K==='X')r=want;tapRune(r)}}
+window.G={get Q(){return Q},LV,MAPR,isLand,findP,DIRS};
+resize();cur=0;Q=makeQ();draw();showLevels();
+
+</script></body></html>

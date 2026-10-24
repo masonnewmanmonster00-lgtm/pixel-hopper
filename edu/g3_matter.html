@@ -1,0 +1,132 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Matter Lab</title><style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;height:100%;background:#1d1630;color:#eef;font-family:system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden;user-select:none}
+#top{position:absolute;top:0;left:0;right:0;height:40px;display:flex;align-items:center;gap:6px;padding:0 8px;background:#0008;z-index:3}
+#top a,#top button{color:#fff;background:#283070;border:0;border-radius:8px;padding:6px 10px;font-size:13px;text-decoration:none;cursor:pointer;white-space:nowrap}
+#title{flex:1;font-weight:800;white-space:nowrap;overflow:hidden}#title b{color:#ffcf5a}#st{font-size:13px;white-space:nowrap}
+canvas{position:absolute;top:40px;left:0;touch-action:none}
+.btn{background:linear-gradient(#ffb340,#e07a10);color:#fff;border:0;border-radius:12px;padding:9px 13px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 #8a4a00;margin:3px}
+.btn:active{transform:translateY(2px)}
+#ov{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:9}
+#ov>div{background:#121a4a;border:2px solid #ffcf5a;border-radius:16px;padding:12px 16px;text-align:center;max-width:96%;max-height:94%;overflow:auto}
+#ov h2{margin:4px 0}#ov p{margin:6px 0;font-size:14px}
+.lv{display:inline-block;margin:3px;padding:5px 8px;border-radius:8px;background:#283070;font-size:13px;cursor:pointer;min-width:120px}
+.lv:hover{background:#e07a10}.lv.lock{opacity:.45;cursor:default}.stars{font-size:34px;color:#ffd54a}
+</style></head><body>
+<div id="top"><a id="lz" href="./index.html">◀ Learning Lab</a><a id="menu" href="../index.html">🏠</a><div id="title">🧪 Matter <b>Lab</b></div><span id="st"></span><button id="lvB">Levels</button><button id="pB">⏸</button><button id="mu">🔊</button></div>
+<canvas id="c"></canvas><div id="ov"><div id="ovc"></div></div>
+<script>
+const SAVEKEY='g3MatterSave',TITLE='🧪 Matter Lab',INTRO='Heat and cool real particles! Watch solids melt, liquids boil and gases condense, sort materials into solids, liquids and gases, and find out which changes can be undone.';
+// shared skeleton injected into both games
+const $=id=>document.getElementById(id);
+const cv=$('c'),cx=cv.getContext('2d');let W=0,H=0,DPR=1;
+let save={mute:false,stars:{},unlocked:1};
+try{const s=JSON.parse(localStorage.getItem(SAVEKEY)||'null');if(s)save=Object.assign(save,s)}catch(e){}
+function persist(){try{localStorage.setItem(SAVEKEY,JSON.stringify(save))}catch(e){}}
+let AC=null;function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(AC&&AC.state==='suspended')AC.resume();return AC}
+function tone(f,d=0.12,t='sine',v=0.15,dl=0){if(save.mute)return;const a=ac();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type=t;o.frequency.value=f;const s=a.currentTime+dl;g.gain.setValueAtTime(v,s);g.gain.exponentialRampToValueAtTime(0.001,s+d);o.connect(g);g.connect(a.destination);o.start(s);o.stop(s+d+0.02)}
+const sfx={ok(){tone(660,.1,'triangle');tone(990,.15,'triangle',.15,.08)},bad(){tone(200,.25,'sawtooth',.08)},tap(){tone(500,.05,'square',.05)},win(){[523,659,784,1046].forEach((f,i)=>tone(f,.2,'triangle',.15,i*.12))}};
+function resize(){DPR=window.devicePixelRatio||1;W=innerWidth;H=innerHeight-40;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);cv.style.width=W+'px';cv.style.height=H+'px';cx.setTransform(DPR,0,0,DPR,0,0)}
+function rr(x,y,w,h,r){cx.beginPath();cx.roundRect?cx.roundRect(x,y,w,h,r):cx.rect(x,y,w,h)}
+function txt(s,x,y,sz,col='#fff',al='center',wt='700'){cx.font=wt+' '+sz+'px system-ui,Segoe UI,Roboto,sans-serif';cx.fillStyle=col;cx.textAlign=al;cx.textBaseline='middle';cx.fillText(s,x,y)}
+function fit(s,maxw,sz){cx.font='700 '+sz+'px system-ui';while(sz>9&&cx.measureText(s).width>maxw){sz--;cx.font='700 '+sz+'px system-ui'}return sz}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function pick(a){return a[Math.random()*a.length|0]}
+let paused=false,btns=[];
+function hit(x,y){for(let i=btns.length-1;i>=0;i--){const b=btns[i];if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){b.f();return true}}return false}
+function ptr(e){ac();if(paused||$('ov').style.display==='flex')return;const r=cv.getBoundingClientRect();const p=e.changedTouches?e.changedTouches[0]:e;onTap(p.clientX-r.left,p.clientY-r.top)}
+cv.addEventListener('pointerdown',e=>{e.preventDefault();ptr(e)});
+function ov(html){$('ovc').innerHTML=html;$('ov').style.display=html?'flex':'none'}
+function setPause(p){if($('ov').style.display==='flex'&&!paused)return;paused=p;$('pB').textContent=p?'▶':'⏸';ov(p?'<h2>⏸ Paused</h2><p>Press P or tap to resume. R restarts the level.</p><button class="btn" onclick="setPause(false)">▶ Resume</button> <button class="btn" onclick="setPause(false);restart()">↻ Restart</button>':'')}
+$('pB').onclick=()=>setPause(!paused);
+$('mu').textContent=save.mute?'🔇':'🔊';$('mu').onclick=()=>{save.mute=!save.mute;$('mu').textContent=save.mute?'🔇':'🔊';persist()};
+$('lvB').onclick=()=>{paused=false;showLevels()};
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function showLevels(){let h='<h2>'+TITLE+'</h2><p>'+INTRO+'</p>';LV.forEach((L,i)=>{const ok=i<save.unlocked;h+='<span class="lv'+(ok?'':' lock')+'" data-lv="'+i+'" '+(ok?'onclick="startLevel('+i+')"':'')+'>'+(ok?'':'🔒 ')+(i+1)+'. '+L.name+'<br><small>'+starStr(save.stars[i]||0)+'</small></span>'});h+='<p><small>Keys: 1-4 choose · ↑ heat · ↓ cool · P pause · R restart · M mute</small></p>';ov(h)}
+function finishLevel(stars){sfx.win();const i=cur;save.stars[i]=Math.max(save.stars[i]||0,stars);save.unlocked=Math.max(save.unlocked,Math.min(LV.length,i+2));persist();
+ ov('<h2>Level complete!</h2><div class="stars">'+starStr(stars)+'</div><p>'+LV[i].name+'</p>'+(i+1<LV.length?'<button class="btn" id="nextB" onclick="startLevel('+(i+1)+')">Next level ▶</button> ':'')+'<button class="btn" onclick="restart()">↻ Replay</button> <button class="btn" onclick="showLevels()">Levels</button>')}
+function restart(){ov('');startLevel(cur)}
+addEventListener('keydown',e=>{const k=e.key;if(k==='p'||k==='P'){setPause(!paused);return}if(paused)return;if($('ov').style.display==='flex'){if(k==='Enter'&&$('nextB'))$('nextB').click();return}
+ if(keyTyping()&&k.length===1&&k!=='p'&&k!=='P'){onKey(e);return}
+ if(k==='r'||k==='R'){restart();return}if(k==='m'||k==='M'){$('mu').click();return}onKey(e)});
+addEventListener('resize',()=>{resize();draw()});
+function ri(a,b){return a+Math.floor(Math.random()*(b-a+1))}
+const SUB={water:{n:'Water',mp:0,bp:100,step:10,cols:['#9fd3ff','#4aa3ff','#d9ecff'],names:['Ice','Liquid water','Steam (water vapour)']},
+choc:{n:'Chocolate',mp:34,bp:null,step:4,cols:['#5b3216','#7b4a26','#999'],names:['Solid chocolate','Melted chocolate','—']},
+wax:{n:'Candle wax',mp:60,bp:null,step:8,cols:['#f5e6c8','#ffd27a','#999'],names:['Solid wax','Liquid wax','—']},
+iron:{n:'Iron',mp:1538,bp:2862,step:200,cols:['#8a8f99','#ff8a2a','#ffd0a0'],names:['Solid iron','Molten iron','Iron gas']},
+oxygen:{n:'Oxygen',mp:-218,bp:-183,step:6,cols:['#a6c8ff','#6aa0ff','#e8f0ff'],names:['Solid oxygen','Liquid oxygen','Oxygen gas']}};
+const STN=['Solid','Liquid','Gas'];
+const CHG=[['Solid','Liquid','Melting'],['Liquid','Solid','Freezing'],['Liquid','Gas','Evaporation (boiling)'],['Gas','Liquid','Condensation']];
+const MAT=[['Rock','Solid'],['Milk','Liquid'],['Steam','Gas'],['Oxygen in the air','Gas'],['Honey','Liquid'],['Wooden spoon','Solid'],['Orange juice','Liquid'],['Helium in a balloon','Gas'],['Coin','Solid'],['Shampoo','Liquid'],['Glass window','Solid'],['Carbon dioxide (in fizzy drinks)','Gas'],['Sand (each grain!)','Solid'],['Cooking oil','Liquid'],['Ice cube','Solid'],['Water vapour','Gas'],['Sponge','Solid'],['Vinegar','Liquid']];
+const REV=[['Melting ice','Reversible'],['Burning wood','Irreversible'],['Cooking an egg','Irreversible'],['Dissolving salt in water','Reversible'],['Freezing juice into ice pops','Reversible'],['Baking a cake','Irreversible'],['Iron rusting','Irreversible'],['Melting chocolate','Reversible'],['Boiling water','Reversible'],['Toasting bread','Irreversible'],['Water vapour condensing on a cold window','Reversible'],['A firework exploding','Irreversible'],['Mixing sand and pebbles','Reversible'],['Milk going sour','Irreversible'],['Melting candle wax','Reversible'],['Burning a match','Irreversible']];
+const FACTS=[['In which state are particles packed tightly and only vibrate?','Solid',['Liquid','Gas','All of them'],'Solid particles are locked in place — they only jiggle.'],['Which state takes the shape of its container but keeps its volume?','Liquid',['Solid','Gas','None'],'Liquids flow and fill the bottom of a container.'],['Which state spreads out to fill any container?','Gas',['Solid','Liquid','Ice'],'Gas particles zoom around freely in all directions.'],['What happens to particles when you heat them?','They move faster',['They stop','They shrink','They disappear'],'Heat gives particles more energy, so they move faster.'],['Water boils at…','100 °C',['0 °C','50 °C','212 °C'],'At sea level water boils at 100 °C (that\'s 212 °F).'],['Water freezes at…','0 °C',['10 °C','−100 °C','32 °C'],'Water freezes (and ice melts) at 0 °C (32 °F).'],['Can a gas be squashed (compressed)?','Yes, easily',['No, never','Only if frozen','Only solids can'],'Gas particles have big gaps between them, so they squash easily.'],['Why can you smell cooking from another room?','Gas particles spread out (diffuse)',['Liquids fly','Solids melt','Sound carries smell'],'Smelly gas particles move and spread through the air.']];
+const REAL=[['Puddles disappear on a sunny day. This is…','Evaporation',['Condensation','Freezing','Melting'],'The Sun\'s heat turns the water into water vapour.'],['Water drops form on a cold can of juice. This is…','Condensation',['Evaporation','Melting','Boiling'],'Water vapour in the air cools on the can and turns back into liquid.'],['Wet clothes dry fastest when it is…','Warm and windy',['Cold and still','Dark','Raining'],'Heat and wind speed up evaporation.'],['Clouds are made of…','Tiny water drops formed by condensation',['Cotton','Steam from kettles','Smoke'],'Water vapour cools high up and condenses into tiny droplets.'],['A mirror steams up after a hot shower because…','Water vapour condenses on the cold glass',['The mirror melts','Ice forms','The glass evaporates'],'Warm, moist air meets a cold surface and condenses.'],['Frost on a car window happens when it is…','Below 0 °C',['Very hot','Exactly 100 °C','Windy'],'Water vapour freezes onto the cold glass as ice crystals.']];
+const LV=[
+{name:'Meet the particles',m:'state'},
+{name:'Melt the ice',m:'sim',tasks:[['water',-30,1]]},
+{name:'Solid, liquid or gas?',m:'sort'},
+{name:'Boil the water',m:'sim',tasks:[['water',40,2]]},
+{name:'Name the change',m:'change'},
+{name:'Freeze & condense',m:'sim',tasks:[['water',130,1],['water',30,0]]},
+{name:'How particles behave',m:'quiz',k:FACTS},
+{name:'Melting points',m:'sim',tasks:[['choc',10,1],['wax',20,1],['iron',600,1]]},
+{name:'Reversible or irreversible?',m:'rev'},
+{name:'Evaporation in real life',m:'quiz',k:REAL},
+{name:'Which state at this temperature?',m:'temp'},
+{name:'Super cold: oxygen',m:'sim',tasks:[['oxygen',-170,1],['oxygen',-190,0]]},
+{name:'Changes mix',m:'mixc'},
+{name:'Matter master',m:'mix'}];
+const TIPS={0:'Everything is made of tiny particles. How they are arranged and how fast they move tells you if it is a solid, liquid or gas.',1:'Press 🔥 Heat (or ↑) to give the particles energy. Watch them break free when the ice melts at 0 °C!',8:'A REVERSIBLE change can be undone (like melting). An IRREVERSIBLE change makes something new and can\'t be undone (like burning).'};
+let cur=0,qi=0,miss=0,Q=null,msg='',msgCol='#fff',lock=false,P=[];
+const NQ=()=>{const L=LV[cur];return L.tasks?L.tasks.length:L.m==='mix'?8:6};
+const stOf=(s,T)=>T<s.mp?0:(s.bp==null||T<s.bp)?1:2;
+function mo(ans,pool){return shuffle([ans,...shuffle([...new Set(pool)].filter(x=>x!==ans)).slice(0,3)])}
+function used(){return (Q&&Q.used)||[]}
+function fromList(list,q){const u=used(),left=list.filter(x=>!u.includes(x[0]));const f=pick(left.length?left:list);q.used=u.concat(f[0]);return f}
+function makeQ(){const L=LV[cur];let m=L.m;if(m==='mix')m=pick(['state','sort','change','rev','temp','sim']);if(m==='mixc')m=pick(['change','rev']);const q={m,used:used()};
+ if(m==='sim'){const t=L.tasks?L.tasks[qi]:pick([['water',-20,1],['water',60,2],['water',120,1],['water',20,0]]);q.s=SUB[t[0]];q.T=t[1];q.goal=t[2];q.st=stOf(q.s,q.T);const verb=q.goal>q.st?(q.goal===1?'Melt':'Boil'):(q.goal===1?'Condense':'Freeze');q.text=verb+' the '+q.s.n.toLowerCase()+': turn it into '+q.s.names[q.goal].toLowerCase()+'.';q.presses=0}
+ else if(m==='state'){const k=pick(['water','water','iron','oxygen']);q.s=SUB[k];q.st=ri(0,2);q.T=q.st===0?q.s.mp-q.s.step*2:q.st===1?(q.s.bp?(q.s.mp+q.s.bp)/2:q.s.mp+q.s.step*2):q.s.bp+q.s.step*2;q.text='Look at the particles. Which state is this?';q.opts=STN.slice();q.ans=STN[q.st];q.why=['Solid: packed in rows, only vibrating.','Liquid: close together but sliding past each other.','Gas: far apart, zooming everywhere.'][q.st]}
+ else if(m==='sort'){const f=fromList(MAT,q);q.text='Is "'+f[0]+'" a solid, liquid or gas?';q.opts=STN.slice();q.ans=f[1];q.why=f[0]+' is a '+f[1].toLowerCase()+' at room temperature.'}
+ else if(m==='change'){const c=pick(CHG);q.ch=c;q.text=c[0]+' → '+c[1]+'. What is this change called?';q.opts=shuffle(CHG.map(x=>x[2]));q.ans=c[2];q.why=c[0]+' to '+c[1].toLowerCase()+' is '+c[2].toLowerCase()+'.'}
+ else if(m==='rev'){const f=fromList(REV,q);q.text=f[0]+': reversible or irreversible?';q.opts=['Reversible','Irreversible'];q.ans=f[1];q.why=f[1]==='Reversible'?'It can be changed back.':'Something new is made, so it can\'t be undone.'}
+ else if(m==='temp'){q.s=SUB[pick(['water','water','water','iron','oxygen'])];const s=q.s;const opts=[s.mp-s.step*3,(s.mp+s.bp)/2|0,s.bp+s.step*3];q.T=pick(opts);q.st=stOf(s,q.T);q.text=s.n+' at '+q.T+' °C is a…';q.opts=STN.slice();q.ans=STN[q.st];q.why=s.n+' melts at '+s.mp+' °C and boils at '+s.bp+' °C.'}
+ else{const f=fromList(L.k,q);q.text=f[0];q.opts=shuffle([f[1],...f[2]]);q.ans=f[1];q.why=f[3]}
+ if(q.s)initP(q);return q}
+let BOX={x:0,y:0,w:0,h:0};
+function layout(){BOX={x:14,y:30,w:Math.round(W*.42),h:H-44}}
+function initP(q){layout();P=[];const n=36,cols=9,sp=Math.min(BOX.w/12,BOX.h/8);for(let i=0;i<n;i++){const hx=BOX.x+BOX.w/2+(i%cols-(cols-1)/2)*sp,hy=BOX.y+BOX.h-sp*.7-Math.floor(i/cols)*sp;P.push({hx,hy,x:hx,y:hy,vx:0,vy:0})}q.r=sp*.42;q.sp=sp;setStateParticles(q,true)}
+function setStateParticles(q,first){if(q.st===2)P.forEach(p=>{const a=Math.random()*7;p.vx=Math.cos(a)*4;p.vy=Math.sin(a)*4});if(q.st===1)P.forEach(p=>{p.vx=(Math.random()-.5)*1.2;p.vy=0});if(q.st===0&&!first)P.forEach(p=>{p.x=p.hx;p.y=p.hy})}
+function update(){const q=Q;if(!q||!q.s)return;const b=BOX,r=q.r;const e=Math.max(0.3,Math.min(3,(q.T-q.s.mp+q.s.step*4)/(q.s.step*4)));
+ P.forEach((p,i)=>{if(q.st===0){const a=0.4+e*0.6;p.x=p.hx+(Math.random()-.5)*a*2;p.y=p.hy+(Math.random()-.5)*a*2}
+  else{const sp=q.st===2?1.2+e*.5:0.6+e*.2;p.vx+= (Math.random()-.5)*.4;p.vy+=(Math.random()-.5)*.4+(q.st===1?.15:0);const v=Math.hypot(p.vx,p.vy)||1,mx=q.st===2?3+e:1.2+e*.3;if(v>mx){p.vx*=mx/v;p.vy*=mx/v}if(q.st===2&&v<2){p.vx*=1.1;p.vy*=1.1}p.x+=p.vx;p.y+=p.vy;
+   const top=q.st===1?b.y+b.h-q.sp*5.2:b.y;if(p.x<b.x+r){p.x=b.x+r;p.vx=Math.abs(p.vx)}if(p.x>b.x+b.w-r){p.x=b.x+b.w-r;p.vx=-Math.abs(p.vx)}if(p.y<top+r){p.y=top+r;p.vy=Math.abs(p.vy)*(q.st===1?.5:1)}if(p.y>b.y+b.h-r){p.y=b.y+b.h-r;p.vy=-Math.abs(p.vy)*(q.st===1?.3:1)}}});
+ if(q.st===1){for(let i=0;i<P.length;i++)for(let j=i+1;j<P.length;j++){const a=P[i],c=P[j],dx=c.x-a.x,dy=c.y-a.y,d=Math.hypot(dx,dy);if(d<r*2&&d>0){const o=(r*2-d)/2,ux=dx/d,uy=dy/d;a.x-=ux*o;a.y-=uy*o;c.x+=ux*o;c.y+=uy*o}}}}
+function heat(d){const q=Q;if(lock||!q||q.m!=='sim')return;q.T+=d*q.s.step;q.T=Math.max(q.s.mp-q.s.step*6,Math.min((q.s.bp||q.s.mp+q.s.step*6)+q.s.step*6,q.T));q.presses++;sfx.tap();const ns=stOf(q.s,q.T);
+ if(ns!==q.st){const from=STN[q.st],to=STN[ns];const c=CHG.find(x=>x[0]===from&&x[1]===to);q.st=ns;setStateParticles(q);msg=c?'✨ '+c[2]+'! '+q.s.names[ns]+' at '+q.T+' °C':'';msgCol='#9ef'}
+ if(q.st===q.goal){lock=true;const need=Math.abs(q.goal-stOf(q.s,LV[cur].tasks?LV[cur].tasks[qi][1]:q.T));sfx.ok();msg='✔ Done! '+q.s.n+' '+(q.goal===1?'is liquid between '+q.s.mp+' °C'+(q.s.bp?' and '+q.s.bp+' °C':''):q.goal===0?'is solid below '+q.s.mp+' °C':'is a gas above '+q.s.bp+' °C')+'.';msgCol='#7f7';setTimeout(next,1800)}
+ else if(d!==0&&((q.goal>q.st)!==(d>0))){miss++;msg='✘ Wrong way — '+(q.goal>q.st?'you need to HEAT it.':'you need to COOL it.');msgCol='#f99'}}
+function startLevel(i){ov('');paused=false;cur=i;qi=0;miss=0;msg='';lock=false;Q=null;Q=makeQ();if(TIPS[i]&&!save['tip'+i]){save['tip'+i]=1;persist();ov('<h2>🧪 '+LV[i].name+'</h2><p>'+TIPS[i]+'</p><button class="btn" onclick="ov(\'\')">Let\'s go ▶</button>')}}
+function keyTyping(){return false}
+function card(x,y,w,h,col,stroke){cx.fillStyle=col;rr(x,y,w,h,12);cx.fill();if(stroke){cx.strokeStyle=stroke;cx.lineWidth=3;cx.stroke()}}
+function wrapC(s,x,y,w,sz,col){cx.font='700 '+sz+'px system-ui';const ws=s.split(' ');let lines=[],l='';for(const wd of ws){const t=l?l+' '+wd:wd;if(cx.measureText(t).width>w&&l){lines.push(l);l=wd}else l=t}lines.push(l);if(lines.length>3&&sz>10)return wrapC(s,x,y,w,sz-1,col);lines.forEach((ln,i)=>txt(ln,x,y+(i-(lines.length-1)/2)*(sz+3),sz,col))}
+const ICON={sort:'🧱🥛💨',change:'🧊➡️💧',rev:'🔥🍳',quiz:'🔬'};
+function draw(){btns=[];cx.clearRect(0,0,W,H);const g=cx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#24304f');g.addColorStop(1,'#141a2e');cx.fillStyle=g;cx.fillRect(0,0,W,H);if(!Q)return;const q=Q;layout();
+ $('st').textContent='Lv '+(cur+1)+' · '+Math.min(qi+1,NQ())+'/'+NQ()+' · ✗'+miss;const px=BOX.x+BOX.w+54,pw=W-px-12;txt(LV[cur].name,px+pw/2,14,13,'#ffcf5a');
+ if(q.s){const b=BOX;card(b.x-4,b.y-4,b.w+8,b.h+8,'#0b1020','#8899bb');P.forEach(p=>{cx.fillStyle=q.s.cols[q.st];cx.beginPath();cx.arc(p.x,p.y,q.r,0,7);cx.fill();cx.strokeStyle='#0005';cx.lineWidth=1;cx.stroke()});
+  if(q.m!=='state'){txt(q.s.names[q.st],b.x+b.w/2,b.y+12,13,'#fff');const tx=b.x+b.w+14,th=b.h-30,lo=q.s.mp-q.s.step*6,hi=(q.s.bp||q.s.mp+q.s.step*6)+q.s.step*6,f=Math.max(0,Math.min(1,(q.T-lo)/(hi-lo)));card(tx,b.y,18,th,'#fff');cx.fillStyle=f>.5?'#e74c3c':'#3498db';cx.fillRect(tx+4,b.y+th-th*f,10,th*f);cx.beginPath();cx.arc(tx+9,b.y+th+8,11,0,7);cx.fill();txt(Math.round(q.T)+'°C',tx+9,b.y+th+28,11,'#fff')}}
+ else txt(ICON[q.m]||'🔬',BOX.x+BOX.w/2,H/2,64);
+ wrapC(q.text,px+pw/2,50,pw,16,'#fff');
+ if(q.m==='sim'){const bw=(pw-10)/2;if(!lock){card(px,90,bw,56,'#c0392b');txt('🔥 Heat',px+bw/2,118,18);btns.push({x:px,y:90,w:bw,h:56,f:()=>heat(1)});card(px+bw+10,90,bw,56,'#2471a3');txt('❄️ Cool',px+bw*1.5+10,118,18);btns.push({x:px+bw+10,y:90,w:bw,h:56,f:()=>heat(-1)})}
+  txt(q.s.n+': melts at '+q.s.mp+' °C'+(q.s.bp!=null?', boils at '+q.s.bp+' °C':''),px+pw/2,164,12,'#9ab');if(msg)wrapC(msg,px+pw/2,210,pw,14,msgCol);return}
+ const two=q.opts.length<4,bw=two?pw:(pw-10)/2,bh=two?38:42;q.opts.forEach((o,i)=>{const bx=px+(two?0:(i%2)*(bw+10)),by=86+(two?i*(bh+8):Math.floor(i/2)*(bh+10));let col='#283070';if(q.picked!=null){if(o===q.ans)col='#2a8a3a';else if(o===q.picked)col='#a33'}card(bx,by,bw,bh,col);const s=(i+1)+'  '+o;txt(s,bx+bw/2,by+bh/2,fit(s,bw-10,15));btns.push({x:bx,y:by,w:bw,h:bh,f:()=>choose(o)})});
+ if(msg)wrapC(msg,px+pw/2,H-36,pw,13,msgCol)}
+function choose(v){if(lock)return;Q.picked=v;lock=true;const ok=v===Q.ans;if(ok)sfx.ok();else{sfx.bad();miss++}msg=(ok?'✔ Correct! ':'✘ ')+(Q.why||'');msgCol=ok?'#7f7':'#f99';setTimeout(next,ok?1500:3000)}
+function next(){msg='';lock=false;qi++;if(qi>=NQ()){finishLevel(miss===0?3:miss<=2?2:1);return}Q=makeQ()}
+function onTap(x,y){hit(x,y)}
+function onKey(e){const k=e.key,q=Q;if(!q||lock)return;if(q.opts){const n=+k;if(n>=1&&n<=q.opts.length)choose(q.opts[n-1]);return}if(k==='ArrowUp'){e.preventDefault();heat(1)}if(k==='ArrowDown'){e.preventDefault();heat(-1)}}
+function loop(){if(!paused&&$('ov').style.display!=='flex')update();draw();requestAnimationFrame(loop)}
+window.G={get Q(){return Q},LV};
+resize();cur=0;Q=makeQ();draw();showLevels();requestAnimationFrame(loop);
+
+</script></body></html>

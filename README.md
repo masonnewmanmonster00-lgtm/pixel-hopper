@@ -6,7 +6,7 @@ There is no build step and no server. Scores stay in the browser.
 
 ## Learning Lab
 
-Open `edu/index.html` for eight games:
+Open `edu/index.html`. The lab includes the original eight, plus more games added alongside them:
 
 - Math Facts
 - Times Race
@@ -16,6 +16,13 @@ Open `edu/index.html` for eight games:
 - Science Check
 - Spelling Bee
 - Money Count
+- French Basics
+- Weather & Seasons
+- Food & Nutrition
+- Human Body Explorer
+- Recycling Sorter
+- Place Value Blocks
+- Roman Numerals
 
 Each game has Easy, Medium, and Hard, keeps a best score on this device, and links back to the Learning Lab home. That home links back to the arcade.
 

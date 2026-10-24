@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#efe6d2">
+<title>Human Body Explorer · Learning Lab</title>
+<link rel="icon" href="../icon.svg">
+<link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="./world.css">
+</head>
+<body>
+<div class="page">
+<header class="bar">
+<a class="back" href="./index.html">Home</a>
+<h1>Human Body Explorer</h1>
+<div class="bar-tools">
+<p class="scoreline">Score <strong id="score">0</strong></p>
+<p class="scoreline">Best <strong id="best">0</strong></p>
+<button type="button" class="sound" data-sound>Sound off</button>
+</div>
+</header>
+<div class="levels" role="group" aria-label="Difficulty">
+<button type="button" data-level="easy">Easy</button>
+<button type="button" data-level="medium">Medium</button>
+<button type="button" data-level="hard">Hard</button>
+</div>
+<p id="help" class="help"></p>
+<p id="status" class="status" role="status" aria-live="polite"></p>
+<main id="stage" class="stage"></main>
+</div>
+<script src="./common.js"></script>
+<script src="./quiz.js"></script>
+<script src="./body.js"></script>
+</body>
+</html>

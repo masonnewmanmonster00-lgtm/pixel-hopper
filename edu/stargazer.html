@@ -1,0 +1,235 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>Star Gazer</title>
+<style>
+:root{--bg:#0f1530;--card:#1b2350;--ink:#f4f6ff;--mut:#9aa6d8;--acc:#ffd34d;--good:#3ddc84;--bad:#ff5c7a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:"Trebuchet MS",system-ui,sans-serif;background:radial-gradient(circle at 20% 0%,#2a3480,var(--bg) 60%);color:var(--ink);min-height:100vh;user-select:none;-webkit-user-select:none;overflow-x:hidden}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0008;position:sticky;top:0;z-index:5;backdrop-filter:blur(4px)}
+header a{color:var(--ink);text-decoration:none;background:#fff1;padding:6px 12px;border-radius:20px;font-weight:bold}
+header h1{font-size:20px;margin:0;flex:1;color:var(--acc);text-shadow:0 2px 0 #0006}
+.pill{background:#fff1;padding:5px 10px;border-radius:14px;font-size:14px}
+main{max-width:980px;margin:0 auto;padding:14px}
+.btn{font:inherit;font-weight:bold;border:0;border-radius:14px;padding:10px 16px;background:var(--acc);color:#111;cursor:pointer;box-shadow:0 4px 0 #0007;transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #0007}.btn.alt{background:#2c3770;color:var(--ink)}.btn.sel{outline:3px solid #fff}
+.btn:disabled{opacity:.4}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border-radius:18px;padding:14px;box-shadow:0 6px 18px #0005;border:2px solid #ffffff10}
+.tile{cursor:pointer;transition:transform .15s}.tile:hover{transform:translateY(-4px) rotate(-1deg)}
+.tile .em{font-size:40px}.tile h3{margin:6px 0}.tile p{margin:0;color:var(--mut);font-size:14px}
+.stars{color:#ffd34d;letter-spacing:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fb{min-height:28px;font-weight:bold;font-size:18px;margin:8px 0}
+.opt{display:block;width:100%;margin:6px 0;text-align:left;background:#2c3770;color:var(--ink)}
+.opt.ok{background:var(--good);color:#111}.opt.no{background:var(--bad)}
+.pop{animation:pop .35s}@keyframes pop{50%{transform:scale(1.12)}}
+.shake{animation:shk .35s}@keyframes shk{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:9}
+.bar{height:10px;background:#fff2;border-radius:6px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--acc);transition:width .3s}
+.fact{background:#ffd34d22;border-left:4px solid #ffd34d;padding:8px 12px;border-radius:8px;margin:8px 0}
+svg text{font-family:inherit}
+</style></head><body>
+<header><a href="./index.html">← Learning Lab</a><h1>Star Gazer</h1><span class="pill" id="starTotal">⭐ 0</span><button class="btn alt" id="snd" style="padding:6px 10px">🔊</button></header>
+<main id="app"></main><canvas id="fx"></canvas>
+<script>
+// ---- shared helpers ----
+const $=s=>document.querySelector(s),app=$('#app');
+const SAVEKEY='stargazer_v1';let SAVE=JSON.parse(localStorage.getItem(SAVEKEY)||'{}');SAVE.stars=SAVE.stars||{};SAVE.best=SAVE.best||{};
+function save(){localStorage.setItem(SAVEKEY,JSON.stringify(SAVE));$('#starTotal').textContent='⭐ '+Object.values(SAVE.stars).reduce((a,b)=>a+b,0)}
+let AC=null,muted=!!SAVE.muted;$('#snd').textContent=muted?'🔇':'🔊';
+$('#snd').onclick=()=>{muted=!muted;SAVE.muted=muted;save();$('#snd').textContent=muted?'🔇':'🔊'};
+function tone(f,d=.12,type='sine',v=.15,slide=0,delay=0){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.02)}catch(e){}}
+function noise(d=.4,v=.2,lp=800){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const n=AC.sampleRate*d,b=AC.createBuffer(1,n,AC.sampleRate),c=b.getChannelData(0);for(let i=0;i<n;i++)c[i]=(Math.random()*2-1)*(1-i/n);const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();f.type='lowpass';f.frequency.value=lp;g.gain.value=v;s.buffer=b;s.connect(f);f.connect(g);g.connect(AC.destination);s.start()}catch(e){}}
+const SFX={click:()=>tone(660,.05,'square',.06),good:()=>{tone(523,.1,'triangle');tone(784,.15,'triangle',.15,0,.08)},bad:()=>tone(200,.25,'sawtooth',.08,-80),
+win:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.15,0,i*.1)),pick:()=>tone(440,.06,'sine',.1,200),drop:()=>tone(330,.08,'sine',.12,-100)};
+// confetti
+const cv=$('#fx'),cx=cv.getContext('2d');let fxp=[];function rs(){cv.width=innerWidth;cv.height=innerHeight}rs();addEventListener('resize',rs);
+function confetti(x=innerWidth/2,y=innerHeight/3,n=60){for(let i=0;i<n;i++)fxp.push({x,y,vx:(Math.random()-.5)*10,vy:-Math.random()*9-2,c:`hsl(${Math.random()*360},90%,60%)`,l:90});}
+(function loop(){cx.clearRect(0,0,cv.width,cv.height);fxp=fxp.filter(p=>p.l-->0);for(const p of fxp){p.vy+=.3;p.x+=p.vx;p.y+=p.vy;cx.fillStyle=p.c;cx.fillRect(p.x,p.y,7,7)}requestAnimationFrame(loop)})();
+function flash(el,ok){el.classList.remove('pop','shake');void el.offsetWidth;el.classList.add(ok?'pop':'shake')}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function award(id,n){if((SAVE.stars[id]||0)<n)SAVE.stars[id]=n;save()}
+// generic timed quiz: qs=[{q,opts,a,fact}] ; a is correct string
+let QZ=0;function runQuiz(id,title,qs,secs,back){let i=0,score=0,t=secs,timer;const tok=++QZ;clearInterval(window.__qt);const alive=()=>tok===QZ&&!!document.getElementById("qz"+tok);qs=shuffle(qs).slice(0,10);
+ function end(){clearInterval(timer);if(!alive())return;const st=score>=9?3:score>=7?2:score>=5?1:0;award(id,st);if(score>(SAVE.best[id]||0))SAVE.best[id]=score;save();if(st)SFX.win(),confetti();
+  app.innerHTML=`<div class="card" style="text-align:center"><h2>${title} — done!</h2><div style="font-size:48px" class="stars">${starStr(st)}</div><p>You got <b>${score}/${qs.length}</b>. Best: ${SAVE.best[id]}</p><div class="row" style="justify-content:center"><button class="btn" id="ag">Play again</button><button class="btn alt" id="bk">Back</button></div></div>`;$('#ag').onclick=()=>runQuiz(id,title,qs,secs,back);$('#bk').onclick=back}
+ function show(){if(i>=qs.length)return end();const q=qs[i];app.innerHTML=`<div class="card" id="qz${tok}"><div class="row"><b style="flex:1">${title} · Q${i+1}/${qs.length}</b>${secs?`<span class="pill">⏱ <span id="tm">${t}</span>s</span>`:''}<span class="pill">✅ ${score}</span></div><div class="bar" style="margin:8px 0"><i style="width:${i/qs.length*100}%"></i></div>${q.svg||''}<h2>${q.q}</h2><div id="os"></div><div class="fb" id="fb"></div></div>`;
+  shuffle(q.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.innerHTML=o;b.onclick=()=>{if(b.parentNode.dataset.done)return;b.parentNode.dataset.done=1;const ok=o==q.a;if(ok){score++;SFX.good();confetti(innerWidth/2,innerHeight/2,20)}else SFX.bad();[...$('#os').children].forEach(x=>{if(x.innerHTML==q.a)x.classList.add('ok')});if(!ok)b.classList.add('no');flash(b,ok);$('#fb').innerHTML=(ok?'✅ Correct! ':'❌ Not quite. ')+(q.fact?`<div class="fact">💡 ${q.fact}</div>`:'');setTimeout(()=>{if(!alive())return;i++;show()},q.fact?2200:1100)};$('#os').appendChild(b)})}
+ if(secs)window.__qt=timer=setInterval(()=>{if(!alive()){clearInterval(timer);return}t--;const e=$('#tm');if(e)e.textContent=t;if(t<=5&&t>0)tone(880,.05);if(t<=0)end()},1000);show()}
+save();
+</script>
+<script>
+// ===== Star Gazer =====
+function txt(g,s,x,y,c='#e4e8ff',sz=14,al='center'){g.fillStyle=c;g.font=`bold ${sz}px Trebuchet MS`;g.textAlign=al;g.fillText(s,x,y)}
+function cpos(c,e){const r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*c.width/r.width,y:(e.clientY-r.top)*c.height/r.height}}
+// stars: [name, RA hours, Dec degrees, magnitude, color]
+const CW='#ffffff',CB='#aac8ff',CY='#fff4c8',CO='#ffc48a',CR='#ff8a6a';
+const CON=[
+{id:'uma',n:'The Big Dipper',sub:'part of Ursa Major, the Great Bear',s:[['Dubhe',11.062,61.75,1.8,CO],['Merak',11.031,56.38,2.4,CW],['Phecda',11.897,53.69,2.4,CW],['Megrez',12.257,57.03,3.3,CW],['Alioth',12.900,55.96,1.8,CW],['Mizar',13.399,54.93,2.2,CW],['Alkaid',13.792,49.31,1.9,CB]],e:[[6,5],[5,4],[4,3],[3,0],[0,1],[1,2],[2,3]],f:'The two stars at the end of the bowl, Merak and Dubhe, are the "pointer stars". Follow them about 5 times their gap to find Polaris, the North Star.',art:'bear'},
+{id:'umi',n:'The Little Dipper',sub:'Ursa Minor, the Little Bear',s:[['Polaris',2.530,89.26,2.0,CY],['Yildun',17.537,86.59,4.4,CW],['ε UMi',16.766,82.04,4.2,CY],['ζ UMi',15.734,77.79,4.3,CW],['η UMi',16.292,75.76,5.0,CW],['Pherkad',15.346,71.83,3.0,CW],['Kochab',14.845,74.16,2.1,CO]],e:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,3]],f:'Polaris sits at the end of the Little Dipper\'s handle, almost exactly above Earth\'s North Pole, so it barely moves while the rest of the sky turns around it.'},
+{id:'cas',n:'Cassiopeia',sub:'the Queen',s:[['Caph',0.153,59.15,2.3,CW],['Schedar',0.675,56.54,2.2,CO],['Navi (γ Cas)',0.945,60.72,2.5,CB],['Ruchbah',1.430,60.24,2.7,CW],['Segin',1.907,63.67,3.4,CB]],e:[[0,1],[1,2],[2,3],[3,4]],f:'Cassiopeia looks like a W or an M. It sits on the opposite side of Polaris from the Big Dipper, so you can always find one of them.'},
+{id:'ori',n:'Orion',sub:'the Hunter',s:[['Betelgeuse',5.919,7.41,0.5,CR],['Bellatrix',5.419,6.35,1.6,CB],['Mintaka',5.533,-0.30,2.2,CB],['Alnilam',5.604,-1.20,1.7,CB],['Alnitak',5.679,-1.94,1.8,CB],['Saiph',5.796,-9.67,2.1,CB],['Rigel',5.242,-8.20,0.1,CB],['Meissa',5.585,9.93,3.4,CB]],e:[[7,0],[7,1],[0,4],[1,2],[2,3],[3,4],[4,5],[2,6]],f:'Orion\'s Belt is three bright stars in a row. Betelgeuse is a cool red supergiant; Rigel is a hot blue-white supergiant. Their colors show their temperatures!',art:'hunter'},
+{id:'cyg',n:'Cygnus',sub:'the Swan (the Northern Cross)',s:[['Deneb',20.690,45.28,1.3,CW],['Sadr',20.370,40.26,2.2,CY],['Albireo',19.512,27.96,3.1,CO],['Gienah (ε Cyg)',20.770,33.97,2.5,CO],['δ Cyg',19.750,45.13,2.9,CB]],e:[[0,1],[1,2],[4,1],[1,3]],f:'Deneb is the swan\'s tail and Albireo is its head. Through a small telescope Albireo splits into a gold star and a blue star.'},
+{id:'lyr',n:'Lyra',sub:'the Lyre (harp)',s:[['Vega',18.616,38.78,0.0,CB],['ε Lyr',18.739,39.67,4.7,CW],['ζ Lyr',18.746,37.61,4.4,CW],['δ Lyr',18.908,36.90,4.3,CR],['Sulafat',18.982,32.69,3.3,CB],['Sheliak',18.835,33.36,3.5,CB]],e:[[0,1],[0,2],[1,2],[2,3],[3,4],[4,5],[5,2]],f:'Vega is one of the brightest stars in the summer sky. Vega, Deneb and Altair make the "Summer Triangle".'},
+{id:'leo',n:'Leo',sub:'the Lion',s:[['Regulus',10.140,11.97,1.4,CB],['η Leo',10.122,16.76,3.5,CW],['Algieba',10.333,19.84,2.0,CO],['Adhafera',10.278,23.42,3.4,CW],['Rasalas (μ Leo)',9.879,26.01,3.9,CO],['ε Leo',9.764,23.77,3.0,CY],['Zosma',11.235,20.52,2.6,CW],['Chertan',11.237,15.43,3.3,CW],['Denebola',11.818,14.57,2.1,CW]],e:[[0,1],[1,2],[2,3],[3,4],[4,5],[2,6],[6,8],[8,7],[7,0]],f:'The lion\'s head and mane look like a backwards question mark, called the Sickle. Regulus marks the lion\'s heart.'},
+{id:'sco',n:'Scorpius',sub:'the Scorpion',s:[['Acrab',16.091,-19.81,2.6,CB],['Dschubba',16.006,-22.62,2.3,CB],['π Sco',15.981,-26.11,2.9,CB],['σ Sco',16.353,-25.59,2.9,CB],['Antares',16.490,-26.43,1.0,CR],['τ Sco',16.598,-28.22,2.8,CB],['ε Sco',16.836,-34.29,2.3,CO],['μ Sco',16.865,-38.05,3.0,CB],['ζ Sco',16.910,-42.36,3.6,CO],['η Sco',17.203,-43.24,3.3,CW],['Sargas',17.622,-43.00,1.9,CW],['ι Sco',17.793,-40.13,3.0,CW],['κ Sco',17.708,-39.03,2.4,CB],['Shaula',17.560,-37.10,1.6,CB]],e:[[0,1],[1,2],[1,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,11],[11,12],[12,13]],f:'Antares, the scorpion\'s red heart, is a red supergiant about 700 times wider than the Sun. Its name means "rival of Mars" because of its red color.'},
+{id:'cru',n:'Crux',sub:'the Southern Cross',s:[['Acrux',12.443,-63.10,0.8,CB],['Mimosa',12.795,-59.69,1.3,CB],['Gacrux',12.519,-57.11,1.6,CR],['δ Cru',12.252,-58.75,2.8,CB],['ε Cru',12.356,-60.40,3.6,CO]],e:[[2,0],[1,3]],f:'Crux is the smallest constellation, and it is on the flags of Australia, New Zealand and Brazil. Its long arm points toward the south celestial pole.'},
+{id:'cas2',n:'Gemini',sub:'the Twins',s:[['Castor',7.577,31.89,1.6,CW],['Pollux',7.755,28.03,1.1,CO],['Alhena',6.629,16.40,1.9,CW],['Mebsuta',6.732,25.13,3.0,CY],['Wasat',7.335,21.98,3.5,CW],['Tejat',6.383,22.51,2.9,CR],['Mekbuda',7.069,20.57,3.8,CY]],e:[[0,3],[3,5],[1,4],[4,6],[6,2]],f:'Castor and Pollux are the heads of the twins. Pollux is an orange giant, and Castor is actually six stars orbiting together!'}];
+CON.forEach((c,i)=>c.lid='C'+i);
+function project(C,W,H,pad=60){const ra0=C.s.reduce((a,s)=>a+s[1],0)/C.s.length,de0=C.s.reduce((a,s)=>a+s[2],0)/C.s.length;
+ // handle RA wrap (Little Dipper)
+ const R=x=>x*Math.PI/180,a0=R(ra0*15),d0=R(de0);let ra0w=a0;const P=C.s.map(s=>{let a=R(s[1]*15),d=R(s[2]);let da=a-a0;while(da>Math.PI)da-=2*Math.PI;while(da<-Math.PI)da+=2*Math.PI;const cosc=Math.sin(d0)*Math.sin(d)+Math.cos(d0)*Math.cos(d)*Math.cos(da);
+  return[-(Math.cos(d)*Math.sin(da))/cosc,(Math.cos(d0)*Math.sin(d)-Math.sin(d0)*Math.cos(d)*Math.cos(da))/cosc]});
+ if(C.id=='umi'){const a=P.map(p=>p)}// gnomonic around centre is fine
+ const xs=P.map(p=>p[0]),ys=P.map(p=>p[1]),mx=Math.min(...xs),Mx=Math.max(...xs),my=Math.min(...ys),My=Math.max(...ys);const sc=Math.min((W-2*pad)/(Mx-mx||1),(H-2*pad)/(My-my||1));
+ return P.map(([x,y])=>[W/2+(x-(mx+Mx)/2)*sc,H/2-(y-(my+My)/2)*sc])}
+function starDot(g,x,y,mag,col,tw=1){const r=Math.max(2,6.5-mag*1.1);const gr=g.createRadialGradient(x,y,0,x,y,r*3);gr.addColorStop(0,col);gr.addColorStop(.3,col+'aa');gr.addColorStop(1,col+'00');g.fillStyle=gr;g.beginPath();g.arc(x,y,r*3*tw,0,7);g.fill();g.fillStyle='#fff';g.beginPath();g.arc(x,y,r*.6,0,7);g.fill()}
+function bgStars(g,W,H,seed=3,n=160){let s=seed;const r=()=>(s=(s*16807)%2147483647)/2147483647;for(let i=0;i<n;i++){g.fillStyle=`rgba(255,255,255,${.15+r()*.4})`;g.fillRect(r()*W,r()*H,1.4,1.4)}}
+let raf=0;
+function menu(){cancelAnimationFrame(raf);const ids=[...CON.map(c=>c.lid),'temp','moon','nav','quiz','timed'],tot=ids.length*3,got=ids.reduce((a,k)=>a+(SAVE.stars[k]||0),0);
+ app.innerHTML=`<div class="card" style="text-align:center"><canvas id="hero" width="600" height="120" style="max-width:100%"></canvas><h2 style="margin:4px">Star Gazer</h2><p style="color:var(--mut)">Join the dots to draw real constellations, read star colors like a thermometer, master the Moon\'s phases and navigate by the North Star.</p><div class="bar"><i style="width:${got/tot*100}%"></i></div><p class="stars">⭐ ${got} / ${tot}</p></div>
+ <div class="grid" style="margin-top:12px">
+ <div class="card tile" id="mL"><div class="em">📖</div><h3>Learn</h3><p>Stars, constellations, colors, the Moon, Polaris.</p></div>
+ <div class="card tile" id="mC"><div class="em">✨</div><h3>Connect the Stars</h3><p>${CON.length} real constellations with accurate star positions.</p></div>
+ <div class="card tile" id="mK"><div class="em">🌡️</div><h3>Star Colors</h3><p>Sort stars from coolest to hottest. ${starStr(SAVE.stars.temp||0)}</p></div>
+ <div class="card tile" id="mM"><div class="em">🌗</div><h3>Moon Phases</h3><p>Orbit the Moon and name each phase. ${starStr(SAVE.stars.moon||0)}</p></div>
+ <div class="card tile" id="mN"><div class="em">🧭</div><h3>North Star Navigator</h3><p>Find Polaris and your latitude. ${starStr(SAVE.stars.nav||0)}</p></div>
+ <div class="card tile" id="mQ"><div class="em">❓</div><h3>Quiz</h3><p>10 questions. ${starStr(SAVE.stars.quiz||0)}</p></div>
+ <div class="card tile" id="mT"><div class="em">⏱️</div><h3>Timed challenge</h3><p>Beat the 60 s clock. ${starStr(SAVE.stars.timed||0)}</p></div></div>`;
+ const h=$('#hero').getContext('2d');bgStars(h,600,120,5,90);const P=project(CON[0],600,120,14);CON[0].e.forEach(([a,b])=>{h.strokeStyle='#ffd34d88';h.lineWidth=2;h.beginPath();h.moveTo(...P[a]);h.lineTo(...P[b]);h.stroke()});CON[0].s.forEach((s,k)=>starDot(h,P[k][0],P[k][1],s[3],s[4]));
+ const on=(id,f)=>$(id).onclick=()=>{SFX.click();f()};on('#mL',()=>learn(0));on('#mC',levels);on('#mK',tempGame);on('#mM',moonGame);on('#mN',navGame);on('#mQ',()=>runQuiz('quiz','Star Quiz',QS,0,menu));on('#mT',()=>runQuiz('timed','Timed Challenge',QS,60,menu))}
+const TOP=[
+{em:'⭐',n:'What is a star?',d:'A star is a giant ball of hot gas, mostly hydrogen and helium, that makes its own light by <b>nuclear fusion</b> in its core. Our Sun is a star, the closest one to Earth.',f:'The next closest star, Proxima Centauri, is about 4.2 light-years away. Its light takes over 4 years to reach us!',x:'Stars twinkle because their light is jiggled by moving air in Earth\'s atmosphere. Planets usually shine more steadily.'},
+{em:'✨',n:'Constellations',d:'A <b>constellation</b> is a pattern of stars that people named long ago, like Orion the Hunter. Astronomers today divide the whole sky into <b>88</b> official constellations.',f:'A smaller pattern inside a constellation is called an <b>asterism</b>. The Big Dipper is an asterism in Ursa Major.',x:'Stars in a constellation only look close together. They are often at very different distances from Earth.'},
+{em:'🌈',n:'Star colors and temperature',d:'A star\'s color tells you its surface temperature, just like metal glowing in a fire. <b>Red</b> stars are the coolest, then <b>orange</b>, <b>yellow</b>, <b>white</b>, and <b>blue</b> stars are the hottest.',f:'Red stars ≈ 3,000 °C+, our yellow Sun ≈ 5,500 °C (5,800 K), blue stars can be over 20,000 °C!',x:'Betelgeuse (red) and Rigel (blue-white) in Orion show the difference clearly on a dark night.'},
+{em:'🌗',n:'Moon phases',d:'The Moon makes no light of its own. It reflects sunlight. As it orbits Earth, we see different amounts of its sunlit half. These are the <b>phases</b>.',f:'New Moon → waxing crescent → first quarter → waxing gibbous → full Moon → waning gibbous → third quarter → waning crescent. One cycle takes about <b>29.5 days</b>.',x:'"Waxing" means the lit part is growing; "waning" means shrinking. From the Northern Hemisphere a waxing Moon is lit on the right side.'},
+{em:'🧭',n:'The North Star',d:'<b>Polaris</b>, the North Star, sits almost directly above Earth\'s North Pole. As Earth spins, all the other stars seem to circle around it, but Polaris stays put.',f:'Face Polaris and you are facing north. Its height above the horizon (in degrees) is about the same as your <b>latitude</b>!',x:'Polaris is not the brightest star in the sky (that is Sirius), but it is the most useful for navigation. It cannot be seen from the Southern Hemisphere.'},
+{em:'🌍',n:'Why the sky moves',d:'The stars seem to rise in the east and set in the west each night because <b>Earth rotates</b> once a day. Different constellations are visible in different seasons because Earth orbits the Sun.',f:'Orion is a winter constellation in the Northern Hemisphere; Scorpius and Cygnus shine in summer.',x:'Sailors used the stars to navigate across oceans for thousands of years.'}];
+function learn(i){cancelAnimationFrame(raf);const m=TOP[i];
+ app.innerHTML=`<div class="card"><div class="row"><b style="flex:1">Topic ${i+1} of ${TOP.length}</b><button class="btn alt" id="bk">Menu</button></div><div style="text-align:center"><canvas id="lc" width="440" height="200" style="max-width:100%;background:#050820;border-radius:14px"></canvas></div>
+ <h2>${m.em} ${m.n}</h2><p>${m.d}</p><div class="fact">💡 ${m.f}</div><p style="color:var(--mut)">${m.x}</p>
+ <div class="row"><button class="btn alt" id="pv" ${i?'':'disabled'}>← Prev</button><span style="flex:1"></span><button class="btn" id="nx">${i<TOP.length-1?'Next →':'Done ✓'}</button></div></div>`;
+ $('#bk').onclick=menu;$('#pv').onclick=()=>{SFX.click();learn(i-1)};$('#nx').onclick=()=>{SFX.click();if(i<TOP.length-1)learn(i+1);else{SFX.win();confetti();menu()}};
+ const c=$('#lc'),g=c.getContext('2d'),t0=performance.now();(function f(now){if(!c.isConnected)return;const t=(now-t0)/1000;g.clearRect(0,0,440,200);bgStars(g,440,200,9,60);
+  if(i==0){const r=50+Math.sin(t*2)*3,gr=g.createRadialGradient(220,100,5,220,100,r*1.6);gr.addColorStop(0,'#fff8d0');gr.addColorStop(.5,'#ffb340');gr.addColorStop(1,'#ff6a0000');g.fillStyle=gr;g.beginPath();g.arc(220,100,r*1.6,0,7);g.fill();txt(g,'H + H → He + energy',220,190,'#ffd34d')}
+  if(i==1||i==5){const C=CON[3],P=project(C,440,200,25),k=i==5?t*.2:0;g.save();g.translate(220,100);g.rotate(k);g.translate(-220,-100);C.e.forEach(([a,b])=>{g.strokeStyle='#ffd34d66';g.lineWidth=2;g.beginPath();g.moveTo(...P[a]);g.lineTo(...P[b]);g.stroke()});C.s.forEach((s,j)=>starDot(g,P[j][0],P[j][1],s[3],s[4]));g.restore();txt(g,'Orion',220,195)}
+  if(i==2){[[CR,'3,500 K'],[CO,'4,500 K'],[CY,'5,800 K'],[CW,'9,500 K'],[CB,'20,000 K']].forEach(([c,s],k)=>{starDot(g,60+k*80,90,-.5,c,1+Math.sin(t*3+k)*.06);txt(g,s,60+k*80,160,c,12)});txt(g,'cooler ← → hotter',220,190)}
+  if(i==3){const a=t*.6;moonPic(g,220,100,60,a%(2*Math.PI));txt(g,phaseName(a%(2*Math.PI)),220,190,'#ffd34d')}
+  if(i==4){const C=CON[0],P=project(C,240,140,10);g.save();g.translate(220,100);g.rotate(-t*.3);g.translate(-120,-150);C.s.forEach((s,j)=>starDot(g,P[j][0],P[j][1],s[3],s[4]));g.restore();starDot(g,220,100,1,CY);txt(g,'Polaris',220,128,'#ffd34d')}
+  raf=requestAnimationFrame(f)})(t0)}
+// moon: angle a = elongation 0=new, PI=full
+function phaseName(a){const p=((a/(2*Math.PI))%1+1)%1,N=['New Moon','Waxing crescent','First quarter','Waxing gibbous','Full Moon','Waning gibbous','Third quarter','Waning crescent'];return N[Math.round(p*8)%8]}
+function moonPic(g,x,y,r,a){g.fillStyle='#1c1f2e';g.beginPath();g.arc(x,y,r,0,7);g.fill();const p=((a/(2*Math.PI))%1+1)%1,k=Math.cos(p*2*Math.PI);// k:1 new, -1 full
+ g.fillStyle='#f2efe0';g.beginPath();if(p<.5){g.arc(x,y,r,-Math.PI/2,Math.PI/2,false);g.ellipse(x,y,Math.abs(k)*r,r,0,Math.PI/2,-Math.PI/2,k>0)}else{g.arc(x,y,r,Math.PI/2,-Math.PI/2,false);g.ellipse(x,y,Math.abs(k)*r,r,0,-Math.PI/2,Math.PI/2,k>0)}g.fill();
+ g.fillStyle='#0002';[[-.3,-.2,.18],[.25,.3,.14],[.1,-.45,.1]].forEach(([dx,dy,rr])=>{g.beginPath();g.arc(x+dx*r,y+dy*r,rr*r,0,7);g.fill()})}
+// ---- connect ----
+function levels(){cancelAnimationFrame(raf);app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">✨ Connect the Stars</h2><button class="btn alt" id="bk">Menu</button></div><p style="color:var(--mut)">Drag from star to star to draw each line. Few mistakes and no hints = ★★★. Star positions are from real sky coordinates.</p><div class="grid" id="lg"></div></div>`;$('#bk').onclick=menu;
+ CON.forEach((C,i)=>{const lock=i>0&&!SAVE.stars[CON[i-1].lid];const d=document.createElement('div');d.className='card tile';d.style.opacity=lock?.45:1;d.innerHTML=`<canvas width="200" height="110" style="width:100%;background:#050820;border-radius:10px"></canvas><h3>${i+1}. ${lock?'🔒 ???':C.n}</h3><p>${lock?'Finish the previous one':C.sub}</p><div class="stars">${starStr(SAVE.stars[C.lid]||0)}</div>`;
+  const g=d.querySelector('canvas').getContext('2d');const P=project(C,200,110,14);if(SAVE.stars[C.lid])C.e.forEach(([a,b])=>{g.strokeStyle='#ffd34d88';g.lineWidth=1.5;g.beginPath();g.moveTo(...P[a]);g.lineTo(...P[b]);g.stroke()});C.s.forEach((s,k)=>starDot(g,P[k][0],P[k][1],s[3]+1,s[4]));
+  d.onclick=()=>{if(lock){SFX.bad();flash(d,0);return}SFX.click();connect(i)};$('#lg').appendChild(d)})}
+function connect(i){cancelAnimationFrame(raf);const C=CON[i],W=900,H=560;const P=project(C,W,H,80);
+ // decoy background stars (deterministic)
+ let s=i*97+13;const r=()=>(s=(s*16807)%2147483647)/2147483647;const D=[];for(let k=0;k<C.s.length+4;k++){const x=40+r()*(W-80),y=40+r()*(H-80);if(P.every(p=>Math.hypot(p[0]-x,p[1]-y)>70)&&D.every(p=>Math.hypot(p[0]-x,p[1]-y)>60))D.push([x,y,3.5+r()*1.2])}
+ const ALL=[...P.map((p,k)=>({x:p[0],y:p[1],m:C.s[k][3],c:C.s[k][4],k})),...D.map(([x,y,m])=>({x,y,m,c:'#cfd6ff',k:-1}))];
+ const key=(a,b)=>a<b?a+'-'+b:b+'-'+a,need=new Set(C.e.map(([a,b])=>key(a,b))),got=new Set();let miss=0,hints=0,drag=null,bad=null,done=false,hl=null;
+ app.innerHTML=`<div class="card"><div class="row"><b style="flex:1">${i+1}. ${C.n} <small style="color:var(--mut)">${C.sub}</small></b><span class="pill">Lines <span id="ln">0</span>/${need.size}</span><span class="pill">❌ <span id="ms">0</span></span><button class="btn alt" id="bk">Back</button></div>
+ <canvas id="sc" width="${W}" height="${H}" style="width:100%;background:radial-gradient(ellipse at 50% 120%,#1a2260,#050820 70%);border-radius:14px;touch-action:none"></canvas>
+ <div class="row" style="margin-top:8px"><button class="btn alt" id="hn">💡 Hint</button><button class="btn alt" id="nm">🏷️ Star names</button><span style="flex:1"></span><span style="color:var(--mut);font-size:14px">Tip: not every dot belongs to the pattern!</span></div><div class="fb" id="fb"></div></div>`;
+ $('#bk').onclick=levels;let names=false;$('#nm').onclick=()=>{names=!names;SFX.click()};
+ $('#hn').onclick=()=>{const e=C.e.find(([a,b])=>!got.has(key(a,b)));if(e){hints++;hl={e,t:performance.now()};SFX.click()}};
+ const c=$('#sc'),g=c.getContext('2d');const near=p=>{let best=-1,bd=40;ALL.forEach((s,j)=>{const d=Math.hypot(s.x-p.x,s.y-p.y);if(d<bd){bd=d;best=j}});return best};
+ const tryLine=(a,b)=>{if(a==b||a<0||b<0)return;const A=ALL[a],B=ALL[b];if(A.k>=0&&B.k>=0&&need.has(key(A.k,B.k))){if(got.has(key(A.k,B.k)))return;got.add(key(A.k,B.k));SFX.good();$('#ln').textContent=got.size;if(got.size==need.size)finish()}else{miss++;$('#ms').textContent=miss;SFX.bad();bad={a:A,b:B,t:performance.now()}}};
+ window.__cn={P,C,line:(a,b)=>tryLine(a,b)};
+ c.onpointerdown=e=>{if(done)return;const p=cpos(c,e),j=near(p);if(j>=0){c.setPointerCapture(e.pointerId);drag={a:j,p};SFX.pick()}};c.onpointermove=e=>{if(drag)drag.p=cpos(c,e)};
+ c.onpointerup=e=>{if(!drag)return;const j=near(cpos(c,e));tryLine(drag.a,j);drag=null};c.onpointercancel=()=>drag=null;
+ function finish(){done=true;const st=Math.max(1,3-(miss>2?1:0)-(miss>5?1:0)-(hints>1?1:0)-(hints>3?1:0));award(C.lid,st);SFX.win();confetti();
+  $('#fb').innerHTML=`<div class="pop">🌟 You drew ${C.n}! <span class="stars">${starStr(st)}</span></div><div class="fact">💡 ${C.f}</div><p style="color:var(--mut);font-size:14px">Stars: ${C.s.map(s=>`<span style="color:${s[4]}">●</span> ${s[0]}`).join(' · ')}</p><div class="row">${i<CON.length-1?'<button class="btn" id="nx">Next constellation →</button>':''}<button class="btn alt" id="ag">Play again</button></div>`;if($('#nx'))$('#nx').onclick=()=>connect(i+1);$('#ag').onclick=()=>connect(i)}
+ const t0=performance.now();(function f(now){if(!c.isConnected)return;const t=(now-t0)/1000;g.clearRect(0,0,W,H);bgStars(g,W,H,i+2,220);
+  if(done){g.globalAlpha=Math.min(.25,(t%1000)*.1);g.fillStyle='#ffd34d';txt(g,C.n,W/2,H-24,'#ffd34d',34);g.globalAlpha=1}
+  g.lineWidth=3;g.strokeStyle=done?'#ffd34d':'#7fd0ff';g.shadowColor=g.strokeStyle;g.shadowBlur=done?12:6;got.forEach(k=>{const[a,b]=k.split('-').map(Number);g.beginPath();g.moveTo(...P[a]);g.lineTo(...P[b]);g.stroke()});g.shadowBlur=0;
+  if(bad&&now-bad.t<600){g.strokeStyle='#ff5c7a';g.beginPath();g.moveTo(bad.a.x,bad.a.y);g.lineTo(bad.b.x,bad.b.y);g.stroke()}
+  if(hl&&now-hl.t<2500){const[a,b]=hl.e;g.strokeStyle=`rgba(255,211,77,${.5+.5*Math.sin(now/120)})`;g.setLineDash([8,8]);g.beginPath();g.moveTo(...P[a]);g.lineTo(...P[b]);g.stroke();g.setLineDash([])}
+  if(drag){g.strokeStyle='#ffffffaa';g.lineWidth=2;g.beginPath();g.moveTo(ALL[drag.a].x,ALL[drag.a].y);g.lineTo(drag.p.x,drag.p.y);g.stroke()}
+  ALL.forEach((s,j)=>{starDot(g,s.x,s.y,s.m,s.c,1+.08*Math.sin(t*2+j));if((names||done)&&s.k>=0)txt(g,C.s[s.k][0],s.x,s.y-16,'#cfd6ff',13)});
+  raf=requestAnimationFrame(f)})(t0)}
+// ---- temperature ----
+const TS=[['Betelgeuse','red supergiant in Orion',3600,CR],['Antares','red supergiant in Scorpius',3400,CR],['Arcturus','orange giant in Boötes',4300,CO],['Aldebaran','orange giant, the bull\'s eye in Taurus',3900,CO],['The Sun','our yellow star',5800,'#ffe680'],['Capella','yellow giant pair in Auriga',4900,CY],['Sirius','brightest star in the night sky',9900,CW],['Vega','white star in Lyra',9600,CW],['Rigel','blue-white supergiant in Orion',12100,CB],['Spica','hot blue star in Virgo',22000,'#8fb4ff'],['Proxima Centauri','red dwarf, the closest star to the Sun',3000,'#ff6a50']];
+function tempGame(){cancelAnimationFrame(raf);let round=0,score=0;
+ function rnd(){if(round>=4){const st=score>=4?3:score>=3?2:score>=2?1:0;award('temp',st);if(st){SFX.win();confetti()}app.innerHTML=`<div class="card" style="text-align:center"><h2>Star Colors — done!</h2><div class="stars" style="font-size:48px">${starStr(st)}</div><p>You sorted <b>${score}/4</b> sets perfectly.</p><div class="fact">💡 Red → orange → yellow → white → blue: coolest to hottest. Temperatures are in kelvin (K); 0 °C ≈ 273 K.</div><div class="row" style="justify-content:center"><button class="btn" id="ag">Play again</button><button class="btn alt" id="bk">Menu</button></div></div>`;$('#ag').onclick=tempGame;$('#bk').onclick=menu;return}
+  let set;do{set=shuffle(TS).slice(0,4)}while(new Set(set.map(s=>s[2])).size<4||Math.min(...set.map((s,_,A)=>Math.min(...A.filter(x=>x!=s).map(x=>Math.abs(x[2]-s[2])))))<300);
+  const pick=[];app.innerHTML=`<div class="card"><div class="row"><b style="flex:1">🌡️ Round ${round+1}/4</b><span class="pill">✅ ${score}</span><button class="btn alt" id="bk">Menu</button></div><p>Tap the stars in order from <b>COOLEST</b> to <b>HOTTEST</b>, using their colors.</p><div class="grid" id="sg"></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=menu;
+  set.forEach(s=>{const d=document.createElement('div');d.className='card tile';d.style.textAlign='center';d.innerHTML=`<canvas width="120" height="90"></canvas><h3>${s[0]}</h3><p>${s[1]}</p><div class="stars" style="font-size:24px"></div>`;const g=d.querySelector('canvas').getContext('2d');starDot(g,60,45,-2.5,s[3]);
+   d.onclick=()=>{if(pick.includes(s))return;pick.push(s);SFX.pick();d.querySelector('.stars').textContent=pick.length;d.style.outline='3px solid var(--acc)';if(pick.length==4){const ok=pick.every((p,j)=>!j||p[2]>pick[j-1][2]);if(ok){score++;SFX.good()}else SFX.bad();
+    $('#fb').innerHTML=(ok?'✅ Perfect! ':'❌ Not quite. Correct order: ')+`<div class="fact">${[...set].sort((a,b)=>a[2]-b[2]).map(s=>`<span style="color:${s[3]}">●</span> ${s[0]} ≈ ${s[2].toLocaleString()} K`).join(' → ')}</div>`;setTimeout(()=>{if(!$('#sg'))return;round++;rnd()},3000)}};$('#sg').appendChild(d)})}
+ rnd()}
+// ---- moon ----
+function moonGame(){cancelAnimationFrame(raf);let a=Math.PI/2,round=0,score=0,targetN;const N=['New Moon','Waxing crescent','First quarter','Waxing gibbous','Full Moon','Waning gibbous','Third quarter','Waning crescent'];const order=shuffle([0,1,2,3,4,5,6,7]).slice(0,6);
+ app.innerHTML=`<div class="card"><div class="row"><b style="flex:1">🌗 Moon Phases</b><span class="pill">Round <span id="rd">1</span>/6</span><span class="pill">✅ <span id="sc2">0</span></span><button class="btn alt" id="bk">Menu</button></div>
+ <p id="ask"></p><canvas id="mc" width="900" height="420" style="width:100%;background:#050820;border-radius:14px;touch-action:none"></canvas>
+ <div class="row" style="margin-top:8px"><span class="pill" id="pn"></span><span style="flex:1"></span><button class="btn" id="go">✓ Lock in</button></div><div class="fb" id="fb"></div>
+ <div class="fact">💡 Drag the Moon around its orbit. Sunlight comes from the left. The picture on the right shows what someone on Earth (Northern Hemisphere) sees.</div></div>`;
+ $('#bk').onclick=menu;const c=$('#mc'),g=c.getContext('2d'),E=[300,210],R=150;let drag=false;
+ const ask=()=>{targetN=order[round];$('#ask').innerHTML=`Move the Moon to show: <b style="color:#ffd34d;font-size:20px">${N[targetN]}</b>`;$('#rd').textContent=round+1};ask();
+ c.onpointerdown=e=>{drag=true;c.setPointerCapture(e.pointerId);mv(e)};c.onpointermove=e=>{if(drag)mv(e)};c.onpointerup=c.onpointercancel=()=>drag=false;
+ // Sun to the LEFT: new moon when moon is between Earth and Sun (left side): elongation = angle from left direction.
+ function mv(e){const p=cpos(c,e);const ang=Math.atan2(p.y-E[1],p.x-E[0]);a=((Math.PI-ang)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);// left = 0
+  // orbit counter-clockwise as seen from north: moon at bottom (south on screen) after new? use: elongation increases counter-clockwise on screen
+  a=((ang-Math.PI)*-1+4*Math.PI)%(2*Math.PI)}
+ window.__mn={set(k){a=k*Math.PI/4}};
+ $('#go').onclick=()=>{const got=Math.round(a/(Math.PI/4))%8;const ok=got==targetN;if(ok){score++;SFX.good();confetti(innerWidth/2,innerHeight/2,25)}else SFX.bad();$('#sc2').textContent=score;
+  $('#fb').innerHTML=ok?`✅ Yes! That is the ${N[targetN]}.`:`❌ That is the ${N[got]}. Look for ${N[targetN]}.`;round++;if(round>=6){const st=score>=6?3:score>=5?2:score>=3?1:0;award('moon',st);if(st){SFX.win();confetti()}$('#fb').innerHTML+=`<div class="pop">Finished! <span class="stars">${starStr(st)}</span> ${score}/6</div><div class="fact">💡 A full cycle of phases takes about 29.5 days. The Moon always keeps the same face toward Earth.</div><div class="row"><button class="btn" id="ag">Play again</button></div>`;$('#ag').onclick=moonGame;$('#go').disabled=true}else setTimeout(()=>{if(!$('#mc'))return;ask();$('#fb').innerHTML=''},1500)};
+ (function f(){if(!c.isConnected)return;g.clearRect(0,0,900,420);bgStars(g,900,420,4,120);
+  for(let k=0;k<7;k++){g.strokeStyle='#ffd34d44';g.lineWidth=2;g.beginPath();g.moveTo(0,40+k*55);g.lineTo(60,40+k*55);g.stroke()}txt(g,'☀️ sunlight',60,24,'#ffd34d',14);
+  g.strokeStyle='#ffffff22';g.setLineDash([4,6]);g.beginPath();g.arc(E[0],E[1],R,0,7);g.stroke();g.setLineDash([]);
+  const eg=g.createLinearGradient(E[0]-30,0,E[0]+30,0);eg.addColorStop(0,'#5fb0ff');eg.addColorStop(.5,'#2a6bd1');eg.addColorStop(1,'#0a1a40');g.fillStyle=eg;g.beginPath();g.arc(E[0],E[1],30,0,7);g.fill();txt(g,'Earth',E[0],E[1]+48,'#9aa6d8',12);
+  const ang=Math.PI-a;const mx=E[0]+Math.cos(ang)*R,my=E[1]-Math.sin(-ang)*R*-1;const MX=E[0]+Math.cos(Math.PI+a)*R,MY=E[1]-Math.sin(Math.PI+a)*R;
+  g.fillStyle='#222634';g.beginPath();g.arc(MX,MY,18,0,7);g.fill();g.fillStyle='#f2efe0';g.beginPath();g.arc(MX,MY,18,Math.PI/2,-Math.PI/2);g.fill();
+  g.strokeStyle='#fff3';g.beginPath();g.moveTo(E[0],E[1]);g.lineTo(MX,MY);g.stroke();
+  g.fillStyle='#ffffff0d';g.fillRect(600,30,280,360);txt(g,'View from Earth',740,60,'#cfd6ff',16);moonPic(g,740,200,100,a);$('#pn').textContent=phaseName(a);
+  raf=requestAnimationFrame(f)})()}
+// ---- navigation ----
+function navGame(){cancelAnimationFrame(raf);let step=0,score=0,lat=0;const W=900,H=480;const LATS=shuffle([20,35,50,65]).slice(0,3);
+ app.innerHTML=`<div class="card"><div class="row"><b style="flex:1">🧭 North Star Navigator</b><span class="pill">✅ <span id="sc2">0</span>/5</span><button class="btn alt" id="bk">Menu</button></div><p id="ask"></p>
+ <canvas id="nc" width="${W}" height="${H}" style="width:100%;background:linear-gradient(#050820 70%,#122040);border-radius:14px;touch-action:none"></canvas><div id="os"></div><div class="fb" id="fb"></div></div>`;
+ $('#bk').onclick=menu;const c=$('#nc'),g=c.getContext('2d'),rot=Math.random()*6;
+ // sky: Big Dipper + Little Dipper + Cassiopeia projected around pole
+ const pole=[450,180];const sky=[];[CON[0],CON[1],CON[2]].forEach((C,ci)=>C.s.forEach((s,k)=>{const r=(90-s[2])*7,th=s[1]/24*2*Math.PI;sky.push({C:ci,k,r,th,m:s[3],c:s[4],n:s[0]})}));
+ const pos=s=>[pole[0]-Math.sin(s.th+rot)*s.r,pole[1]-Math.cos(s.th+rot)*s.r*-1];
+ const ask=()=>{$('#os').innerHTML='';if(step==0)$('#ask').innerHTML='Step 1: Use the Big Dipper\'s pointer stars to find <b>Polaris</b>. Tap it!';
+  if(step==1){$('#ask').innerHTML='Step 2: You are facing Polaris. Which direction are you facing?';['North','South','East','West'].forEach(o=>addOpt(o,o=='North','Polaris is above the North Pole, so facing it means facing north.'))}
+  if(step>=2){lat=LATS[step-2];$('#ask').innerHTML=`Step ${step+1}: Polaris is <b>${lat}°</b> above the horizon. What is your latitude?`;shuffle([lat,90-lat,lat+20>90?lat-15:lat+20,0].filter((v,j,A)=>A.indexOf(v)==j)).forEach(o=>addOpt(o+'° N',o==lat,`Polaris\'s altitude ≈ your latitude. At the North Pole (90° N) it is straight overhead; at the equator (0°) it sits on the horizon.`))}};
+ function addOpt(o,ok,fact){const b=document.createElement('button');b.className='btn opt';b.textContent=o;b.onclick=()=>{if($('#os').dataset.d==step)return;$('#os').dataset.d=step;next(ok,fact,b)};$('#os').appendChild(b)}
+ function next(ok,fact,b){if(ok)score++;ok?SFX.good():SFX.bad();if(b){b.classList.add(ok?'ok':'no');flash(b,ok)}$('#sc2').textContent=score;$('#fb').innerHTML=(ok?'✅ ':'❌ ')+`<span class="fact" style="display:block">💡 ${fact}</span>`;step++;
+  if(step>=5){const st=score>=5?3:score>=4?2:score>=2?1:0;award('nav',st);if(st){SFX.win();confetti()}setTimeout(()=>{if(!$('#nc'))return;$('#fb').innerHTML=`<div class="pop">Navigator score ${score}/5 <span class="stars">${starStr(st)}</span></div><div class="row"><button class="btn" id="ag">Play again</button></div>`;$('#ag').onclick=navGame;$('#os').innerHTML=''},1800)}else setTimeout(()=>{if(!$('#nc'))return;$('#fb').innerHTML='';ask()},2000)}
+ window.__nv={tapPolaris(){next(true,'Found it!')}};
+ c.onpointerdown=e=>{if(step!=0)return;const p=cpos(c,e);let best=null,bd=30;sky.forEach(s=>{const[x,y]=pos(s),d=Math.hypot(x-p.x,y-p.y);if(d<bd){bd=d;best=s}});if(!best)return;const ok=best.n=='Polaris';next(ok,ok?'That is Polaris! Merak → Dubhe points right to it, about 5 times their distance.':`That was ${best.n}. Polaris is at the end of the Little Dipper\'s handle.`)};
+ ask();const t0=performance.now();(function f(now){if(!c.isConnected)return;const t=(now-t0)/1000;g.clearRect(0,0,W,H);bgStars(g,W,H,8,200);
+  if(step>0){const C=CON[0];const d=sky.find(s=>s.C==0&&s.k==0),m=sky.find(s=>s.C==0&&s.k==1);const[dx,dy]=pos(d),[mx,my]=pos(m);g.strokeStyle='#ffd34d88';g.setLineDash([6,6]);g.lineWidth=2;g.beginPath();g.moveTo(mx,my);g.lineTo(pole[0],pole[1]);g.stroke();g.setLineDash([])}
+  [[0],[1],[2]].forEach(([ci])=>CON[ci].e.forEach(([a,b])=>{const A=sky.find(s=>s.C==ci&&s.k==a),B=sky.find(s=>s.C==ci&&s.k==b);g.strokeStyle=ci==1&&step==0?'#ffffff10':'#7fd0ff44';g.lineWidth=1.5;g.beginPath();g.moveTo(...pos(A));g.lineTo(...pos(B));g.stroke()}));
+  sky.forEach(s=>{const[x,y]=pos(s);starDot(g,x,y,s.m,s.c,1+.06*Math.sin(t*2+s.r));if(step>0&&s.n=='Polaris')txt(g,'Polaris ★ NORTH',x,y-16,'#ffd34d',15)});
+  txt(g,'Big Dipper',pos(sky[3])[0],pos(sky[3])[1]+30,'#9aa6d8',13);g.fillStyle='#0b1a10';g.beginPath();g.moveTo(0,H);for(let x=0;x<=W;x+=30)g.lineTo(x,H-30-Math.sin(x/70)*12-Math.sin(x/23)*5);g.lineTo(W,H);g.fill();
+  raf=requestAnimationFrame(f)})(t0)}
+const QS=[
+{q:'What is a star?',opts:['A huge ball of hot glowing gas','A rock that reflects light','A hole in the sky','A frozen planet'],a:'A huge ball of hot glowing gas'},
+{q:'Which star is closest to Earth?',opts:['The Sun','Polaris','Sirius','Betelgeuse'],a:'The Sun'},
+{q:'Which color star is the HOTTEST?',opts:['Blue','Red','Orange','Yellow'],a:'Blue'},
+{q:'Which color star is the COOLEST?',opts:['Red','Blue','White','Yellow'],a:'Red'},
+{q:'What color is our Sun classified as?',opts:['Yellow','Blue','Red','Green'],a:'Yellow',fact:'Its surface is about 5,800 K (about 5,500 °C).'},
+{q:'Betelgeuse in Orion looks…',opts:['Red','Blue','Green','Purple'],a:'Red'},
+{q:'How many official constellations are there?',opts:['88','12','7','1,000'],a:'88'},
+{q:'The Big Dipper is part of which constellation?',opts:['Ursa Major','Orion','Cassiopeia','Leo'],a:'Ursa Major'},
+{q:'Which constellation has three stars in a row as a "belt"?',opts:['Orion','Cassiopeia','Lyra','Crux'],a:'Orion'},
+{q:'Cassiopeia is shaped like a…',opts:['W','Cross','Triangle','Circle'],a:'W'},
+{q:'Polaris is also called the…',opts:['North Star','Morning Star','Dog Star','Evening Star'],a:'North Star'},
+{q:'The two "pointer stars" of the Big Dipper point to…',opts:['Polaris','The Moon','Orion','Mars'],a:'Polaris'},
+{q:'Polaris is 40° above your horizon. Your latitude is about…',opts:['40° N','50° N','0°','90° N'],a:'40° N'},
+{q:'Is Polaris the brightest star in the night sky?',opts:['No, Sirius is brighter','Yes, by far','It is the faintest','It changes every night'],a:'No, Sirius is brighter'},
+{q:'Where does the Moon\'s light come from?',opts:['Reflected sunlight','It makes its own light','Earth\'s city lights','Starlight only'],a:'Reflected sunlight'},
+{q:'About how long is a full cycle of Moon phases?',opts:['29.5 days','7 days','365 days','24 hours'],a:'29.5 days'},
+{q:'Which phase comes right after the New Moon?',opts:['Waxing crescent','Full Moon','Waning crescent','Third quarter'],a:'Waxing crescent'},
+{q:'"Waxing" means the lit part of the Moon is…',opts:['Growing','Shrinking','Turning red','Disappearing forever'],a:'Growing'},
+{q:'Which constellation appears on Australia\'s flag?',opts:['The Southern Cross (Crux)','Orion','The Big Dipper','Leo'],a:'The Southern Cross (Crux)'},
+{q:'Why do stars seem to move across the sky each night?',opts:['Earth rotates','The stars orbit Earth','Clouds push them','The Moon pulls them'],a:'Earth rotates'},
+{q:'Antares, the heart of Scorpius, is a…',opts:['Red supergiant','Blue dwarf','Planet','Comet'],a:'Red supergiant'},
+{q:'Why do stars twinkle?',opts:['Earth\'s moving air bends their light','They switch on and off','They spin fast','They are very cold'],a:'Earth\'s moving air bends their light'}];
+menu();
+</script></body></html>

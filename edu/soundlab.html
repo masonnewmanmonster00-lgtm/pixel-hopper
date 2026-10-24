@@ -1,0 +1,245 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>Sound Lab</title>
+<style>
+:root{--bg:#0f1530;--card:#1b2350;--ink:#f4f6ff;--mut:#9aa6d8;--acc:#ffd34d;--good:#3ddc84;--bad:#ff5c7a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:"Trebuchet MS",system-ui,sans-serif;background:radial-gradient(circle at 20% 0%,#2a3480,var(--bg) 60%);color:var(--ink);min-height:100vh;user-select:none;-webkit-user-select:none;overflow-x:hidden}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0008;position:sticky;top:0;z-index:5;backdrop-filter:blur(4px)}
+header a{color:var(--ink);text-decoration:none;background:#fff1;padding:6px 12px;border-radius:20px;font-weight:bold}
+header h1{font-size:20px;margin:0;flex:1;color:var(--acc);text-shadow:0 2px 0 #0006}
+.pill{background:#fff1;padding:5px 10px;border-radius:14px;font-size:14px}
+main{max-width:980px;margin:0 auto;padding:14px}
+.btn{font:inherit;font-weight:bold;border:0;border-radius:14px;padding:10px 16px;background:var(--acc);color:#111;cursor:pointer;box-shadow:0 4px 0 #0007;transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #0007}.btn.alt{background:#2c3770;color:var(--ink)}.btn.sel{outline:3px solid #fff}
+.btn:disabled{opacity:.4}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border-radius:18px;padding:14px;box-shadow:0 6px 18px #0005;border:2px solid #ffffff10}
+.tile{cursor:pointer;transition:transform .15s}.tile:hover{transform:translateY(-4px) rotate(-1deg)}
+.tile .em{font-size:40px}.tile h3{margin:6px 0}.tile p{margin:0;color:var(--mut);font-size:14px}
+.stars{color:#ffd34d;letter-spacing:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fb{min-height:28px;font-weight:bold;font-size:18px;margin:8px 0}
+.opt{display:block;width:100%;margin:6px 0;text-align:left;background:#2c3770;color:var(--ink)}
+.opt.ok{background:var(--good);color:#111}.opt.no{background:var(--bad)}
+.pop{animation:pop .35s}@keyframes pop{50%{transform:scale(1.12)}}
+.shake{animation:shk .35s}@keyframes shk{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:9}
+.bar{height:10px;background:#fff2;border-radius:6px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--acc);transition:width .3s}
+.fact{background:#ffd34d22;border-left:4px solid #ffd34d;padding:8px 12px;border-radius:8px;margin:8px 0}
+svg text{font-family:inherit}
+</style></head><body>
+<header><a href="./index.html">← Learning Lab</a><h1>Sound Lab</h1><span class="pill" id="starTotal">⭐ 0</span><button class="btn alt" id="snd" style="padding:6px 10px">🔊</button></header>
+<main id="app"></main><canvas id="fx"></canvas>
+<script>
+// ---- shared helpers ----
+const $=s=>document.querySelector(s),app=$('#app');
+const SAVEKEY='soundlab_v1';let SAVE=JSON.parse(localStorage.getItem(SAVEKEY)||'{}');SAVE.stars=SAVE.stars||{};SAVE.best=SAVE.best||{};
+function save(){localStorage.setItem(SAVEKEY,JSON.stringify(SAVE));$('#starTotal').textContent='⭐ '+Object.values(SAVE.stars).reduce((a,b)=>a+b,0)}
+let AC=null,muted=!!SAVE.muted;$('#snd').textContent=muted?'🔇':'🔊';
+$('#snd').onclick=()=>{muted=!muted;SAVE.muted=muted;save();$('#snd').textContent=muted?'🔇':'🔊'};
+function tone(f,d=.12,type='sine',v=.15,slide=0,delay=0){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.02)}catch(e){}}
+function noise(d=.4,v=.2,lp=800){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const n=AC.sampleRate*d,b=AC.createBuffer(1,n,AC.sampleRate),c=b.getChannelData(0);for(let i=0;i<n;i++)c[i]=(Math.random()*2-1)*(1-i/n);const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();f.type='lowpass';f.frequency.value=lp;g.gain.value=v;s.buffer=b;s.connect(f);f.connect(g);g.connect(AC.destination);s.start()}catch(e){}}
+const SFX={click:()=>tone(660,.05,'square',.06),good:()=>{tone(523,.1,'triangle');tone(784,.15,'triangle',.15,0,.08)},bad:()=>tone(200,.25,'sawtooth',.08,-80),
+win:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.15,0,i*.1)),pick:()=>tone(440,.06,'sine',.1,200),drop:()=>tone(330,.08,'sine',.12,-100)};
+// confetti
+const cv=$('#fx'),cx=cv.getContext('2d');let fxp=[];function rs(){cv.width=innerWidth;cv.height=innerHeight}rs();addEventListener('resize',rs);
+function confetti(x=innerWidth/2,y=innerHeight/3,n=60){for(let i=0;i<n;i++)fxp.push({x,y,vx:(Math.random()-.5)*10,vy:-Math.random()*9-2,c:`hsl(${Math.random()*360},90%,60%)`,l:90});}
+(function loop(){cx.clearRect(0,0,cv.width,cv.height);fxp=fxp.filter(p=>p.l-->0);for(const p of fxp){p.vy+=.3;p.x+=p.vx;p.y+=p.vy;cx.fillStyle=p.c;cx.fillRect(p.x,p.y,7,7)}requestAnimationFrame(loop)})();
+function flash(el,ok){el.classList.remove('pop','shake');void el.offsetWidth;el.classList.add(ok?'pop':'shake')}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function award(id,n){if((SAVE.stars[id]||0)<n)SAVE.stars[id]=n;save()}
+// generic timed quiz: qs=[{q,opts,a,fact}] ; a is correct string
+let QZ=0;function runQuiz(id,title,qs,secs,back){let i=0,score=0,t=secs,timer;const tok=++QZ;clearInterval(window.__qt);const alive=()=>tok===QZ&&!!document.getElementById("qz"+tok);qs=shuffle(qs).slice(0,10);
+ function end(){clearInterval(timer);if(!alive())return;const st=score>=9?3:score>=7?2:score>=5?1:0;award(id,st);if(score>(SAVE.best[id]||0))SAVE.best[id]=score;save();if(st)SFX.win(),confetti();
+  app.innerHTML=`<div class="card" style="text-align:center"><h2>${title} — done!</h2><div style="font-size:48px" class="stars">${starStr(st)}</div><p>You got <b>${score}/${qs.length}</b>. Best: ${SAVE.best[id]}</p><div class="row" style="justify-content:center"><button class="btn" id="ag">Play again</button><button class="btn alt" id="bk">Back</button></div></div>`;$('#ag').onclick=()=>runQuiz(id,title,qs,secs,back);$('#bk').onclick=back}
+ function show(){if(i>=qs.length)return end();const q=qs[i];app.innerHTML=`<div class="card" id="qz${tok}"><div class="row"><b style="flex:1">${title} · Q${i+1}/${qs.length}</b>${secs?`<span class="pill">⏱ <span id="tm">${t}</span>s</span>`:''}<span class="pill">✅ ${score}</span></div><div class="bar" style="margin:8px 0"><i style="width:${i/qs.length*100}%"></i></div>${q.svg||''}<h2>${q.q}</h2><div id="os"></div><div class="fb" id="fb"></div></div>`;
+  shuffle(q.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.innerHTML=o;b.onclick=()=>{if(b.parentNode.dataset.done)return;b.parentNode.dataset.done=1;const ok=o==q.a;if(ok){score++;SFX.good();confetti(innerWidth/2,innerHeight/2,20)}else SFX.bad();[...$('#os').children].forEach(x=>{if(x.innerHTML==q.a)x.classList.add('ok')});if(!ok)b.classList.add('no');flash(b,ok);$('#fb').innerHTML=(ok?'✅ Correct! ':'❌ Not quite. ')+(q.fact?`<div class="fact">💡 ${q.fact}</div>`:'');setTimeout(()=>{if(!alive())return;i++;show()},q.fact?2200:1100)};$('#os').appendChild(b)})}
+ if(secs)window.__qt=timer=setInterval(()=>{if(!alive()){clearInterval(timer);return}t--;const e=$('#tm');if(e)e.textContent=t;if(t<=5&&t>0)tone(880,.05);if(t<=0)end()},1000);show()}
+save();
+</script>
+<script>
+// ===== Sound Lab =====
+function txt(g,s,x,y,c='#e4e8ff',sz=14,al='center'){g.fillStyle=c;g.font=`bold ${sz}px Trebuchet MS`;g.textAlign=al;g.fillText(s,x,y)}
+function ac(){AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state=='suspended')AC.resume();return AC}
+// play a held voice; returns {stop,set}
+let VOICE=null,AN=null;
+function analyser(){const a=ac();if(!AN){AN=a.createAnalyser();AN.fftSize=2048;AN.connect(a.destination)}return AN}
+function voice(f,type='sine',vol=.25,dur=0){stopVoice();if(muted)return null;try{const a=ac(),o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.value=f;g.gain.setValueAtTime(0,a.currentTime);g.gain.linearRampToValueAtTime(vol,a.currentTime+.03);o.connect(g);g.connect(analyser());o.start();
+ VOICE={o,g,stop(){try{g.gain.setTargetAtTime(0,a.currentTime,.03);o.stop(a.currentTime+.2)}catch(e){}}};if(dur)setTimeout(()=>{if(VOICE&&VOICE.o==o)stopVoice()},dur*1000);return VOICE}catch(e){return null}}
+function stopVoice(){if(VOICE){VOICE.stop();VOICE=null}}
+function pluck(f,dur=1.2,vol=.3,delay=0){if(muted)return;try{const a=ac(),t=a.currentTime+delay;[1,2,3,4].forEach((h,i)=>{const o=a.createOscillator(),g=a.createGain();o.type='sine';o.frequency.value=f*h;g.gain.setValueAtTime(vol/(h*h)*1.2,t);g.gain.exponentialRampToValueAtTime(.001,t+dur/h);o.connect(g);g.connect(analyser());o.start(t);o.stop(t+dur)})}catch(e){}}
+function bottle(f,dur=.8,delay=0){if(muted)return;try{const a=ac(),t=a.currentTime+delay,o=a.createOscillator(),g=a.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.3,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g);g.connect(analyser());o.start(t);o.stop(t+dur)}catch(e){}}
+const NOTE=(n)=>440*Math.pow(2,(n-69)/12);const NN=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+const cents=(a,b)=>1200*Math.log2(a/b);
+function waveDraw(g,W,H,f,amp,type,t,col='#ffd34d',scale=1){g.strokeStyle=col;g.lineWidth=3;g.beginPath();const cyc=f/110*scale;for(let x=0;x<=W;x+=2){const ph=(x/W*cyc+t*.4)%1;let y;
+ if(type=='sine')y=Math.sin(ph*6.283);else if(type=='square')y=ph<.5?1:-1;else if(type=='triangle')y=ph<.5?4*ph-1:3-4*ph;else y=2*ph-1;
+ const yy=H/2-y*amp*(H/2-10);x?g.lineTo(x,yy):g.moveTo(x,yy)}g.stroke()}
+const TOP=[
+{k:'vib',em:'〰️',n:'Sound is vibration',d:'Every sound starts with something <b>vibrating</b>: a guitar string, a drum skin, your vocal cords. The vibration pushes air particles together and pulls them apart, sending a wave of <b>compressions</b> and <b>rarefactions</b> outward.',f:'Sound needs a material (a <b>medium</b>) like air, water or steel to travel through. In the vacuum of space there is no sound at all.',x:'Your eardrum vibrates when the sound wave hits it, and your brain turns those vibrations into sound.'},
+{k:'pitch',em:'🎵',n:'Pitch and frequency',d:'<b>Frequency</b> is how many vibrations happen each second, measured in <b>hertz (Hz)</b>. Faster vibrations = higher <b>pitch</b>.',f:'Humans can hear about 20 Hz to 20,000 Hz. Dogs hear higher, up to around 45,000 Hz, and bats use up to about 200,000 Hz!',x:'Doubling the frequency raises the pitch by one <b>octave</b>. The A above middle C is 440 Hz, and the next A up is 880 Hz.'},
+{k:'amp',em:'🔊',n:'Volume and amplitude',d:'<b>Amplitude</b> is how big the vibration is. A bigger amplitude makes a <b>louder</b> sound. Loudness is measured in <b>decibels (dB)</b>.',f:'Whisper ≈ 30 dB, talking ≈ 60 dB, a lawnmower ≈ 90 dB. Sounds above about 85 dB for a long time can damage your hearing.',x:'Every +10 dB sounds roughly twice as loud to us.'},
+{k:'wave',em:'📈',n:'Waveforms and timbre',d:'Two instruments can play the same note and still sound different. The <b>shape</b> of the wave (its <b>timbre</b>, said "TAM-ber") changes the sound.',f:'A pure sine wave sounds smooth like a flute. Square and sawtooth waves have extra higher frequencies (overtones), so they sound buzzy.',x:'Your voice has its own unique timbre. That is how you can recognise a friend on the phone.'},
+{k:'echo',em:'🏔️',n:'Echoes',d:'An <b>echo</b> is sound that bounces off a hard surface and comes back to you. Hard, smooth surfaces reflect sound well. Soft things like curtains absorb it.',f:'Distance to a wall = speed of sound × echo time ÷ 2 (the sound goes there AND back). In air: 343 m/s.',x:'Bats and dolphins use <b>echolocation</b>, and ships use sonar, to find things by listening to echoes.'},
+{k:'inst',em:'🎸',n:'How instruments work',d:'<b>Strings</b> vibrate (guitar, violin). <b>Wind</b> instruments vibrate a column of air (flute, trumpet). <b>Percussion</b> is struck so it vibrates (drum, xylophone).',f:'Shorter, tighter or thinner strings vibrate faster and play higher notes. A shorter air column also plays higher.',x:'Halving a string\'s length doubles its frequency: one octave higher. That is why guitarists press frets to shorten the string.'},
+{k:'speed',em:'🚀',n:'Speed of sound',d:'Sound travels at different speeds through different materials. Particles packed closely and stiffly pass the vibration on faster.',f:'Air (20 °C): about 343 m/s. Water: about 1,480 m/s. Steel: about 5,900 m/s. Space: 0, sound cannot travel!',x:'Light is almost a million times faster than sound, so you see lightning before you hear thunder. Count the seconds and divide by 3 for the distance in km.'}];
+let raf=0;
+function menu(){cancelAnimationFrame(raf);stopVoice();const ids=[...LV.map(l=>l.id),'quiz','timed'],tot=ids.length*3,got=ids.reduce((a,k)=>a+(SAVE.stars[k]||0),0);
+ app.innerHTML=`<div class="card" style="text-align:center"><div style="font-size:54px">🔊🎵〰️</div><h2 style="margin:4px">Sound Lab</h2><p style="color:var(--mut)">See and hear sound waves. Tune strings and bottles by ear, measure echoes, and find out how fast sound travels.</p><div class="bar"><i style="width:${got/tot*100}%"></i></div><p class="stars">⭐ ${got} / ${tot}</p>${muted?'<p class="fact">🔇 Sound is muted. Tap 🔇 at the top to hear the lab!</p>':''}</div>
+ <div class="grid" style="margin-top:12px">
+ <div class="card tile" id="mL"><div class="em">📖</div><h3>Learn</h3><p>Vibration, pitch, volume, timbre, echoes, instruments, speed.</p></div>
+ <div class="card tile" id="mW"><div class="em">📈</div><h3>Wave Studio</h3><p>Play with frequency, amplitude and wave shape. See the live waveform.</p></div>
+ <div class="card tile" id="mP"><div class="em">🎛️</div><h3>Tuning Puzzles</h3><p>${LV.length} listening and sound-science challenges.</p></div>
+ <div class="card tile" id="mQ"><div class="em">❓</div><h3>Quiz</h3><p>10 questions. ${starStr(SAVE.stars.quiz||0)}</p></div>
+ <div class="card tile" id="mT"><div class="em">⏱️</div><h3>Timed challenge</h3><p>Beat the 60 s clock. ${starStr(SAVE.stars.timed||0)}</p></div></div>`;
+ const on=(id,f)=>$(id).onclick=()=>{SFX.click();f()};on('#mL',()=>learn(0));on('#mW',studio);on('#mP',levels);on('#mQ',()=>runQuiz('quiz','Sound Quiz',QS,0,menu));on('#mT',()=>runQuiz('timed','Timed Challenge',QS,60,menu))}
+function learn(i){cancelAnimationFrame(raf);stopVoice();const m=TOP[i];
+ app.innerHTML=`<div class="card"><div class="row"><b style="flex:1">Topic ${i+1} of ${TOP.length}</b><button class="btn alt" id="bk">Menu</button></div>
+ <div style="text-align:center"><canvas id="lc" width="440" height="200" style="max-width:100%;background:#0b1028;border-radius:14px"></canvas></div>
+ <div class="row" style="justify-content:center"><button class="btn alt" id="hear">▶ Hear it</button></div>
+ <h2>${m.em} ${m.n}</h2><p>${m.d}</p><div class="fact">💡 ${m.f}</div><p style="color:var(--mut)">${m.x}</p>
+ <div class="row"><button class="btn alt" id="pv" ${i?'':'disabled'}>← Prev</button><span style="flex:1"></span><button class="btn" id="nx">${i<TOP.length-1?'Next →':'Done ✓'}</button></div></div>`;
+ $('#bk').onclick=menu;$('#pv').onclick=()=>{SFX.click();learn(i-1)};$('#nx').onclick=()=>{SFX.click();if(i<TOP.length-1)learn(i+1);else{SFX.win();confetti();menu()}};
+ $('#hear').onclick=()=>{const k=m.k;if(k=='vib')pluck(196);if(k=='pitch'){bottle(220,.5);bottle(440,.5,.6);bottle(880,.5,1.2)}if(k=='amp'){tone(330,.5,'sine',.04);tone(330,.5,'sine',.3,0,.7)}if(k=='wave'){tone(262,.6,'sine',.2);tone(262,.6,'square',.07,0,.8);tone(262,.6,'sawtooth',.08,0,1.6)}
+  if(k=='echo'){pluck(523,.3);pluck(523,.3,.1,.5);pluck(523,.3,.03,1)}if(k=='inst'){pluck(196);pluck(392,1.2,.3,.9)}if(k=='speed'){noise(.2,.3,3000);setTimeout(()=>noise(1.2,.4,300),900)}};
+ const c=$('#lc'),g=c.getContext('2d'),t0=performance.now();
+ (function f(now){if(!c.isConnected)return;const t=(now-t0)/1000;g.clearRect(0,0,440,200);
+  if(m.k=='vib'){for(let x=20;x<440;x+=10)for(let y=20;y<190;y+=14){const d=Math.sin(x/30-t*5);g.fillStyle=`rgba(255,211,77,${.4+.5*Math.max(0,d)})`;g.beginPath();g.arc(x+d*4,y,2.4,0,7);g.fill()}g.fillStyle='#e8414f';g.fillRect(4+Math.sin(t*5)*4,40,10,120)}
+  if(m.k=='pitch'){g.save();g.translate(0,0);waveDraw(g,440,100,110,.8,'sine',t,'#4dd2ff');g.translate(0,100);waveDraw(g,440,100,330,.8,'sine',t,'#ff9a4d');g.restore();txt(g,'low pitch',60,95,'#4dd2ff');txt(g,'high pitch',60,195,'#ff9a4d')}
+  if(m.k=='amp'){g.save();waveDraw(g,440,100,160,.25,'sine',t,'#4dd2ff');g.translate(0,100);waveDraw(g,440,100,160,.95,'sine',t,'#ff5c7a');g.restore();txt(g,'quiet',40,95,'#4dd2ff');txt(g,'loud',40,195,'#ff5c7a')}
+  if(m.k=='wave'){['sine','square','sawtooth'].forEach((ty,k)=>{g.save();g.translate(0,k*66);waveDraw(g,440,66,110,.7,ty,t,['#3ddc84','#ffd34d','#ff5c7a'][k]);g.restore();txt(g,ty,400,k*66+16,'#fff',12)})}
+  if(m.k=='echo'){g.fillStyle='#6a7090';g.fillRect(400,10,30,180);txt(g,'🙋',40,110,'#fff',30);const r=(t*120)%720;g.strokeStyle='#ffd34d';g.lineWidth=3;if(r<360){g.beginPath();g.arc(40,100,r,-.5,.5);g.stroke()}else{g.beginPath();g.arc(760,100,r-360+ (400-40)*0,Math.PI-.5,Math.PI+.5);g.stroke()}}
+  if(m.k=='inst'){[[200,'long = low'],[100,'short = high']].forEach(([L,s],k)=>{const y=60+k*80,amp=Math.sin(t*(k?40:20))*10;g.strokeStyle='#e4d6a8';g.lineWidth=3;g.beginPath();g.moveTo(60,y);g.quadraticCurveTo(60+L,y+amp,60+L*2,y);g.stroke();txt(g,s,340,y+5)})}
+  if(m.k=='speed'){[['air',343,'#9aa6d8'],['water',1480,'#4dd2ff'],['steel',5900,'#ffd34d']].forEach(([n,v,c],k)=>{const y=40+k*60,x=(t*v/40)%380;g.fillStyle='#ffffff10';g.fillRect(20,y-14,400,28);g.fillStyle=c;g.beginPath();g.arc(30+x,y,10,0,7);g.fill();txt(g,`${n}: ${v.toLocaleString()} m/s`,220,y+30,c,12)})}
+  raf=requestAnimationFrame(f)})(t0)}
+// ---- wave studio ----
+function studio(){cancelAnimationFrame(raf);let f=262,amp=.5,type='sine',playing=false;
+ app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">📈 Wave Studio</h2><button class="btn alt" id="bk">Menu</button></div>
+ <canvas id="wc" width="900" height="300" style="width:100%;background:#0b1028;border-radius:14px"></canvas>
+ <div class="row" style="margin:8px 0"><b style="width:110px">Frequency</b><input type="range" id="fq" min="0" max="1000" value="0" style="flex:1;accent-color:var(--acc);height:30px"><span class="pill" style="min-width:150px;text-align:center" id="fv"></span></div>
+ <div class="row" style="margin:8px 0"><b style="width:110px">Amplitude</b><input type="range" id="am" min="5" max="100" value="50" style="flex:1;accent-color:var(--acc);height:30px"><span class="pill" style="min-width:150px;text-align:center" id="av"></span></div>
+ <div class="row">${['sine','square','triangle','sawtooth'].map(t=>`<button class="btn alt ty" data-t="${t}">${t}</button>`).join('')}<span style="flex:1"></span><button class="btn" id="pl">▶ Play</button></div>
+ <div class="fact" id="ex"></div></div>`;
+ $('#bk').onclick=()=>{stopVoice();menu()};
+ const fFrom=v=>Math.round(55*Math.pow(2,v/1000*5));// 55..1760 Hz log
+ const upd=()=>{const n=Math.round(12*Math.log2(f/440))+69;$('#fv').textContent=`${f} Hz ≈ ${NN[n%12]}${Math.floor(n/12)-1}`;$('#av').textContent=`≈ ${Math.round(40+amp*45)} dB`;document.querySelectorAll('.ty').forEach(b=>b.classList.toggle('sel',b.dataset.t==type));
+  $('#ex').innerHTML=`💡 ${f<150?'Low frequency: slow, wide waves. Deep sound, like a tuba.':f>800?'High frequency: lots of tightly packed waves. Squeaky, like a whistle.':'Middle frequency: about the range of a singing voice.'} ${type=='sine'?'Sine waves are pure and smooth.':type=='square'?'Square waves sound hollow and buzzy, like old video games.':type=='triangle'?'Triangle waves are soft, a little like a flute or recorder.':'Sawtooth waves are bright and buzzy, a bit like a violin bow.'}`;
+  if(VOICE){VOICE.o.frequency.setTargetAtTime(f,AC.currentTime,.02);VOICE.o.type=type;VOICE.g.gain.setTargetAtTime(amp*.3,AC.currentTime,.02)}};
+ $('#fq').value=Math.round(Math.log2(f/55)/5*1000);$('#fq').oninput=e=>{f=fFrom(+e.target.value);upd()};$('#am').oninput=e=>{amp=e.target.value/100;upd()};
+ document.querySelectorAll('.ty').forEach(b=>b.onclick=()=>{type=b.dataset.t;SFX.click();upd()});
+ $('#pl').onclick=()=>{playing=!playing;if(playing){voice(f,type,amp*.3);$('#pl').textContent='■ Stop'}else{stopVoice();$('#pl').textContent='▶ Play'}};upd();
+ const c=$('#wc'),g=c.getContext('2d'),buf=new Float32Array(2048),t0=performance.now();
+ (function d(now){if(!c.isConnected){stopVoice();return}const t=(now-t0)/1000;g.clearRect(0,0,900,300);g.strokeStyle='#ffffff15';g.lineWidth=1;for(let x=0;x<900;x+=45){g.beginPath();g.moveTo(x,0);g.lineTo(x,300);g.stroke()}g.beginPath();g.moveTo(0,150);g.lineTo(900,150);g.stroke();
+  let live=false;if(VOICE&&AN){AN.getFloatTimeDomainData(buf);let mx=0;for(const v of buf)mx=Math.max(mx,Math.abs(v));if(mx>.001){live=true;let st=0;for(let k=1;k<1024;k++)if(buf[k-1]<0&&buf[k]>=0){st=k;break}g.strokeStyle='#3ddc84';g.lineWidth=3;g.beginPath();for(let x=0;x<900;x++){const v=buf[st+Math.floor(x*1000/900)]||0;const y=150-v/.3*130;x?g.lineTo(x,y):g.moveTo(x,y)}g.stroke()}}
+  if(!live)waveDraw(g,900,300,f,amp,type,playing?t:0,'#ffd34d',2.4);txt(g,live?'LIVE from the speaker signal':'preview (press Play to hear)',450,22,live?'#3ddc84':'#9aa6d8');txt(g,'each grid square ≈ 1 ms',820,290,'#9aa6d8',12);
+  raf=requestAnimationFrame(d)})(t0)}
+// ---- puzzles ----
+// types: pitch (match target freq with slider), octave, string (length -> f), bottle (water level -> pitch order), echo (numeric choice), thunder, wave (identify by ear), volume
+const LV=[
+{t:'pitch',n:'Match the beep',target:330,type:'sine',tip:'Press ▶ Target, then ▶ Yours. Slide until they sound the same. When two notes are very close you can hear a slow "wah-wah" called <b>beats</b>.'},
+{t:'pitch',n:'Low hum',target:150,type:'sine'},
+{t:'pitch',n:'Tune the A',target:440,type:'triangle',tip:'Orchestras tune to A = 440 Hz before every concert.'},
+{t:'octave',n:'One octave up',base:220,tip:'An octave higher means exactly double the frequency.'},
+{t:'string',n:'Fret the guitar',open:196,target:294,tip:'A shorter string vibrates faster. Frequency × length stays the same.'},
+{t:'string',n:'Violin E string',open:330,target:660},
+{t:'bottle',n:'Bottle xylophone',mode:'tap',tip:'Tapping makes the glass and water vibrate. More water = heavier = LOWER pitch.'},
+{t:'bottle',n:'Blow across the bottles',mode:'blow',tip:'Blowing across the top vibrates the AIR inside. More water = shorter air column = HIGHER pitch.'},
+{t:'wave',n:'Name that wave',tip:'Listen for smooth (sine) versus buzzy (square, sawtooth).'},
+{t:'echo',n:'Canyon echo',sec:2,tip:'The sound travels to the wall and back, so halve it! Speed in air ≈ 343 m/s.'},
+{t:'echo',n:'Ship sonar',sec:1,med:'water',v:1480,tip:'Sonar pings travel through water at about 1,480 m/s.'},
+{t:'thunder',n:'How far is the storm?',sec:9,tip:'Sound takes about 3 seconds to travel 1 km in air.'},
+{t:'pitch',n:'Buzzy match',target:523,type:'sawtooth'},
+{t:'chord',n:'Make a major chord',root:262,tip:'A major chord stacks frequencies in the ratio 4 : 5 : 6.'}];
+LV.forEach((l,i)=>l.id='L'+i);
+function levels(){cancelAnimationFrame(raf);stopVoice();app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">🎛️ Tuning Puzzles</h2><button class="btn alt" id="bk">Menu</button></div><p style="color:var(--mut)">Use your ears! Each puzzle unlocks the next. Closer tuning and fewer tries earn more stars.</p><div class="grid" id="lg"></div></div>`;$('#bk').onclick=menu;
+ const em={pitch:'🎵',octave:'🎶',string:'🎸',bottle:'🍾',wave:'〰️',echo:'🏔️',thunder:'⛈️',chord:'🎹'};
+ LV.forEach((l,i)=>{const lock=i>0&&!SAVE.stars[LV[i-1].id];const d=document.createElement('div');d.className='card tile';d.style.opacity=lock?.45:1;d.innerHTML=`<div class="em">${lock?'🔒':em[l.t]}</div><h3>${i+1}. ${l.n}</h3><div class="stars">${starStr(SAVE.stars[l.id]||0)}</div>`;d.onclick=()=>{if(lock){SFX.bad();flash(d,0);return}SFX.click();play(i)};$('#lg').appendChild(d)})}
+function win(L,i,st,msg){award(L.id,st);SFX.win();confetti();stopVoice();$('#fb').innerHTML=`<div class="pop">🎉 ${msg} <span class="stars">${starStr(st)}</span></div>${L.fact?`<div class="fact">💡 ${L.fact}</div>`:''}<div class="row">${i<LV.length-1?'<button class="btn" id="nx">Next puzzle →</button>':''}<button class="btn alt" id="ag">Play again</button></div>`;if($('#nx'))$('#nx').onclick=()=>play(i+1);$('#ag').onclick=()=>play(i)}
+function play(i){cancelAnimationFrame(raf);stopVoice();const L=LV[i];let tries=0,peek=false;
+ const head=`<div class="row"><b style="flex:1">Puzzle ${i+1}: ${L.n}</b><span class="pill">Tries: <span id="tr">0</span></span><button class="btn alt" id="bk">Levels</button></div>${L.tip?`<div class="fact">💡 ${L.tip}</div>`:''}`;
+ const T=()=>{tries++;$('#tr').textContent=tries};
+ if(['pitch','octave','string'].includes(L.t)){const target=L.t=='octave'?L.base*2:L.target,type=L.type||(L.t=='string'?'pluck':'sine');let v=L.t=='string'?100:0;
+  // pitch slider: log 100..1000 Hz ; string: length % 30..100
+  const lo=L.t=='octave'?200:100,hi=L.t=='octave'?900:L.t=='pitch'?1000:1000;
+  let f=L.t=='string'?L.open:Math.round(lo*Math.pow(hi/lo,.15));
+  app.innerHTML=`<div class="card">${head}<p>${L.t=='octave'?`The reference note is <b>${L.base} Hz</b>. Tune yours to exactly one octave higher.`:L.t=='string'?`The open string plays <b>${L.open} Hz</b>. Slide your finger (the fret) to shorten the string until it matches the target note.`:'Tune your note to match the mystery target note.'}</p>
+  <canvas id="pc" width="900" height="220" style="width:100%;background:#0b1028;border-radius:14px;touch-action:none"></canvas>
+  <div class="row" style="margin:8px 0"><button class="btn alt" id="mi">−</button><input type="range" id="sl" min="0" max="1000" style="flex:1;accent-color:var(--acc);height:30px"><button class="btn alt" id="pl">+</button></div>
+  <div class="row"><button class="btn alt" id="pt">▶ ${L.t=='octave'?'Reference':'Target'}</button><button class="btn alt" id="py">▶ Yours</button><button class="btn alt" id="pb">▶ Both</button><button class="btn alt" id="pk">👀 Peek at waves (−1★)</button><span style="flex:1"></span><button class="btn" id="go">✓ Check</button></div><div class="fb" id="fb"></div></div>`;
+  $('#bk').onclick=levels;const sl=$('#sl');
+  const toF=x=>L.t=='string'?L.open*100/(100-x/1000*70):Math.round(lo*Math.pow(hi/lo,x/1000));const toX=fr=>L.t=='string'?(100-L.open*100/fr)/70*1000:Math.log(fr/lo)/Math.log(hi/lo)*1000;
+  sl.value=toX(f);const P=(fr,d=1)=>L.t=='string'?pluck(fr,d):voice(fr,type,.22,d);
+  const refF=L.t=='octave'?L.base:target;
+  sl.oninput=()=>{f=toF(+sl.value);if(VOICE&&L.t!='string')VOICE.o.frequency.setTargetAtTime(f,AC.currentTime,.02)};
+  $('#mi').onclick=()=>{sl.value=+sl.value-4;sl.oninput();P(f,.4)};$('#pl').onclick=()=>{sl.value=+sl.value+4;sl.oninput();P(f,.4)};
+  $('#pt').onclick=()=>P(refF);$('#py').onclick=()=>P(f);$('#pb').onclick=()=>{if(L.t=='string'){pluck(refF);pluck(f,1.2,.3,0)}else{stopVoice();tone(refF,1.2,type,.12);tone(f,1.2,type,.12)}};
+  $('#pk').onclick=()=>{peek=true;SFX.click()};
+  $('#go').onclick=()=>{T();const c=Math.abs(cents(f,target));if(c<=30){const st=Math.max(1,(c<=10?3:2)-(tries>3?1:0)-(peek?1:0));win(L,i,st,`Tuned! You were ${c.toFixed(0)} cents away (${f.toFixed(1)} Hz vs ${target} Hz).`);
+   if(L.t=='string')$('#fb').innerHTML+=`<div class="fact">💡 The string is ${(L.open/target*100).toFixed(0)}% of its full length: ${L.open} × 100 ÷ ${(L.open/target*100).toFixed(0)} ≈ ${target} Hz.</div>`}
+   else{SFX.bad();flash($('#pc'),0);$('#fb').innerHTML=`❌ Not yet. Yours sounds <b>${f<target?'lower':'higher'}</b> than the target. ${c>200?'Way off!':c>80?'Getting closer.':'So close!'}`}};
+  window.__sl={get target(){return target},set f(x){sl.value=toX(x);sl.oninput()}};
+  const c=$('#pc'),g=c.getContext('2d'),t0=performance.now();
+  (function d(now){if(!c.isConnected){stopVoice();return}const t=(now-t0)/1000;g.clearRect(0,0,900,220);
+   if(L.t=='string'){const len=100*L.open/f,x1=60+len/100*780;g.fillStyle='#5a3a20';g.fillRect(40,90,820,40);for(let k=1;k<12;k++){const fx=60+780*(1-Math.pow(2,-k/12));g.fillStyle='#c0c4d0';g.fillRect(fx,90,3,40)}g.strokeStyle='#e4d6a8';g.lineWidth=3;g.beginPath();g.moveTo(40,110);g.lineTo(860,110);g.stroke();
+    g.strokeStyle='#ffd34d';g.lineWidth=4;g.beginPath();g.moveTo(860,110);g.quadraticCurveTo((860+(860-len/100*800))/2,110+Math.sin(t*30)*8,860-len/100*800,110);g.stroke();g.fillStyle='#ff9a4d';g.beginPath();g.arc(860-len/100*800,110,12,0,7);g.fill();txt(g,`string length ${len.toFixed(0)}%  ·  ${f.toFixed(0)} Hz`,450,180,'#ffd34d',20)}
+   else{const st=Math.abs(cents(f,target));txt(g,'🎚️ '+(peek?`${Math.round(f)} Hz`:'??? Hz'),450,30,'#ffd34d',20);if(peek){g.save();g.translate(0,20);waveDraw(g,900,180,refF,.6,type,t,'#4dd2ff66',3);waveDraw(g,900,180,f,.6,type,t,'#ffd34d',3);g.restore()}
+    else{const n=24;for(let k=0;k<n;k++){const h=20+Math.abs(Math.sin(t*3+k*f/200))*80;g.fillStyle=`hsl(${200-Math.min(200,f/5)},80%,60%)`;g.fillRect(40+k*35,200-h,22,h)}}}
+   raf=requestAnimationFrame(d)})(t0);return}
+ if(L.t=='bottle'){const tap=L.mode=='tap';let lv=shuffle([20,40,60,80]),order=[];
+  const fq=l=>tap?Math.round(900-l*6):Math.round(200+l*7);// tap: more water lower; blow: more water higher
+  app.innerHTML=`<div class="card">${head}<p>${tap?'Tap':'Blow across'} each bottle to hear it. Then tap them in order from <b>LOWEST</b> pitch to <b>HIGHEST</b>.</p><canvas id="pc" width="900" height="300" style="width:100%;background:#0b1028;border-radius:14px;touch-action:none;cursor:pointer"></canvas>
+  <div class="row"><button class="btn alt" id="lis">👂 Listen mode</button><button class="btn" id="ord">🔢 Order mode</button><span class="pill" id="om">Listen mode: tap any bottle</span><span style="flex:1"></span><button class="btn alt" id="clr">↺ Clear</button></div><div class="fb" id="fb"></div></div>`;
+  $('#bk').onclick=levels;let mode='listen';$('#lis').onclick=()=>{mode='listen';$('#om').textContent='Listen mode: tap any bottle'};$('#ord').onclick=()=>{mode='order';order=[];$('#om').textContent='Order mode: tap lowest → highest'};$('#clr').onclick=()=>{order=[];$('#fb').innerHTML=''};
+  const c=$('#pc'),g=c.getContext('2d');let hit=-1,ht=0;
+  c.onpointerdown=e=>{const r=c.getBoundingClientRect(),x=(e.clientX-r.left)*900/r.width,k=Math.floor((x-60)/200);if(k<0||k>3)return;hit=k;ht=performance.now();tap?bottle(fq(lv[k]),.8):(noise(.3,.05,1500),voice(fq(lv[k]),'sine',.2,.8));
+   if(mode=='order'&&!order.includes(k)){order.push(k);if(order.length==4){T();const f=order.map(k=>fq(lv[k]));const ok=f.every((v,j)=>!j||v>f[j-1]);
+    if(ok){L.fact=tap?'Tapped bottles: the bottle with the MOST water is LOWEST, because more water means more mass vibrating slowly.':'Blown bottles: the bottle with the MOST water is HIGHEST, because the air column above the water is shortest.';win(L,i,tries==1?3:tries==2?2:1,'Perfect order!')}else{SFX.bad();$('#fb').innerHTML='❌ Not in order. Listen again, then try once more!';order=[]}}}};
+  window.__bt={lv,fq};
+  (function d(now){if(!c.isConnected)return;g.clearRect(0,0,900,300);lv.forEach((l,k)=>{const x=160+k*200,sh=hit==k&&now-ht<400?Math.sin(now/20)*3:0;g.fillStyle='#4dd2ff55';g.fillRect(x-40+sh,260-l*2,80,l*2);g.strokeStyle='#cfe8ff';g.lineWidth=3;g.beginPath();g.moveTo(x-15+sh,40);g.lineTo(x-15+sh,90);g.lineTo(x-40+sh,120);g.lineTo(x-40+sh,260);g.lineTo(x+40+sh,260);g.lineTo(x+40+sh,120);g.lineTo(x+15+sh,90);g.lineTo(x+15+sh,40);g.stroke();
+   const oi=order.indexOf(k);if(oi>=0)txt(g,oi+1+'',x,30,'#ffd34d',24);txt(g,tap?'🥢':'💨',x+55,60,'#fff',20)});raf=requestAnimationFrame(d)})();return}
+ if(L.t=='wave'){const types=shuffle(['sine','square','triangle','sawtooth']),Q=types.slice(0,3);let k=0,score=0;
+  const ask=()=>{if(k>=Q.length){T();const st=score==3?3:score==2?2:score?1:0;if(st)win(L,i,st,`You named ${score}/3 waves by ear!`);else{SFX.bad();$('#fb').innerHTML='❌ 0/3. Try again: sine is smoothest, sawtooth is buzziest.';k=0;score=0;setTimeout(()=>{if($('#ask'))ask()},1500)}return}
+   $('#ask').innerHTML=`<p>Sound ${k+1} of 3: press ▶ and pick its wave shape.</p><button class="btn alt" id="pw">▶ Play mystery wave</button><div class="grid" style="margin-top:8px">${['sine','square','triangle','sawtooth'].map(t=>`<div class="card tile wv" data-t="${t}" style="padding:6px"><canvas width="160" height="60" style="width:100%"></canvas><b>${t}</b></div>`).join('')}</div>`;
+   $('#pw').onclick=()=>voice(220,Q[k],Q[k]=='square'||Q[k]=='sawtooth'?.12:.25,1);
+   document.querySelectorAll('.wv').forEach(d=>{const g=d.querySelector('canvas').getContext('2d');waveDraw(g,160,60,220,.8,d.dataset.t,0,'#ffd34d');d.onclick=()=>{const ok=d.dataset.t==Q[k];if(ok){score++;SFX.good()}else SFX.bad();flash(d,ok);$('#fb').innerHTML=ok?'✅ Yes!':`❌ That was a ${Q[k]} wave.`;k++;setTimeout(()=>{if($('#ask'))ask()},900)}})};
+  app.innerHTML=`<div class="card">${head}<div id="ask"></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=levels;ask();return}
+ if(L.t=='echo'||L.t=='thunder'){const v=L.v||343,ans=L.t=='thunder'?+(L.sec/3).toFixed(1):v*L.sec/2;
+  const wrong=L.t=='thunder'?[L.sec,+(L.sec*3).toFixed(0),+(L.sec/3*2).toFixed(1)]:[v*L.sec,v*L.sec*2,Math.round(v*L.sec/4)];const unit=L.t=='thunder'?'km':'m';
+  app.innerHTML=`<div class="card">${head}<canvas id="pc" width="900" height="240" style="width:100%;background:#0b1028;border-radius:14px"></canvas><p style="font-size:18px">${L.t=='thunder'?`⚡ You see lightning, then count <b>${L.sec} seconds</b> until the thunder. About how far away is the storm?`:`${L.med?'🚢 A ship sends a sonar ping down to the sea floor':'🗣️ You shout at a cliff'} and hear the echo <b>${L.sec} second${L.sec>1?'s':''}</b> later. How far away is the ${L.med?'sea floor':'cliff'}?`}</p><button class="btn alt" id="rp">▶ Replay</button><div id="os"></div><div class="fb" id="fb"></div></div>`;
+  $('#bk').onclick=levels;const run=()=>{t0=performance.now();if(L.t=='thunder'){noise(.15,.25,4000);setTimeout(()=>noise(1.5,.5,250),Math.min(L.sec,3)*600)}else{tone(700,.15,'sine',.25);tone(700,.15,'sine',.07,0,L.sec*.8)}};$('#rp').onclick=run;let t0=performance.now();
+  shuffle([ans,...wrong]).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.textContent=o.toLocaleString()+' '+unit;b.onclick=()=>{T();if(o==ans){L.fact=L.t=='thunder'?`${L.sec} s ÷ 3 ≈ ${ans} km. Light reaches you almost instantly, but sound needs about 3 s per km.`:`${v.toLocaleString()} m/s × ${L.sec} s = ${(v*L.sec).toLocaleString()} m there and back, so ÷ 2 = ${ans.toLocaleString()} m.`;b.classList.add('ok');win(L,i,tries==1?3:tries==2?2:1,'Correct!')}else{SFX.bad();b.classList.add('no');flash(b,0)}};$('#os').appendChild(b)});
+  const c=$('#pc'),g=c.getContext('2d');run();(function d(now){if(!c.isConnected)return;const t=(now-t0)/1000;g.clearRect(0,0,900,240);
+   if(L.t=='thunder'){g.fillStyle='#555d80';g.beginPath();g.ellipse(700,50,120,35,0,0,7);g.fill();if(t<.2){g.strokeStyle='#fff';g.lineWidth=4;g.beginPath();g.moveTo(700,80);g.lineTo(670,140);g.lineTo(700,140);g.lineTo(660,220);g.stroke()}txt(g,'🧍',100,220,'#fff',40);const s=Math.min(L.sec,t*L.sec/3);txt(g,`⏱ ${s.toFixed(1)} s`,120,60,'#ffd34d',24);const r=Math.min(1,t/3)*600;g.strokeStyle='#ffd34d';g.beginPath();g.arc(700,140,r,Math.PI*.7,Math.PI*1.1);g.stroke()}
+   else{const dur=L.sec*.8,p=(t%(dur*1.6))/dur;g.fillStyle=L.med?'#123a6a':'#0b1028';g.fillRect(0,0,900,240);g.fillStyle='#6a7090';if(L.med)g.fillRect(0,215,900,25);else g.fillRect(820,0,80,240);txt(g,L.med?'🚢':'🗣️',L.med?450:60,L.med?40:130,'#fff',36);g.strokeStyle='#ffd34d';g.lineWidth=3;
+    if(p<=1){const q=p<.5?p*2:2-p*2;g.beginPath();if(L.med)g.arc(450,50+q*165,30,0,Math.PI*(p<.5?1:-1),p>=.5);else g.arc(90+q*720,120,40,p<.5?-.6:Math.PI-.6,p<.5?.6:Math.PI+.6);g.stroke();txt(g,p<.5?'→ going':'← echo coming back',450,L.med?120:30,'#ffd34d',16)}}
+   raf=requestAnimationFrame(d)})(t0);return}
+ if(L.t=='chord'){const R=L.root,goal=[R,R*5/4,R*3/2];let fs=[R,R*1.1,R*1.32];
+  app.innerHTML=`<div class="card">${head}<p>The bottom note is <b>${R} Hz</b> (middle C). Tune the other two notes so the three together make a bright, happy <b>major chord</b>. Hint: try ${R}×5÷4 and ${R}×3÷2.</p>
+  ${[1,2].map(k=>`<div class="row" style="margin:8px 0"><b style="width:90px">Note ${k+1}</b><input type="range" class="cs" data-k="${k}" min="${R}" max="${R*2}" step="1" style="flex:1;accent-color:var(--acc);height:30px"><span class="pill" id="cv${k}" style="min-width:90px;text-align:center"></span></div>`).join('')}
+  <div class="row"><button class="btn alt" id="pc2">▶ Play chord</button><span style="flex:1"></span><button class="btn" id="go">✓ Check</button></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=levels;
+  document.querySelectorAll('.cs').forEach(s=>{const k=+s.dataset.k;s.value=fs[k];const u=()=>{fs[k]=+s.value;$('#cv'+k).textContent=fs[k]+' Hz'};u();s.oninput=u;s.onchange=()=>voice(fs[k],'triangle',.2,.5)});
+  $('#pc2').onclick=()=>{stopVoice();fs.forEach((f,k)=>tone(f,1.4,'triangle',.1,0,0))};
+  $('#go').onclick=()=>{T();const e=[1,2].map(k=>Math.abs(cents(fs[k],goal[k])));if(e.every(x=>x<=25)){L.fact=`${R} : ${Math.round(R*5/4)} : ${Math.round(R*3/2)} Hz is C–E–G, the C major chord. Notes with simple frequency ratios sound pleasant together.`;win(L,i,tries<=2?3:tries<=4?2:1,'Beautiful chord!')}else{SFX.bad();$('#fb').innerHTML=`❌ ${e.map((x,j)=>`Note ${j+2} is ${x<=25?'✓ in tune':fs[j+1]<goal[j+1]?'too low':'too high'}`).join(', ')}.`}};
+  window.__ch={set(a,b){const s=document.querySelectorAll('.cs');s[0].value=a;s[1].value=b;s.forEach(x=>x.oninput())}};return}}
+const QS=[
+{q:'All sounds are made by something…',opts:['Vibrating','Freezing','Glowing','Melting'],a:'Vibrating'},
+{q:'Frequency is measured in…',opts:['Hertz (Hz)','Decibels (dB)','Metres','Kilograms'],a:'Hertz (Hz)'},
+{q:'Loudness is measured in…',opts:['Decibels (dB)','Hertz (Hz)','Watts per litre','Degrees'],a:'Decibels (dB)'},
+{q:'A higher frequency gives a…',opts:['Higher pitch','Lower pitch','Louder sound only','Slower sound'],a:'Higher pitch'},
+{q:'A bigger amplitude makes a sound…',opts:['Louder','Higher','Lower','Faster'],a:'Louder'},
+{q:'Can sound travel through the vacuum of space?',opts:['No, it needs a medium','Yes, faster than in air','Only at night','Only high notes'],a:'No, it needs a medium',fact:'With no particles to vibrate, sound cannot travel. Space is silent.'},
+{q:'In which does sound travel FASTEST?',opts:['Steel','Water','Air','A vacuum'],a:'Steel',fact:'About 5,900 m/s in steel, 1,480 m/s in water and 343 m/s in air.'},
+{q:'About how fast does sound travel in air?',opts:['343 m/s','3 m/s','300,000 km/s','34,300 m/s'],a:'343 m/s'},
+{q:'What is an echo?',opts:['Reflected sound','A very high note','Sound in space','A type of guitar'],a:'Reflected sound'},
+{q:'You hear an echo 2 s after shouting. The cliff is about…',opts:['343 m away','686 m away','171 m away','2 m away'],a:'343 m away',fact:'343 × 2 = 686 m there and back, ÷ 2 = 343 m.'},
+{q:'Humans can hear roughly…',opts:['20 Hz to 20,000 Hz','1 Hz to 10 Hz','5,000 Hz to 1,000,000 Hz','Only 440 Hz'],a:'20 Hz to 20,000 Hz'},
+{q:'Making a guitar string SHORTER makes its note…',opts:['Higher','Lower','Quieter only','Stay the same'],a:'Higher'},
+{q:'Doubling a frequency raises the note by one…',opts:['Octave','Decibel','Metre','Echo'],a:'Octave'},
+{q:'A flute makes sound by vibrating…',opts:['A column of air','A string','A drum skin','A metal bar'],a:'A column of air'},
+{q:'Bats find insects in the dark using…',opts:['Echolocation','Magnets','Their sense of smell only','Light'],a:'Echolocation'},
+{q:'You count 6 seconds between lightning and thunder. The storm is about…',opts:['2 km away','6 km away','18 km away','600 m away'],a:'2 km away'},
+{q:'Why do a piano and a violin sound different on the same note?',opts:['Different timbre (wave shape)','Different frequency','One is in space','Violins have no sound waves'],a:'Different timbre (wave shape)'},
+{q:'Tap bottles with water: the one with the MOST water sounds…',opts:['Lowest','Highest','Silent','The same as an empty one'],a:'Lowest'},
+{q:'Long exposure to sounds above about ___ can damage hearing.',opts:['85 dB','10 dB','30 dB','0 dB'],a:'85 dB'},
+{q:'Sound waves in air are made of…',opts:['Compressions and rarefactions','Tiny magnets','Light particles','Water drops'],a:'Compressions and rarefactions'}];
+menu();
+</script></body></html>

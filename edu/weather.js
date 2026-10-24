@@ -177,23 +177,23 @@
   function drawCycle(parent) {
     const wrap = Lab.el("div", "cycle");
     wrap.innerHTML = [
-      '<svg viewBox="0 0 340 168" role="img" aria-label="Sun shining on the ocean, a cloud, and rain falling">',
-      '<rect x="1" y="1" width="338" height="166" rx="16" fill="#fffdf8" stroke="#1c2430" stroke-width="2"/>',
-      '<circle cx="48" cy="42" r="16" fill="#ffd36e" stroke="#1c2430" stroke-width="2"/>',
+      '<svg viewBox="0 0 340 180" role="img" aria-label="The sun heats the ocean, water rises, a cloud forms, and rain falls">',
+      '<rect x="1" y="1" width="338" height="178" rx="16" fill="#fffdf8" stroke="#1c2430" stroke-width="2"/>',
+      '<circle cx="52" cy="48" r="18" fill="#ffd36e" stroke="#1c2430" stroke-width="2"/>',
       '<g stroke="#1c2430" stroke-width="2" stroke-linecap="round">',
-      '<path d="M48 18v-6M28 28l-5-5M22 46h-6M28 64l-5 5M68 28l5-5M74 46h6M68 64l5 5"/>',
+      '<path d="M52 20v-8M30 30l-6-6M24 52h-8M30 74l-6 6M74 30l6-6M80 52h8M74 74l6 6"/>',
       "</g>",
-      '<path d="M24 132c20-16 36-16 56 0s36 16 56 0 36-16 56 0 36 16 56 0 36-16 52 0v22H24z" fill="#8ec5ff" stroke="#1c2430" stroke-width="2"/>',
-      '<path d="M118 96c18-28 46-46 78-40" fill="none" stroke="#1c2430" stroke-width="2"/>',
-      '<path d="M188 52l8 6M196 58l-8-2" fill="none" stroke="#1c2430" stroke-width="2" stroke-linecap="round"/>',
-      '<ellipse cx="214" cy="46" rx="28" ry="16" fill="#fff" stroke="#1c2430" stroke-width="2"/>',
-      '<ellipse cx="242" cy="50" rx="24" ry="16" fill="#fff" stroke="#1c2430" stroke-width="2"/>',
-      '<ellipse cx="226" cy="58" rx="34" ry="14" fill="#fff" stroke="#1c2430" stroke-width="2"/>',
-      '<g stroke="#2f6fed" stroke-width="2" stroke-linecap="round">',
-      '<path d="M206 78v16M226 82v16M246 78v16"/>',
+      '<path d="M16 136c24-14 40-14 64 0s40 14 64 0 40-14 64 0 40 14 64 0 32-14 52 0v28H16z" fill="#8ec5ff" stroke="#1c2430" stroke-width="2"/>',
+      '<path d="M128 128V70" fill="none" stroke="#1c2430" stroke-width="2"/>',
+      '<path d="M128 62l-8 14h16z" fill="#1c2430"/>',
+      '<text x="78" y="112" font-size="13" font-family="Trebuchet MS, sans-serif" fill="#1c2430">rises</text>',
+      '<ellipse cx="236" cy="52" rx="26" ry="14" fill="#fff" stroke="#1c2430" stroke-width="2"/>',
+      '<ellipse cx="262" cy="56" rx="22" ry="14" fill="#fff" stroke="#1c2430" stroke-width="2"/>',
+      '<ellipse cx="246" cy="64" rx="34" ry="14" fill="#fff" stroke="#1c2430" stroke-width="2"/>',
+      '<g stroke="#2f6fed" stroke-width="3" stroke-linecap="round">',
+      '<path d="M220 88v22M240 92v22M260 88v22"/>',
       "</g>",
-      '<text x="40" y="154" font-size="12" font-family="Trebuchet MS, sans-serif" fill="#1c2430">sun and ocean</text>',
-      '<text x="196" y="110" font-size="12" font-family="Trebuchet MS, sans-serif" fill="#1c2430">cloud and rain</text>',
+      '<text x="272" y="108" font-size="13" font-family="Trebuchet MS, sans-serif" fill="#1c2430">falls</text>',
       "</svg>"
     ].join("");
     parent.appendChild(wrap);

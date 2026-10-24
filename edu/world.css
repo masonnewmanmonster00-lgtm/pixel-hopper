@@ -173,7 +173,7 @@
 
 .food[data-group="treat"] { background: #fff0e6; }
 
-.body-wrap { max-width: 320px; margin: 0 auto 8px; }
+.body-wrap { max-width: 340px; margin: 0 auto 8px; }
 .body-wrap svg { width: 100%; height: auto; display: block; }
 
 .organ { cursor: pointer; }

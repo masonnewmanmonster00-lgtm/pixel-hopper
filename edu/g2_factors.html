@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Factor Factory – Learning Zone</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--a:#ff9f43;--b:#5a2a0a;--bg:#1c0e04}
+html,body{margin:0;height:100%;background:radial-gradient(circle at 30% 0%,var(--b),var(--bg) 70%);color:#f5f7ff;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none}
+#top{position:fixed;left:0;right:0;top:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;background:#0006;border-bottom:2px solid var(--a);z-index:20;gap:4px}
+#top a{color:#fff;text-decoration:none;font:600 14px system-ui;padding:6px 8px;border-radius:8px;background:#ffffff22;white-space:nowrap}
+#mid{font:700 15px system-ui;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.tb{background:#ffffff22;color:#fff;border:1px solid var(--a);border-radius:8px;font:600 14px system-ui;padding:6px 9px;cursor:pointer}
+.scr{position:fixed;inset:44px 0 0 0;display:none;flex-direction:column;align-items:center;padding:12px;overflow:auto;text-align:center}
+.scr.on{display:flex}
+h1{font-size:clamp(30px,8vw,54px);margin:18px 0 6px;text-shadow:0 4px 0 #0007;letter-spacing:1px}
+.sub{max-width:560px;line-height:1.5;font-size:16px;opacity:.95}
+.big{border:none;border-radius:14px;padding:12px 22px;margin:6px;font:800 18px system-ui;background:var(--a);color:#1a1a2a;box-shadow:0 5px 0 #0006;cursor:pointer}
+.big.alt{background:#ffffff2a;color:#fff}
+.big:active,.op:active,.lvb:active{transform:translateY(3px)}
+.world{width:100%;max-width:720px;background:#00000033;border-radius:16px;padding:10px;margin:6px 0;text-align:left}
+.world h3{margin:2px 4px 8px;font-size:17px}.world h3 small{opacity:.7;font-weight:500}
+.lvs{display:flex;flex-wrap:wrap;gap:8px}
+.lvb{width:calc(25% - 6px);min-width:120px;flex:1 1 120px;border:none;border-radius:12px;padding:9px 6px;background:#fffaf0;color:#222;font:700 14px system-ui;cursor:pointer;box-shadow:0 4px 0 #0006}
+.lvb[disabled]{opacity:.4;cursor:default}.lvb .st{display:block;color:#e8a400;font-size:15px;letter-spacing:2px}
+#hud{width:100%;max-width:720px;display:flex;justify-content:space-between;font-weight:700;font-size:14px}
+#bar{width:100%;max-width:720px;height:10px;background:#0005;border-radius:6px;margin:6px 0 8px;overflow:hidden}#barF{height:100%;width:0;background:linear-gradient(90deg,#7ef29a,var(--a));transition:width .3s}
+#card{width:100%;max-width:720px;background:#fffaf0;color:#1f2433;border-radius:18px;padding:14px;box-shadow:0 8px 0 #0006;text-align:left}
+#kind{font-size:13px;font-weight:800;letter-spacing:1px;color:var(--b);text-transform:uppercase}
+#prompt{font-size:clamp(17px,4.4vw,22px);font-weight:700;margin:6px 0 10px;line-height:1.4}
+.pass{background:#fff;border:2px solid #e3dccb;border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:clamp(15px,3.8vw,18px);line-height:1.6;max-height:42vh;overflow:auto}
+.pass h4{margin:0 0 4px;font-size:16px;color:var(--b)}
+.sent{border-radius:5px;padding:1px 2px}
+.pass.tapme .sent{cursor:pointer;background:#fff4c2;box-shadow:inset 0 -2px #e8c95a;margin:0 1px}
+.pass.tapme .sent:hover{background:#ffe680}
+.sent.ok{background:#9ff0b0!important}.sent.bad{background:#ffb3b3!important}
+.hl{background:#ffe46b;padding:0 3px;border-radius:4px}
+#opts{display:flex;flex-wrap:wrap;gap:8px}
+.op{flex:1 1 45%;border:none;border-radius:12px;padding:11px 12px;font:700 clamp(15px,3.8vw,18px) system-ui;cursor:pointer;background:#e6ecff;color:#1f2433;box-shadow:0 4px 0 #9fb0e0;text-align:left}
+.op .k{display:inline-block;width:22px;height:22px;border-radius:6px;background:#fff;text-align:center;font-size:13px;line-height:22px;margin-right:6px;opacity:.7}
+.op.ok{background:#9ff0b0;box-shadow:0 4px 0 #3c9b55}.op.bad{background:#ffb3b3;box-shadow:0 4px 0 #c54b4b}
+.op:disabled{cursor:default}
+#fb{margin-top:10px;border-radius:12px;padding:0 12px;font-size:16px;line-height:1.45}
+#fb.ok{background:#dcfbe3;border:2px solid #3c9b55;padding:10px 12px}#fb.bad{background:#ffe5e5;border:2px solid #c54b4b;padding:10px 12px}
+#acts{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
+#acts .big{font-size:16px;padding:10px 18px;margin:0}
+.line{min-height:56px;border:3px dashed #b8c3e6;border-radius:12px;padding:6px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center}
+.tiles{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.tile{border:none;border-radius:12px;padding:7px 12px;font:800 18px system-ui;cursor:pointer;box-shadow:0 4px 0 #0003;color:#1f2433;min-width:60px}
+.tile small{display:block;font-weight:600;font-size:11px;opacity:.75}
+.tile.pre{background:#ffd6a8}.tile.root{background:#bfe3ff}.tile.suf{background:#d6c7ff}.tile.word{background:#c8f5c8}
+.tile.used{display:none}
+.tile.long{width:100%;text-align:left;font-size:16px;font-weight:700;background:#fff1c9;min-height:44px}
+.slot{background:#00000008;border-radius:12px;padding:8px;margin:6px 0}.slot b{display:block;font-size:13px;color:var(--b);text-transform:uppercase;margin-bottom:4px}
+.ch{border:2px solid #cfd6ea;border-radius:10px;background:#fff;padding:7px 10px;margin:3px;font:600 15px system-ui;cursor:pointer;color:#1f2433}.ch.on{border-color:var(--b);background:#e6f7ff;box-shadow:0 0 0 2px var(--b)}
+.story{background:#fff;border:3px double var(--b);border-radius:12px;padding:12px;font:500 18px Georgia,serif;line-height:1.6;margin-top:8px}
+.plates{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:8px 0}.plate{border:none;min-width:84px;min-height:84px;border-radius:50%;background:#fff;box-shadow:0 4px 0 #0003,inset 0 0 0 4px #e3dccb;font-size:20px;padding:12px;cursor:pointer;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;max-width:140px}.plate .pc{position:relative;top:-4px;font:800 12px system-ui;color:#888;width:100%}
+.pool{text-align:center;font-size:24px;min-height:34px;background:#00000008;border-radius:12px;padding:6px;margin:6px 0}
+.grid{display:grid;gap:2px;margin:6px auto;max-width:330px;touch-action:none}.cell{aspect-ratio:1;background:#fff;border:1px solid #b8c3e6;border-radius:2px;cursor:pointer}.cell.on{background:#ff8f3f;border-color:#c25a10}
+.ld{font:800 clamp(20px,5.5vw,28px) ui-monospace,monospace;border-collapse:collapse;margin:4px auto}.ld td{width:1.5em;height:1.4em;text-align:center}.ld .top td.q{color:#2f80ed;border-bottom:3px solid #333}.ld td.dv{border-right:3px solid #333;color:#c0392b;padding-right:6px}.ld td.cur{background:#ffe46b;border-radius:6px}
+.work{font:600 15px ui-monospace,monospace;background:#00000008;border-radius:10px;padding:6px 10px;margin:4px 0;line-height:1.6}
+#clapB{font-size:54px;width:120px;height:120px;border-radius:50%;border:none;background:#ffd6a8;box-shadow:0 6px 0 #c08040;cursor:pointer}#clapB:active{transform:translateY(4px)}
+.poem{font:500 18px Georgia,serif;line-height:1.7;background:#fff;border-radius:12px;padding:10px 14px;border:2px solid #e3dccb;margin-bottom:8px}
+.pal{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:4px 0}.pal b{width:100%;text-align:center;font-size:13px;color:#666}.wb{border:none;border-radius:10px;padding:8px 12px;font:800 16px system-ui;background:#cfe0ff;box-shadow:0 3px 0 #7d98d0;cursor:pointer;color:#1f2433}.wb.l{background:#ffd6a8;box-shadow:0 3px 0 #c08040}
+.bins{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.bin{flex:1 1 140px;min-height:96px;border:3px dashed #b8c3e6;border-radius:14px;background:#f4f7ff;padding:6px;cursor:pointer;text-align:center;color:#1f2433}.bin h5{margin:0 0 4px;font-size:14px}.bin.hot{border-color:var(--b);background:#e8fff1}
+.cards{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;min-height:60px}.acard{border:none;border-radius:12px;background:#fff;box-shadow:0 3px 0 #0003,inset 0 0 0 2px #e3dccb;padding:4px 8px;font:700 13px system-ui;cursor:pointer;color:#1f2433;min-width:74px}.acard .em{display:block;font-size:34px;line-height:1.2}.acard svg{width:44px;height:36px;display:block;margin:0 auto}.acard.sel{box-shadow:0 0 0 4px var(--b);transform:translateY(-3px)}.acard.ok{background:#c8f5c8}.acard.bad{background:#ffc9c9}
+.seq{font-size:clamp(26px,7vw,40px);text-align:center;letter-spacing:2px;margin:6px 0;overflow-wrap:anywhere}
+.result{font-size:22px;font-weight:800;text-align:center;margin:4px 0;color:#3c9b55}
+.svgw{display:flex;justify-content:center;margin:4px 0}
+.svgw svg{width:100%;max-width:560px;height:auto;touch-action:none;max-height:38vh}
+.svgw.drag svg{cursor:pointer}
+.readout{text-align:center;font:800 20px system-ui;color:var(--b)}
+.pad{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;max-width:440px;margin:6px auto}
+.pad button{border:none;border-radius:10px;padding:10px 0;font:800 19px system-ui;background:#e6ecff;box-shadow:0 3px 0 #9fb0e0;cursor:pointer;color:#1f2433}
+.disp{max-width:440px;margin:0 auto;border-radius:10px;background:#1f2433;color:#7ef29a;font:800 26px ui-monospace,monospace;padding:8px 12px;text-align:right;min-height:48px}
+.disp span{color:#ccc;font-size:18px}
+.stars{font-size:54px;color:#ffd23f;letter-spacing:6px;text-shadow:0 4px 0 #0006}
+kbd{background:#ffffff33;border-radius:4px;padding:0 5px}
+</style></head><body>
+<div id="top"><a id="menu" href="../index.html">← Menu</a><a id="lz" href="index.html">🎓 Learning Zone</a><div id="mid">Factor Factory</div><div><button class="tb" id="mapB" aria-label="Map">🗺</button> <button class="tb" id="muteB" aria-label="Mute">🔊</button></div></div>
+<div class="scr on" id="title"><h1>🏭 Factor Factory</h1><p class="sub">Run the number factory! Build arrays to find factor pairs, tap every multiple on the hundred grid, sieve out the prime numbers, grow factor trees and find common factors and multiples.</p><div><button class="big" id="playB">▶ Play</button><button class="big alt" id="howB">❔ How to play</button></div><p class="sub" id="tInfo"></p></div>
+<div class="scr" id="how"><h2>How to play</h2><div class="sub" style="text-align:left"><p><b>🔢 Number grid:</b> tap every number that fits the rule (factors, multiples or primes), then Check. Tap again to un-select.</p><p><b>🌳 Factor trees:</b> split a number into factors step by step until only primes remain. A <b>prime</b> has exactly 2 factors: 1 and itself.</p><p>Get a level right with no mistakes for ★★★. A wrong answer is fine: you'll see why, so you learn something every time.</p><p>Keys: <kbd>1</kbd>–<kbd>6</kbd> choose, <kbd>Enter</kbd> check / next, <kbd>M</kbd> mute.</p></div><button class="big" id="howBack">Got it</button></div>
+<div class="scr" id="map"><h2 style="margin:6px">🏭 Level Map <small id="tot"></small></h2><div id="mapG" style="width:100%;display:flex;flex-direction:column;align-items:center"></div></div>
+<div class="scr" id="game"><div id="hud"><span id="hL"></span><span id="hR"></span></div><div id="bar"><div id="barF"></div></div>
+<div id="card"><div id="kind"></div><div id="prompt"></div><div id="area"></div><div id="fb"></div><div id="acts"><button class="big" id="chk">Check ✔</button><button class="big" id="next">Next ▶</button></div></div></div>
+<div class="scr" id="end"><h2 id="endH"></h2><div class="stars" id="endS"></div><p class="sub" id="endP"></p><div><button class="big alt" id="retryB">⟲ Retry</button><button class="big" id="nextB">Next ▶</button><button class="big alt" id="endMapB">🗺 Map</button></div></div>
+<script>
+const KEY='factorsSave';
+const factors=n=>{const f=[];for(let i=1;i<=n;i++)if(n%i===0)f.push(i);return f};const isP=n=>factors(n).length===2;
+const G_factors=()=>{const n=pick([12,16,18,20,24,28,30,36,40,42,45,48]);return {type:'grid',max:50,kind:'🔢 Find the factors',q:`Tap <b>every factor</b> of <span class="hl">${n}</span>.`,a:factors(n),why:`Factor pairs of ${n}: ${factors(n).filter(f=>f*f<=n).map(f=>f+' × '+n/f).join(', ')}. So the factors are <b>${factors(n).join(', ')}</b>.`}};
+const G_mult=()=>{const k=pick([3,4,6,7,8,9]);const a=[];for(let i=k;i<=60;i+=k)a.push(i);return {type:'grid',max:60,kind:'✖ Multiples',q:`Tap <b>every multiple</b> of <span class="hl">${k}</span> up to 60.`,a,why:`Count in ${k}s: <b>${a.join(', ')}</b>.`}};
+const G_primes=hi=>()=>{const a=[];for(let i=2;i<=hi;i++)if(isP(i))a.push(i);return {type:'grid',max:hi,kind:'💎 Prime sieve',q:`Tap <b>every prime number</b> up to ${hi}.`,a,why:`Primes have exactly two factors. Up to ${hi}: <b>${a.join(', ')}</b>. (1 is <i>not</i> prime: it has only one factor.)`}};
+const G_pair=()=>{const n=pick([12,18,20,24,30,36]),fs=factors(n).filter(f=>f>1&&f<n),f=pick(fs);return {type:'num',kind:'🧱 Factor pairs',q:`Arrays for ${n}: ${f} rows of ? make ${n}.<div class="svgw">${arr(f,n/f)}</div>`,a:n/f,why:`${f} × <b>${n/f}</b> = ${n}, so ${f} and ${n/f} are a factor pair.`}};
+function arr(r,c){let s=`<svg viewBox="0 0 ${c*22+4} ${r*22+4}" style="max-width:${Math.min(400,c*30)}px">`;for(let i=0;i<r;i++)for(let j=0;j<c;j++)s+=`<circle cx="${13+j*22}" cy="${13+i*22}" r="8" fill="#ff9f43"/>`;return s+'</svg>'}
+const G_isprime=()=>{const n=rnd(2,60),p=isP(n);return {type:'mc',kind:'💎 Prime or composite?',q:`<div class="seq">${n}</div>`,opts:['Prime','Composite'],a:p?0:1,why:`Factors of ${n}: ${factors(n).join(', ')}. ${p?'Exactly two factors → <b>prime</b>.':'More than two factors → <b>composite</b>.'}`}};
+function ftree(n){const st=[];let m=n;while(!isP(m)){const p=[2,3,5,7,11,13].find(p=>m%p===0);st.push([m,p,m/p]);m=m/p}return st}
+const G_tree=()=>{const n=pick([24,36,40,48,60,72,84,90,100]),st=ftree(n),out=[];const done=[];st.forEach(([m,p,q],i)=>{out.push({type:'num',kind:'🌳 Factor tree',q:`${treeHTML(n,done)}Split <b>${m}</b>: ${p} × ? = ${m}`,a:q,why:`${m} ÷ ${p} = <b>${q}</b>. ${p} is prime, so that branch stops.`});done.push(p)});
+ const pf=[...done,st[st.length-1][2]];out.push({type:'mc',kind:'🌳 Prime factors',q:`${treeHTML(n,done,st[st.length-1][2])}So ${n} as a product of primes is…`,opts:shuffle([pf.join(' × '),pf.slice(0,-1).concat([pf[pf.length-1]*2]).join(' × '),[n/2,2].join(' × ')]).filter((x,i,a)=>a.indexOf(x)===i),a:0,why:`<b>${n} = ${pf.join(' × ')}</b>: all prime.`});out[out.length-1].a=out[out.length-1].opts.indexOf(pf.join(' × '));return out};
+function treeHTML(n,done,last){return `<div class="work" style="font-size:17px">🌳 ${n} → ${done.length?done.map(p=>'<b style="color:#c0392b">'+p+'</b>').join(' × ')+(last?' × <b style="color:#c0392b">'+last+'</b>':' × …'):'?'}</div>`}
+const gcd=(a,b)=>b?gcd(b,a%b):a;
+const G_gcf=()=>{let a,b;do{a=rnd(8,48);b=rnd(8,48)}while(a===b||gcd(a,b)<2);const g=gcd(a,b);return {type:'num',kind:'🤝 Greatest common factor',q:`What is the <b>greatest common factor</b> of ${a} and ${b}?`,a:g,why:`Factors of ${a}: ${factors(a).join(', ')}. Factors of ${b}: ${factors(b).join(', ')}. The biggest in both lists is <b>${g}</b>.`}};
+const G_lcm=()=>{const a=rnd(2,9),b=rnd(2,9);if(a===b)return G_lcm();const l=a*b/gcd(a,b);return {type:'num',kind:'🔁 Least common multiple',q:`What is the <b>least common multiple</b> of ${a} and ${b}?`,a:l,why:`Multiples of ${a}: ${[1,2,3,4,5,6].map(i=>a*i).join(', ')}… Multiples of ${b}: ${[1,2,3,4,5,6].map(i=>b*i).join(', ')}… The first number in both is <b>${l}</b>.`}};
+const G_word=()=>{const a=pick([4,6,8]),b=pick([6,9,10,12].filter(x=>x!==a)),l=a*b/gcd(a,b);return {type:'num',kind:'📦 Factory problem',q:`Buns come in packs of ${a} and sausages in packs of ${b}. What is the smallest number of each you can buy to have the same amount?`,a:l,why:`This is the least common multiple of ${a} and ${b}: <b>${l}</b>.`}};
+function EXTRA(){TYPES.grid={check:1,render(t,ar){t.on=new Set;ar.insertAdjacentHTML('beforeend',`<div class="grid" id="ng" style="grid-template-columns:repeat(10,1fr);max-width:460px">${Array.from({length:t.max},(_,i)=>`<button class="cell" data-i="${i+1}" style="aspect-ratio:1;font:700 14px system-ui;color:#333">${i+1}</button>`).join('')}</div><div class="readout" id="gro"></div>`);
+  $('#ng').addEventListener('click',e=>{const b=e.target.closest('.cell');if(!b||G.answered)return;const n=+b.dataset.i;t.on.has(n)?t.on.delete(n):t.on.add(n);tone(300+n*8,.05,'triangle',.08);TYPES.grid.draw(t)});TYPES.grid.draw(t)},
+ draw(t,mark){document.querySelectorAll('#ng .cell').forEach(b=>{const n=+b.dataset.i,on=t.on.has(n),ans=t.a.includes(n);b.classList.toggle('on',on&&!mark);if(mark){b.style.background=ans&&on?'#9ff0b0':on?'#ffb3b3':ans?'#ffe46b':'';}});$('#gro').textContent='Selected: '+t.on.size},
+ check(t){answer(t.on.size===t.a.length&&t.a.every(x=>t.on.has(x)))},reveal(t,ok){TYPES.grid.draw(t,1);if(!ok)$('#gro').innerHTML='🟩 right · 🟥 wrong pick · 🟨 missed'}}}
+const L=(...gs)=>()=>{const out=[],seen=new Set;let g=0;while(out.length<6&&g++<200){const t=gs[out.length%gs.length]();const k=t.q+t.a;if(!seen.has(k)){seen.add(k);out.push(t)}}return out};
+const WORLDS=[
+ {name:'Array Assembly',icon:'🧱',color:'#ff9f43',desc:'factor pairs',levels:[{name:'Factor Pairs',gen:L(G_pair)},{name:'Find All Factors',gen:L(G_factors,G_pair)}]},
+ {name:'Multiple Mill',icon:'✖',color:'#7ec8ff',desc:'multiples',levels:[{name:'Multiples Grid',gen:L(G_mult)},{name:'Common Multiples',gen:L(G_lcm,G_word)}]},
+ {name:'Prime Plant',icon:'💎',color:'#b7a3ff',desc:'prime numbers',levels:[{name:'Prime or Not?',gen:L(G_isprime)},{name:'Sieve to 30',gen:()=>[G_primes(30)(),...L(G_isprime)().slice(0,4)]},{name:'Sieve to 50',gen:()=>[G_primes(50)(),...L(G_isprime)().slice(0,3)]}]},
+ {name:'Tree Works',icon:'🌳',color:'#7ef29a',desc:'factor trees & GCF',levels:[{name:'Grow a Tree',gen:()=>[...G_tree(),...G_tree()]},{name:'Greatest Common Factor',gen:L(G_gcf)},{name:'Factory Boss',gen:()=>[G_factors(),...G_tree(),G_gcf(),G_lcm()]}]}];
+const $=s=>document.querySelector(s);
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let save=LS.get(KEY,null);if(!save||typeof save!=='object')save={};save.stars=save.stars||{};
+let AC=null;function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){AC=null}}if(AC&&AC.state==='suspended')AC.resume();return AC}
+function tone(f,d,t,v,dl){if(save.muted)return;const a=ac();if(!a)return;try{const o=a.createOscillator(),g=a.createGain();o.type=t||'sine';o.frequency.value=f;const s=a.currentTime+(dl||0);g.gain.setValueAtTime(v||.14,s);g.gain.exponentialRampToValueAtTime(.001,s+d);o.connect(g);g.connect(a.destination);o.start(s);o.stop(s+d+.03)}catch(e){}}
+const SFX={click(){tone(620,.05,'square',.04)},ok(){tone(660,.1);tone(990,.18,'sine',.14,.09)},bad(){tone(220,.18,'sawtooth',.07);tone(160,.25,'sawtooth',.07,.12)},win(){[523,659,784,1046].forEach((f,i)=>tone(f,.25,'triangle',.15,i*.12))},tick(){tone(1400,.02,'square',.025)}};
+function persist(){LS.set(KEY,save)}
+function setMuteUI(){$('#muteB').textContent=save.muted?'🔇':'🔊'}
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const pick=a=>a[Math.random()*a.length|0];const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+const LV=[];WORLDS.forEach((w,wi)=>w.levels.forEach((l,li)=>LV.push({w:wi,l:li,id:wi+'-'+li,name:l.name,gen:l.gen})));
+const unlocked=i=>i===0||(save.stars[LV[i-1].id]||0)>0;
+function show(id){document.querySelectorAll('.scr').forEach(e=>e.classList.toggle('on',e.id===id));G.screen=id}
+const G={screen:'title',lv:0,tasks:[],i:0,mist:0,answered:false,sel:[],val:0,str:''};
+function totStars(){return LV.reduce((s,l)=>s+(save.stars[l.id]||0),0)}
+function drawMap(){let h='';WORLDS.forEach((w,wi)=>{h+=`<div class="world" style="border-left:6px solid ${w.color}"><h3>${w.icon} ${esc(w.name)} <small>${esc(w.desc||'')}</small></h3><div class="lvs">`;
+ LV.forEach((l,i)=>{if(l.w!==wi)return;const s=save.stars[l.id]||0;h+=`<button class="lvb" data-lv="${i}" ${unlocked(i)?'':'disabled'}>${unlocked(i)?'':'🔒 '}${l.l+1}. ${esc(l.name)}<span class="st">${'★'.repeat(s)}${'☆'.repeat(3-s)}</span></button>`});h+='</div></div>'});
+ $('#mapG').innerHTML=h;$('#tot').textContent='★ '+totStars()+' / '+LV.length*3;show('map');
+ const firstOpen=[...document.querySelectorAll('.lvb:not([disabled])')].filter(b=>!(save.stars[LV[b.dataset.lv].id])).shift();if(firstOpen)firstOpen.scrollIntoView({block:'center'})}
+function startLevel(i){G.lv=i;G.tasks=LV[i].gen();G.i=0;G.mist=0;show('game');renderTask()}
+function renderTask(){const t=G.tasks[G.i];G.answered=false;G.sel=[];G.str='';
+ $('#hL').textContent=WORLDS[LV[G.lv].w].icon+' '+LV[G.lv].name;$('#hR').textContent=(G.i+1)+' / '+G.tasks.length+'  ✘ '+G.mist;$('#barF').style.width=(G.i/G.tasks.length*100)+'%';
+ $('#kind').textContent=t.kind||'';$('#prompt').innerHTML=t.q||'';$('#fb').className='';$('#fb').innerHTML='';
+ $('#next').style.display='none';$('#chk').style.display=TYPES[t.type].check?'':'none';const ar=$('#area');ar.innerHTML='';
+ if(t.pass&&t.type!=='tap')ar.insertAdjacentHTML('beforeend',passHTML(t,false));
+ TYPES[t.type].render(t,ar);$('#card').scrollTop=0;window.scrollTo(0,0);$('#game').scrollTop=0}
+function passHTML(t,tap){return `<div class="pass${tap?' tapme':''}">${t.title?'<h4>'+esc(t.title)+'</h4>':''}${t.pass.map((s,i)=>`<span class="sent" data-i="${i}">${s}</span>`).join(' ')}</div>`}
+function answer(ok){const t=G.tasks[G.i];if(G.answered)return;G.answered=true;
+ if(ok){SFX.ok();$('#fb').className='ok';$('#fb').innerHTML='✔ <b>'+pick(['Correct!','Nice work!','Spot on!','Brilliant!','You got it!'])+'</b> '+(t.why||'')}
+ else{G.mist++;SFX.bad();$('#fb').className='bad';$('#fb').innerHTML='✘ <b>Not quite.</b> '+(t.why||'')}
+ if(TYPES[t.type].reveal)TYPES[t.type].reveal(t,ok);$('#chk').style.display='none';$('#next').style.display='';$('#hR').textContent=(G.i+1)+' / '+G.tasks.length+'  ✘ '+G.mist;
+ $('#fb').scrollIntoView({block:'nearest'})}
+function nextTask(){SFX.click();G.i++;if(G.i>=G.tasks.length)return finish();renderTask()}
+function finish(){const st=G.mist===0?3:G.mist<=2?2:1,id=LV[G.lv].id;save.stars[id]=Math.max(save.stars[id]||0,st);persist();SFX.win();
+ $('#endH').textContent=st===3?'🏆 Perfect!':st===2?'🎉 Great job!':'👍 Level complete!';$('#endS').textContent='★'.repeat(st)+'☆'.repeat(3-st);
+ $('#endP').textContent=`${G.tasks.length-G.mist} of ${G.tasks.length} right first time. `+(st<3?'Replay for 3 stars: every round is reshuffled.':'')+(G.lv+1>=LV.length?' You finished the whole game!':'');
+ $('#nextB').style.display=G.lv+1<LV.length?'':'none';show('end');$('#barF').style.width='100%'}
+// ---- task types ----
+const TYPES={
+ mc:{render(t,ar){if(t.svg)ar.insertAdjacentHTML('beforeend','<div class="svgw">'+t.svg+'</div>');ar.insertAdjacentHTML('beforeend','<div id="opts">'+t.opts.map((o,i)=>`<button class="op" data-i="${i}"><span class="k">${i+1}</span>${o}</button>`).join('')+'</div>');
+  ar.querySelectorAll('.op').forEach(b=>b.onclick=()=>{if(G.answered)return;G.sel=[+b.dataset.i];answer(+b.dataset.i===t.a)})},
+  reveal(t,ok){document.querySelectorAll('.op').forEach(b=>{b.disabled=true;const i=+b.dataset.i;if(i===t.a)b.classList.add('ok');else if(i===G.sel[0])b.classList.add('bad')})},key(n){const b=document.querySelector(`.op[data-i="${n}"]`);if(b)b.click()}},
+ tap:{render(t,ar){ar.insertAdjacentHTML('beforeend',passHTML(t,true));ar.querySelectorAll('.sent').forEach(s=>s.onclick=()=>{if(G.answered)return;G.sel=[+s.dataset.i];answer(+s.dataset.i===t.a)})},
+  reveal(t){document.querySelectorAll('.sent').forEach(s=>{const i=+s.dataset.i;if(i===t.a)s.classList.add('ok');else if(i===G.sel[0])s.classList.add('bad')});document.querySelector('.pass').classList.remove('tapme')},
+  key(n){const s=document.querySelector(`.sent[data-i="${n}"]`);if(s)s.click()}},
+ build:{check:1,render(t,ar){if(t.svg)ar.insertAdjacentHTML('beforeend','<div class="svgw">'+t.svg+'</div>');if(t.seq)ar.insertAdjacentHTML('beforeend','<div class="seq">'+t.seq+'</div>');ar.insertAdjacentHTML('beforeend',`<div class="line" id="line"><span style="opacity:.5">${t.hint||'Tap pieces to build the word'}</span></div><div class="tiles">`+t.tiles.map((p,i)=>`<button class="tile ${p.r}${t.long?' long':''}" data-i="${i}">${t.raw?p.p:esc(p.p)}${p.m?'<small>'+esc(p.m)+'</small>':''}</button>`).join('')+'</div>');
+  ar.querySelectorAll('.tiles .tile').forEach(b=>b.onclick=()=>{if(G.answered)return;SFX.click();G.sel.push(+b.dataset.i);b.classList.add('used');TYPES.build.draw(t)})},
+  draw(t){const l=$('#line');l.innerHTML=G.sel.length?G.sel.map((i,k)=>`<button class="tile ${t.tiles[i].r}${t.long?' long':''}" data-k="${k}">${t.raw?t.tiles[i].p:esc(t.tiles[i].p)}${t.tiles[i].m?'<small>'+esc(t.tiles[i].m)+'</small>':''}</button>`).join(''):`<span style="opacity:.5">${t.hint||'Tap pieces to build the word'}</span>`;
+   l.querySelectorAll('.tile').forEach(b=>b.onclick=()=>{if(G.answered)return;const k=+b.dataset.k,i=G.sel[k];G.sel.splice(k,1);document.querySelector(`.tiles .tile[data-i="${i}"]`).classList.remove('used');SFX.click();TYPES.build.draw(t)})},
+  undo(t){if(!G.sel.length||G.answered)return;const i=G.sel.pop();document.querySelector(`.tiles .tile[data-i="${i}"]`).classList.remove('used');TYPES.build.draw(t)},
+  check(t){if(!G.sel.length){toastFb('Tap some pieces first!');return}answer(G.sel.map(i=>t.tiles[i].p).join('+')===t.a.join('+'))},
+  reveal(t,ok){$('#line').insertAdjacentHTML('afterend',(t.word==null?(ok?'':`<div class="result" style="font-size:16px;text-align:left;color:#1f6b35">Correct order:<br>${t.a.map((x,i)=>(i+1)+'. '+x).join('<br>')}</div>`):`<div class="result">${ok?'':'Answer: '}${t.a.join(' + ')} = ${esc(t.word)}</div>`));document.querySelectorAll('.tile').forEach(b=>b.disabled=true)},
+  key(n){const b=[...document.querySelectorAll('.tiles .tile:not(.used)')][n];if(b)b.click()}},
+ num:{check:1,render(t,ar){if(t.svg)ar.insertAdjacentHTML('beforeend','<div class="svgw">'+t.svg+'</div>');
+  ar.insertAdjacentHTML('beforeend',`<div class="disp" id="disp"></div><div class="pad">${(t.neg?['1','2','3','4','5','6','7','8','9','0','-','⌫']:['1','2','3','4','5','6','7','8','9','0','.','⌫']).map(k=>`<button data-k="${k}">${k}</button>`).join('')}</div>`);TYPES.num.draw(t);
+  ar.querySelectorAll('.pad button').forEach(b=>b.onclick=()=>TYPES.num.press(t,b.dataset.k))},
+  press(t,k){if(G.answered)return;SFX.tick();if(k==='⌫')G.str=G.str.slice(0,-1);else if(k==='-')G.str=G.str.startsWith('-')?G.str.slice(1):'-'+G.str;else if(G.str.length<9&&!(k==='.'&&G.str.includes('.')))G.str+=k;TYPES.num.draw(t)},
+  draw(t){$('#disp').innerHTML=esc(G.str||'?')+' <span>'+esc(t.unit||'')+'</span>'},
+  check(t){if(!G.str){toastFb('Type a number first!');return}answer(G.str!=='-'&&Math.abs(parseFloat(G.str)-t.a)<1e-6)},
+  reveal(t,ok){if(!ok)$('#disp').innerHTML=esc(G.str)+' → <b style="color:#ffd23f">'+t.a+'</b> <span>'+esc(t.unit||'')+'</span>'}},
+ slider:{check:1,render(t,ar){G.val=t.start;ar.insertAdjacentHTML('beforeend',`<div class="svgw drag" id="sw" tabindex="0"></div><div class="readout" id="ro"></div>`);TYPES.slider.draw(t);
+  const sw=$('#sw');let dn=false;const mv=e=>{if(!dn||G.answered)return;const svg=sw.querySelector('svg'),r=svg.getBoundingClientRect(),vb=svg.viewBox.baseVal;
+   const x=(e.clientX-r.left)/r.width*vb.width,y=(e.clientY-r.top)/r.height*vb.height;let v=INST[t.inst].pick(x,y,t);TYPES.slider.set(t,v);e.preventDefault()};
+  sw.addEventListener('pointerdown',e=>{dn=true;try{sw.setPointerCapture(e.pointerId)}catch(_){}mv(e)});sw.addEventListener('pointermove',mv);sw.addEventListener('pointerup',()=>dn=false);sw.addEventListener('pointercancel',()=>dn=false)},
+  set(t,v){v=Math.round(v/t.step)*t.step;v=Math.max(t.min,Math.min(t.max,+v.toFixed(4)));if(v!==G.val){G.val=v;SFX.tick();TYPES.slider.draw(t)}},
+  nudge(t,d){if(!G.answered)TYPES.slider.set(t,G.val+d*t.step)},
+  draw(t,show){$('#sw').innerHTML=INST[t.inst].draw(G.val,t,show);$('#ro').textContent=(t.fmt?t.fmt(G.val):G.val)+' '+(t.unit||'')},
+  check(t){answer(Math.abs(G.val-t.a)<=(t.tol||0)+1e-6)},
+  reveal(t,ok){if(!ok){$('#ro').innerHTML='You set '+(t.fmt?t.fmt(G.val):G.val)+' '+esc(t.unit||'')+' · target <b>'+(t.fmt?t.fmt(t.a):t.a)+' '+esc(t.unit||'')+'</b>';$('#sw').insertAdjacentHTML('beforeend',INST[t.inst].draw(t.a,t,true).replace('<svg','<svg style="opacity:.85;margin-top:4px"'))}}}
+};
+function toastFb(s){$('#fb').className='bad';$('#fb').textContent=s;SFX.bad()}
+$('#chk').onclick=()=>{const t=G.tasks[G.i];if(!G.answered&&TYPES[t.type].check)TYPES[t.type].check(t)};
+$('#next').onclick=nextTask;
+$('#playB').onclick=()=>{ac();SFX.click();drawMap()};$('#howB').onclick=()=>show('how');$('#howBack').onclick=()=>show('title');
+$('#mapB').onclick=()=>{SFX.click();drawMap()};$('#endMapB').onclick=drawMap;$('#retryB').onclick=()=>startLevel(G.lv);$('#nextB').onclick=()=>startLevel(G.lv+1);
+$('#mapG').addEventListener('click',e=>{const b=e.target.closest('.lvb');if(b&&!b.disabled){ac();SFX.click();startLevel(+b.dataset.lv)}});
+$('#muteB').onclick=()=>{save.muted=!save.muted;persist();setMuteUI();ac()};setMuteUI();
+document.addEventListener('keydown',e=>{if(e.key==='m'||e.key==='M'){$('#muteB').click();return}
+ if(G.screen==='title'&&e.key==='Enter'){$('#playB').click();return}
+ if(G.screen==='end'&&e.key==='Enter'){($('#nextB').style.display!=='none'?$('#nextB'):$('#endMapB')).click();return}
+ if(G.screen!=='game')return;const t=G.tasks[G.i],T=TYPES[t.type];
+ if(e.key==='Enter'){e.preventDefault();if(G.answered)nextTask();else if(T.check)T.check(t);return}
+ if(t.type==='num'){if(/^[0-9.\-]$/.test(e.key))T.press(t,e.key);else if(e.key==='Backspace')T.press(t,'⌫');return}
+ if(t.type==='slider'){const d={ArrowRight:1,ArrowUp:1,ArrowLeft:-1,ArrowDown:-1}[e.key];if(d){e.preventDefault();T.nudge(t,e.shiftKey?d*5:d)}return}
+ if(t.type==='build'&&e.key==='Backspace'){T.undo(t);return}
+ if(T.keydown&&T.keydown(t,e))return;if(/^[1-9]$/.test(e.key)&&T.key)T.key(+e.key-1)});
+$('#tInfo').textContent=totStars()?'★ '+totStars()+' / '+LV.length*3+' stars earned':LV.length+' levels to explore';
+if(typeof EXTRA==='function')EXTRA();
+window.__G={G,LV,TYPES,save,get task(){return G.tasks[G.i]}};
+</script></body></html>

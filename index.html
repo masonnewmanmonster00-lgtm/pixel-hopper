@@ -430,6 +430,12 @@ h1 span{color:#ff6b6b}
 .jpk{background:#241b38}
 .jpk i{position:absolute;left:30%;top:40%;width:14px;height:20px;background:#f1f1f1;border-radius:4px}
 .jpk b{position:absolute;left:24%;top:64%;width:8px;height:12px;background:#ff6a00;border-radius:0 0 4px 4px;box-shadow:5px 3px 0 #ffd23f}
+.skj{background:#d5e8f8}
+.skj i{position:absolute;left:0;bottom:0;width:100%;height:34%;background:#fff;clip-path:polygon(0 70%,100% 20%,100% 100%,0 100%)}
+.skj b{position:absolute;left:28%;top:34%;width:26px;height:4px;background:#e11d48;transform:rotate(-32deg);box-shadow:10px -8px 0 #fbbf24}
+.org{background:#120a28}
+.org i{position:absolute;left:16%;top:32%;width:26px;height:26px;border-radius:50%;background:#5fb3ff;box-shadow:40px 10px 0 4px #ffd23f}
+.org b{position:absolute;right:16%;top:24%;width:3px;height:16px;background:#eee}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -495,7 +501,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">One hundred six browser games. Best scores stay on this device.</p>
+<p class="lede">One hundred eight browser games. Best scores stay on this device.</p>
 <p class="edu-link"><a href="./edu/index.html">Learning Lab · educational games</a></p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
@@ -945,6 +951,14 @@ a.card[hidden]{display:none}
 <a class="card" href="./jetpack.html" data-cat="Arcade" data-key="arcade-jet-best" data-name="Jetpack Dash">
 <div class="thumb jpk" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Arcade</p><h2>Jetpack Dash</h2><p>Hold to fly through the lab. Best is your farthest run.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./skijump.html" data-cat="Sports" data-key="arcade-ski-best" data-name="Ski Jump">
+<div class="thumb skj" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Sports</p><h2>Ski Jump</h2><p>Time the take-off and fly five hills. Best is your farthest jump.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./orbitgolf.html" data-cat="Sports" data-key="arcade-orbit-best" data-name="Orbit Golf">
+<div class="thumb org" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Sports</p><h2>Orbit Golf</h2><p>Bend shots around planets across 32 holes. Best is your total stars.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

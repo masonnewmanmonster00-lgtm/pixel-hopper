@@ -1,0 +1,138 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Cipher Club</title><style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;height:100%;background:#1d1630;color:#eef;font-family:system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden;user-select:none}
+#top{position:absolute;top:0;left:0;right:0;height:40px;display:flex;align-items:center;gap:6px;padding:0 8px;background:#0008;z-index:3}
+#top a,#top button{color:#fff;background:#283070;border:0;border-radius:8px;padding:6px 10px;font-size:13px;text-decoration:none;cursor:pointer;white-space:nowrap}
+#title{flex:1;font-weight:800;white-space:nowrap;overflow:hidden}#title b{color:#ffcf5a}#st{font-size:13px;white-space:nowrap}
+canvas{position:absolute;top:40px;left:0;touch-action:none}
+.btn{background:linear-gradient(#ffb340,#e07a10);color:#fff;border:0;border-radius:12px;padding:9px 13px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 #8a4a00;margin:3px}
+.btn:active{transform:translateY(2px)}
+#ov{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:9}
+#ov>div{background:#121a4a;border:2px solid #ffcf5a;border-radius:16px;padding:12px 16px;text-align:center;max-width:96%;max-height:94%;overflow:auto}
+#ov h2{margin:4px 0}#ov p{margin:6px 0;font-size:14px}
+.lv{display:inline-block;margin:3px;padding:5px 8px;border-radius:8px;background:#283070;font-size:13px;cursor:pointer;min-width:120px}
+.lv:hover{background:#e07a10}.lv.lock{opacity:.45;cursor:default}.stars{font-size:34px;color:#ffd54a}
+</style></head><body>
+<div id="top"><a id="lz" href="./index.html">◀ Learning Lab</a><a id="menu" href="../index.html">🏠</a><div id="title">🔐 Cipher <b>Club</b></div><span id="st"></span><button id="lvB">Levels</button><button id="pB">⏸</button><button id="mu">🔊</button></div>
+<canvas id="c"></canvas><div id="ov"><div id="ovc"></div></div>
+<script>
+const SAVEKEY='g3CiphersSave',TITLE='🔐 Cipher Club',INTRO='Join the secret Cipher Club! Spin a Caesar wheel, draw pigpen symbols, flip the alphabet with Atbash, build keyword ciphers and crack messages with frequency analysis.';
+// shared skeleton injected into both games
+const $=id=>document.getElementById(id);
+const cv=$('c'),cx=cv.getContext('2d');let W=0,H=0,DPR=1;
+let save={mute:false,stars:{},unlocked:1};
+try{const s=JSON.parse(localStorage.getItem(SAVEKEY)||'null');if(s)save=Object.assign(save,s)}catch(e){}
+function persist(){try{localStorage.setItem(SAVEKEY,JSON.stringify(save))}catch(e){}}
+let AC=null;function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(AC&&AC.state==='suspended')AC.resume();return AC}
+function tone(f,d=0.12,t='sine',v=0.15,dl=0){if(save.mute)return;const a=ac();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type=t;o.frequency.value=f;const s=a.currentTime+dl;g.gain.setValueAtTime(v,s);g.gain.exponentialRampToValueAtTime(0.001,s+d);o.connect(g);g.connect(a.destination);o.start(s);o.stop(s+d+0.02)}
+const sfx={ok(){tone(660,.1,'triangle');tone(990,.15,'triangle',.15,.08)},bad(){tone(200,.25,'sawtooth',.08)},tap(){tone(500,.05,'square',.05)},win(){[523,659,784,1046].forEach((f,i)=>tone(f,.2,'triangle',.15,i*.12))}};
+function resize(){DPR=window.devicePixelRatio||1;W=innerWidth;H=innerHeight-40;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);cv.style.width=W+'px';cv.style.height=H+'px';cx.setTransform(DPR,0,0,DPR,0,0)}
+function rr(x,y,w,h,r){cx.beginPath();cx.roundRect?cx.roundRect(x,y,w,h,r):cx.rect(x,y,w,h)}
+function txt(s,x,y,sz,col='#fff',al='center',wt='700'){cx.font=wt+' '+sz+'px system-ui,Segoe UI,Roboto,sans-serif';cx.fillStyle=col;cx.textAlign=al;cx.textBaseline='middle';cx.fillText(s,x,y)}
+function fit(s,maxw,sz){cx.font='700 '+sz+'px system-ui';while(sz>9&&cx.measureText(s).width>maxw){sz--;cx.font='700 '+sz+'px system-ui'}return sz}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function pick(a){return a[Math.random()*a.length|0]}
+let paused=false,btns=[];
+function hit(x,y){for(let i=btns.length-1;i>=0;i--){const b=btns[i];if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){b.f();return true}}return false}
+function ptr(e){ac();if(paused||$('ov').style.display==='flex')return;const r=cv.getBoundingClientRect();const p=e.changedTouches?e.changedTouches[0]:e;onTap(p.clientX-r.left,p.clientY-r.top)}
+cv.addEventListener('pointerdown',e=>{e.preventDefault();ptr(e)});
+function ov(html){$('ovc').innerHTML=html;$('ov').style.display=html?'flex':'none'}
+function setPause(p){if($('ov').style.display==='flex'&&!paused)return;paused=p;$('pB').textContent=p?'▶':'⏸';ov(p?'<h2>⏸ Paused</h2><p>Press P or tap to resume. R restarts the level.</p><button class="btn" onclick="setPause(false)">▶ Resume</button> <button class="btn" onclick="setPause(false);restart()">↻ Restart</button>':'')}
+$('pB').onclick=()=>setPause(!paused);
+$('mu').textContent=save.mute?'🔇':'🔊';$('mu').onclick=()=>{save.mute=!save.mute;$('mu').textContent=save.mute?'🔇':'🔊';persist()};
+$('lvB').onclick=()=>{paused=false;showLevels()};
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function showLevels(){let h='<h2>'+TITLE+'</h2><p>'+INTRO+'</p>';LV.forEach((L,i)=>{const ok=i<save.unlocked;h+='<span class="lv'+(ok?'':' lock')+'" data-lv="'+i+'" '+(ok?'onclick="startLevel('+i+')"':'')+'>'+(ok?'':'🔒 ')+(i+1)+'. '+L.name+'<br><small>'+starStr(save.stars[i]||0)+'</small></span>'});h+='<p><small>Keys: 1-4 choose · ←→ turn wheel · Enter check · P pause · R restart · M mute</small></p>';ov(h)}
+function finishLevel(stars){sfx.win();const i=cur;save.stars[i]=Math.max(save.stars[i]||0,stars);save.unlocked=Math.max(save.unlocked,Math.min(LV.length,i+2));persist();
+ ov('<h2>Level complete!</h2><div class="stars">'+starStr(stars)+'</div><p>'+LV[i].name+'</p>'+(i+1<LV.length?'<button class="btn" id="nextB" onclick="startLevel('+(i+1)+')">Next level ▶</button> ':'')+'<button class="btn" onclick="restart()">↻ Replay</button> <button class="btn" onclick="showLevels()">Levels</button>')}
+function restart(){ov('');startLevel(cur)}
+addEventListener('keydown',e=>{const k=e.key;if(k==='p'||k==='P'){setPause(!paused);return}if(paused)return;if($('ov').style.display==='flex'){if(k==='Enter'&&$('nextB'))$('nextB').click();return}
+ if(keyTyping()&&k.length===1&&k!=='p'&&k!=='P'){onKey(e);return}
+ if(k==='r'||k==='R'){restart();return}if(k==='m'||k==='M'){$('mu').click();return}onKey(e)});
+addEventListener('resize',()=>{resize();draw()});
+function ri(a,b){return a+Math.floor(Math.random()*(b-a+1))}
+let cur=0,qi=0,miss=0,Q=null,msg='',msgCol='#fff',lock=false;const CUSTOM={};let BG=['#2a2140','#16213e'],ICON='📚';
+const NQ=()=>{const L=LV[cur];return L.n||(L.m==='order'||L.m==='tl'?(L.reps||1):L.m==='mix'?8:6)};
+function mo(ans,pool,n=4){return shuffle([ans,...shuffle([...new Set(pool)].filter(x=>x!==ans)).slice(0,n-1)])}
+function fromList(list,q){const u=(Q&&Q.used)||[],key=x=>Array.isArray(x)?x[0]:x,left=list.filter(x=>!u.includes(key(x)));const f=pick(left.length?left:list);q.used=u.concat(key(f));return f}
+function quizQ(q,f){q.text=f[0];q.opts=shuffle([f[1],...f[2]]);q.ans=f[1];q.why=f[3]||''}
+function orderQ(q,list,text){q.list=list;q.stages=shuffle(list.map((s,i)=>({s,i})));q.next=0;q.text=text||'Tap the steps IN ORDER, first to last.'}
+function tlQ(q,TL,fmt){const ev=shuffle(TL).slice(0,4).sort((a,b)=>a[0]-b[0]);orderQ(q,ev.map(e=>e[1]+' ('+fmt(e[0])+')'),'Tap these events from OLDEST to NEWEST.');q.stages.forEach(s=>s.s=s.s.replace(/ \([^)]*\)$/,''))}
+function startLevel(i){ov('');paused=false;cur=i;qi=0;miss=0;msg='';lock=false;Q=null;Q=makeQ();draw();if(TIPS[i]&&!save['tip'+i]){save['tip'+i]=1;persist();ov('<h2>'+LV[i].name+'</h2><p>'+TIPS[i]+'</p><button class="btn" onclick="ov(\'\')">Let\'s go ▶</button>')}}
+function keyTyping(){return false}
+function card(x,y,w,h,col,stroke){cx.fillStyle=col;rr(x,y,w,h,12);cx.fill();if(stroke){cx.strokeStyle=stroke;cx.lineWidth=3;cx.stroke()}}
+function wrapC(s,x,y,w,sz,col,maxL=3){cx.font='700 '+sz+'px system-ui';const ws=String(s).split(' ');let lines=[],l='';for(const wd of ws){const t=l?l+' '+wd:wd;if(cx.measureText(t).width>w&&l){lines.push(l);l=wd}else l=t}lines.push(l);if(lines.length>maxL&&sz>10)return wrapC(s,x,y,w,sz-1,col,maxL);lines.forEach((ln,i)=>txt(ln,x,y+(i-(lines.length-1)/2)*(sz+3),sz,col))}
+function draw(){btns=[];cx.clearRect(0,0,W,H);const g=cx.createLinearGradient(0,0,0,H);g.addColorStop(0,BG[0]);g.addColorStop(1,BG[1]);cx.fillStyle=g;cx.fillRect(0,0,W,H);if(!Q)return;const q=Q;
+ $('st').textContent='Lv '+(cur+1)+' · '+Math.min(qi+1,NQ())+'/'+NQ()+' · ✗'+miss;txt(LV[cur].name,W/2,14,13,'#ffcf5a');
+ if(CUSTOM[q.m])return CUSTOM[q.m].draw(q);
+ if(q.stages){wrapC(q.text,W/2,36,W-40,16,'#fff');const n=q.stages.length,gap=8,bw=Math.min(180,(W-20-gap*(n-1))/n),x0=(W-(n*bw+gap*(n-1)))/2;for(let i=0;i<n;i++){const x=x0+i*(bw+gap);card(x,56,bw,40,'#0005');wrapC(i<q.next?q.list[i]:(i+1)+'. ?',x+bw/2,76,bw-8,11,i<q.next?'#7f7':'#ccd')}
+  q.stages.forEach((st,i)=>{const x=x0+i*(bw+gap),y=110,done=st.i<q.next;card(x,y,bw,120,done?'#2a5a3a':'#fdf6e3',st.bad?'#e74c3c':null);const parts=st.s.split(' ');const em=/^\p{Extended_Pictographic}/u.test(parts[0])?parts.shift():'';if(em)txt(em,x+bw/2,y+30,26);wrapC(parts.join(' '),x+bw/2,y+(em?80:60),bw-10,12,done?'#cfc':'#2b1d0e',4);if(!done)btns.push({x,y,w:bw,h:120,f:()=>pickStage(st)})});if(msg)wrapC(msg,W/2,H-36,W-40,14,msgCol);return}
+ const lw=q.wide?0:W*.4;if(!q.wide){if(q.vis)q.vis(lw/2+8,H/2,Math.min(lw,H-60));else if(q.big){card(16,50,lw-16,H-80,'#fdf6e3');wrapC(q.big,lw/2+8,H/2-6,lw-44,q.bigSz||20,'#2b1d0e',6)}else txt(q.icon||ICON,lw/2+8,H/2,70)}
+ const px=q.wide?20:lw+24,pw=W-px-14;wrapC(q.text,px+pw/2,q.wide?52:48,pw,q.wide?17:16,'#fff',q.wide?3:4);const n=q.opts.length,one=n<=3&&q.optCol!==2,bw=one?pw:(pw-10)/2,bh=n>4?36:one?38:46,top=q.wide?92:96;
+ q.opts.forEach((o,i)=>{const bx=px+(one?0:(i%2)*(bw+10)),by=top+(one?i*(bh+8):Math.floor(i/2)*(bh+10));let col='#283070';if(q.picked!=null){if(o===q.ans)col='#2a8a3a';else if(o===q.picked)col='#a33'}card(bx,by,bw,bh,col);const s=(i+1)+'  '+o;if(cx.measureText&&s.length>40)wrapC(s,bx+bw/2,by+bh/2,bw-14,13,'#fff',2);else txt(s,bx+bw/2,by+bh/2,fit(s,bw-10,15));btns.push({x:bx,y:by,w:bw,h:bh,f:()=>choose(o)})});
+ if(msg)wrapC(msg,px+pw/2,H-30,pw,13,msgCol)}
+function pickStage(st){if(lock)return;const q=Q;if(st.i===q.next){q.next++;st.bad=0;sfx.ok();if(q.next>=q.stages.length){lock=true;msg='✔ Perfect order!'+(q.done?' '+q.done:'');msgCol='#7f7';draw();setTimeout(next,1900);return}msg='✔ Yes!';msgCol='#7f7'}else{sfx.bad();miss++;st.bad=1;msg='✘ Not yet — what comes next?';msgCol='#f99'}draw()}
+function choose(v){if(lock)return;Q.picked=v;lock=true;const ok=v===Q.ans;if(ok)sfx.ok();else{sfx.bad();miss++}msg=(ok?'✔ Correct! ':'✘ The answer: '+Q.ans+'. ')+(Q.why||'');msgCol=ok?'#7f7':'#f99';draw();setTimeout(next,ok?1600:3300)}
+function good(m){sfx.ok();lock=true;msg='✔ '+m;msgCol='#7f7';draw();setTimeout(next,1900)}
+function bad(m){sfx.bad();miss++;msg='✘ '+m;msgCol='#f99';draw()}
+function next(){msg='';lock=false;qi++;if(qi>=NQ()){finishLevel(miss===0?3:miss<=2?2:1);return}Q=makeQ();draw()}
+function onTap(x,y){hit(x,y)}
+function onKey(e){const k=e.key,q=Q;if(!q||lock)return;const n=+k;if(CUSTOM[q.m]&&CUSTOM[q.m].key)return CUSTOM[q.m].key(e,q);if(q.opts&&n>=1&&n<=q.opts.length)return choose(q.opts[n-1]);if(q.stages&&n>=1&&n<=q.stages.length&&q.stages[n-1].i>=q.next)return pickStage(q.stages[n-1])}
+
+BG=['#2a1a3a','#0e0818'];ICON='🔐';
+const AB='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const sh=(s,k)=>s.replace(/[A-Z]/g,c=>AB[(AB.indexOf(c)+k+260)%26]);
+const atb=s=>s.replace(/[A-Z]/g,c=>AB[25-AB.indexOf(c)]);
+const keyAB=k=>{let s='';for(const c of k+AB)if(!s.includes(c))s+=c;return s};
+const kenc=(s,k)=>{const a=keyAB(k);return s.replace(/[A-Z]/g,c=>a[AB.indexOf(c)])};
+const WORDS=['SECRET','CODE','SPY','AGENT','MAP','GOLD','KEY','LOCK','HIDE','CLUE','TRUTH','RIDDLE','PIRATE','CASTLE','DRAGON','TIGER','APPLE','RIVER','CLOUD','PLANET','ROCKET','MAGIC','LEMON','PUZZLE','WIZARD','JUNGLE','ROBOT','OCEAN','FOREST','CANDLE','BRIDGE','SHADOW'];
+const SENT=['MEET ME BEHIND THE TREE','THE SECRET KEY IS UNDER THE GREEN STONE','THE TREASURE IS HIDDEN NEAR THE RIVER','KEEP THE MESSAGE SAFE','LEAVE THE NOTE BESIDE THE GATE','THE GEESE FLEW OVER THE FENCE','SEE THE SHEEP NEXT TO THE TREES','HERE IS THE CODE FOR THE DOOR','WE NEED THREE MORE CLUES'];
+const KW=['ZEBRA','TIGER','CASTLE','MONKEY','PLANET','DRAGON'];
+// ---- pigpen ----
+function pig(c,x,y,s,col){const i=AB.indexOf(c);cx.strokeStyle=col||'#1a1028';cx.fillStyle=col||'#1a1028';cx.lineWidth=Math.max(2,s*.09);cx.lineCap='round';const h=s/2;cx.beginPath();
+ if(i<18){const k=i%9,r=Math.floor(k/3),cc=k%3;if(r>0){cx.moveTo(x-h,y-h);cx.lineTo(x+h,y-h)}if(r<2){cx.moveTo(x-h,y+h);cx.lineTo(x+h,y+h)}if(cc>0){cx.moveTo(x-h,y-h);cx.lineTo(x-h,y+h)}if(cc<2){cx.moveTo(x+h,y-h);cx.lineTo(x+h,y+h)}cx.stroke();if(i>=9){cx.beginPath();cx.arc(x,y,s*.09,0,7);cx.fill()}}
+ else{const k=(i-18)%4;const P=[[[-h,-h],[0,h*.6],[h,-h]],[[-h,-h],[h*.6,0],[-h,h]],[[h,-h],[-h*.6,0],[h,h]],[[-h,h],[0,-h*.6],[h,h]]][k];cx.moveTo(x+P[0][0],y+P[0][1]);cx.lineTo(x+P[1][0],y+P[1][1]);cx.lineTo(x+P[2][0],y+P[2][1]);cx.stroke();if(i>=22){const d=[[0,-h*.1],[h*.1,0],[-h*.1,0],[0,h*.1]][k];cx.beginPath();cx.arc(x+d[0],y+d[1],s*.09,0,7);cx.fill()}}}
+function pigWord(w){return ()=>{const x=16,y=50,bw=W*.4-16,bh=H-80;card(x,y,bw,bh,'#efe6ff');const n=w.length,s=Math.min(46,(bw-20)/n*.7);w.split('').forEach((c,i)=>pig(c,x+bw/2+(i-(n-1)/2)*s*1.35,y+bh/2-10,s));txt('Pigpen cipher',x+bw/2,y+bh-14,11,'#6a5a8a')}}
+function pigKey(x,y,s){// tiny key: two grids and two Xs
+ const g=(ox,dots,o)=>{for(let k=0;k<9;k++){const r=Math.floor(k/3),c=k%3,cxp=ox+c*s,cyp=y+r*s;txt(AB[o+k],cxp,cyp,s*.45,'#ffcf5a')}cx.strokeStyle='#ccc';cx.lineWidth=1.5;cx.beginPath();[1,2].forEach(t=>{cx.moveTo(ox-s/2+t*s,y-s/2);cx.lineTo(ox-s/2+t*s,y+s*2.5);cx.moveTo(ox-s/2,y-s/2+t*s);cx.lineTo(ox+s*2.5,y-s/2+t*s)});cx.stroke()};
+ g(x,0,0);g(x+s*3.6,1,9);txt('(dots)',x+s*4.6,y+s*2.9,9,'#ccc');
+ const X=(ox,o)=>{const oy=y+s;cx.strokeStyle='#ccc';cx.beginPath();cx.moveTo(ox-s,oy-s);cx.lineTo(ox+s,oy+s);cx.moveTo(ox+s,oy-s);cx.lineTo(ox-s,oy+s);cx.stroke();txt(AB[o],ox,oy-s*.6,s*.45,'#ffcf5a');txt(AB[o+1],ox-s*.6,oy,s*.45,'#ffcf5a');txt(AB[o+2],ox+s*.6,oy,s*.45,'#ffcf5a');txt(AB[o+3],ox,oy+s*.6,s*.45,'#ffcf5a')};X(x+s*8.2,18);X(x+s*10.6,22);txt('(dots)',x+s*10.6,y+s*2.9,9,'#ccc')}
+// ---- wheel ----
+function wheel(x,y,R,k){cx.fillStyle='#efe6ff';cx.beginPath();cx.arc(x,y,R,0,7);cx.fill();cx.fillStyle='#d6c4ff';cx.beginPath();cx.arc(x,y,R*.72,0,7);cx.fill();cx.fillStyle='#2a1a3a';cx.beginPath();cx.arc(x,y,R*.42,0,7);cx.fill();
+ for(let i=0;i<26;i++){const a=i/26*Math.PI*2-Math.PI/2;txt(AB[i],x+Math.cos(a)*R*.86,y+Math.sin(a)*R*.86,R*.12,i===0?'#c0392b':'#2a1a3a');txt(AB[(i+k)%26],x+Math.cos(a)*R*.57,y+Math.sin(a)*R*.57,R*.11,i===0?'#c0392b':'#5a2a8a')}
+ txt('shift',x,y-R*.1,R*.11,'#ccc');txt(String(k),x,y+R*.12,R*.2,'#ffcf5a');cx.strokeStyle='#c0392b';cx.lineWidth=2;cx.beginPath();cx.moveTo(x,y-R);cx.lineTo(x,y-R*.45);cx.stroke()}
+const Q_INTRO=[['What does a cipher do?','Changes each letter to hide a message',['Translates languages','Sends sounds','Counts numbers'],'Only someone who knows the key can turn it back.'],['The hidden, scrambled message is called…','Ciphertext',['Plaintext','Font','Keyword'],'The normal message is the plaintext.'],['Turning ciphertext back into the message is…','Decrypting',['Encrypting','Spelling','Printing'],'Encrypting hides it; decrypting reveals it.'],['The Caesar cipher is named after…','Julius Caesar, who used a shift of 3',['A cat','A computer','A pirate'],'Roman historian Suetonius described it.'],['Why is a short key a weak secret?','Someone could just try every key',['It is too long','It uses numbers','It is invisible'],'A Caesar cipher has only 25 useful shifts.'],['People who study codes and ciphers are…','Cryptographers',['Astronauts','Geologists','Botanists'],'Code-breakers are cryptanalysts.'],['Cipher wheels were used in the US Civil War and by…','Alberti, who invented one around 1467',['Shakespeare','The Vikings','Newton'],'Leon Battista Alberti\'s disk had two rings, like our wheel.']];
+const Q_FREQ=[['The most common letter in English is usually…','E',['Z','Q','X'],'Then T, A, O, I, N…'],['Frequency analysis means…','Counting how often each cipher letter appears',['Timing the message','Listening to the message','Weighing the paper'],'Common cipher letters probably stand for E, T or A.'],['Who first wrote about frequency analysis, in the 800s?','Al-Kindi',['Caesar','Edison','Darwin'],'The Arab scholar Al-Kindi described it in Baghdad.'],['A single-letter word in English is probably…','A or I',['Q or Z','E or T','X or Y'],'Short words give great clues.'],['Frequency analysis works best on…','Long messages',['One letter','A single word','Blank paper'],'More letters means more reliable counts.'],['Which letter is RAREST in English?','Z',['E','T','S'],'Q, J and X are rare too.'],['A three-letter word that appears a lot is probably…','THE',['ZAP','FOX','QUA'],'Spotting THE breaks many ciphers.']];
+const LV=[{name:'What is a cipher?',m:'quiz',k:Q_INTRO},{name:'Caesar wheel: one letter',m:'cl'},{name:'Turn the wheel (shift known)',m:'wh',known:1},{name:'Caesar words',m:'cw'},{name:'Pigpen letters',m:'pl'},{name:'Pigpen words',m:'pw'},{name:'Atbash letters',m:'al'},{name:'Atbash words',m:'aw'},{name:'Keyword ciphers',m:'kw'},{name:'Frequency facts',m:'quiz',k:Q_FREQ},{name:'Count the letters',m:'fq'},{name:'Crack the Caesar (no key!)',m:'wh'},{name:'Which cipher was it?',m:'which'},{name:'Cipher Club master',m:'mix'}];
+const TIPS={0:'A CIPHER swaps letters to hide a message. Only people who know the KEY can read it.',1:'CAESAR SHIFT: move each letter forward along the alphabet. With shift 3: A→D, B→E… and X→A (wrap around).',2:'Tap ◀ ▶ to turn the inner ring. When the preview shows a real word, tap Check.',4:'PIGPEN draws each letter as the shape of its box in the key. The second grid and X have dots.',6:'ATBASH flips the alphabet: A↔Z, B↔Y, C↔X… It is about 2,500 years old and was used for Hebrew.',8:'A KEYWORD cipher writes the keyword first (no repeated letters), then the rest of the alphabet in order.',10:'In long English messages E is usually the most common letter. Find the tallest bar!',11:'Now nobody tells you the shift. Turn the wheel until the message makes sense.'};
+CUSTOM.wh={draw(q){const R=Math.min(H*.42,W*.2);wheel(20+R,H/2+4,R,q.k);const px=40+R*2,pw=W-px-14;
+ wrapC(q.known?'Ciphertext made with shift '+q.ans+'. Turn the wheel to shift '+q.ans+' to decode it.':'Crack it! Turn the wheel until the message makes sense.',px+pw/2,40,pw,15,'#fff');card(px,62,pw,46,'#efe6ff');wrapC(q.ct,px+pw/2,85,pw-16,18,'#5a2a8a',2);
+ txt('↓ decoded with shift '+q.k,px+pw/2,122,12,'#ccc');card(px,134,pw,46,'#0006');wrapC(sh(q.ct,-q.k),px+pw/2,157,pw-16,18,'#ffcf5a',2);
+ const bw=(pw-20)/3;[['◀',()=>q.turn(-1)],['▶',()=>q.turn(1)],['✔ Check',()=>q.check()]].forEach((b,i)=>{const bx=px+i*(bw+10);card(bx,192,bw,44,i===2?'#2a8a3a':'#5a3a8a');txt(b[0],bx+bw/2,214,17);btns.push({x:bx,y:192,w:bw,h:44,f:b[1]})});if(msg)wrapC(msg,px+pw/2,H-24,pw,13,msgCol)},
+ key(e,q){if(e.key==='ArrowLeft')q.turn(-1);else if(e.key==='ArrowRight')q.turn(1);else if(e.key==='Enter')q.check()}};
+function wordOpts(w){return mo(w,WORDS.filter(x=>x.length===w.length).concat(shuffle(WORDS).slice(0,4)))}
+function makeQ(){const L=LV[cur];let m=L.m;if(m==='mix')m=pick(['cl','wh','cw','pl','pw','al','aw','kw','fq','which']);const q={m,used:(Q&&Q.used)||[]};
+ if(m==='cl'){const k=ri(1,8),c=ri(0,25);q.vis=()=>{const R=Math.min(H*.42,W*.18);wheel(W*.2+8,H/2+4,R,k)};q.text='Shift '+k+': what does '+AB[c]+' become? (outer ring → inner ring)';q.opts=mo(AB[(c+k)%26],[AB[(c+k+1)%26],AB[(c+k+25)%26],AB[(c+26-k)%26],AB[(c+k+2)%26]]);q.ans=AB[(c+k)%26];q.why=AB[c]+' + '+k+' = '+q.ans+'.';return q}
+ if(m==='wh'){const k=ri(2,24);q.known=L.m==='wh'?L.known:Math.random()<.5;q.ans=k;q.pt=L.m==='wh'&&!L.known?pick(SENT):fromList(WORDS,q);q.ct=sh(q.pt,k);q.k=0;q.turn=d=>{if(lock)return;q.k=(q.k+d+26)%26;sfx.tap();msg='';draw()};q.check=()=>{if(lock)return;if(q.k===k)good('Decoded: '+q.pt+'!');else bad(q.known?'The wheel is on '+q.k+', not '+k+'.':'That still looks like gibberish. Keep turning!')};return q}
+ if(m==='cw'){const w=fromList(WORDS,q),k=ri(1,6);q.big=sh(w,k);q.bigSz=30;q.text='This was encrypted with Caesar shift '+k+'. Decode it (shift back '+k+').';q.opts=wordOpts(w);q.ans=w;q.why=q.big+' − '+k+' = '+w+'.';return q}
+ if(m==='pl'){const c=pick(AB.split(''));q.vis=()=>{card(16,50,W*.4-16,H-80,'#efe6ff');pig(c,W*.2+8,H/2-30,70);txt('',0,0,1)};q.wide=0;q.text='Which letter is this pigpen symbol?';q.opts=mo(c,AB.split('').filter(x=>Math.abs(AB.indexOf(x)-AB.indexOf(c))%9===0||Math.random()<.2));q.ans=c;q.why='Check the key: '+c+'.';q.key=1;return q}
+ if(m==='pw'){const w=fromList(WORDS.filter(x=>x.length<=6),q);q.vis=pigWord(w);q.text='Decode the pigpen word';q.opts=wordOpts(w);q.ans=w;q.why='It spells '+w+'.';q.key=1;return q}
+ if(m==='al'){const c=ri(0,25);q.big=AB[c]+' → ?';q.bigSz=40;q.text='Atbash flips the alphabet (A↔Z). What does '+AB[c]+' become?';q.opts=mo(AB[25-c],[AB[(26-c)%26],AB[(24-c+26)%26],AB[c],AB[(c+3)%26]]);q.ans=AB[25-c];q.why=AB[c]+' is letter '+(c+1)+' from the start; '+q.ans+' is letter '+(c+1)+' from the end.';return q}
+ if(m==='aw'){const w=fromList(WORDS,q);q.big=atb(w);q.bigSz=30;q.text='Decode this Atbash message';q.opts=wordOpts(w);q.ans=w;q.why=q.big+' flipped = '+w+'.';return q}
+ if(m==='kw'){const k=pick(KW),w=fromList(WORDS,q),a=keyAB(k);q.wide=1;q.text='Keyword '+k+'. Plain row on top, cipher row below. Decode: '+kenc(w,k);q.vis=null;q.opts=wordOpts(w);q.ans=w;q.why=kenc(w,k)+' → '+w+'.';q.tab=a;return q}
+ if(m==='fq'){let s,k,ct,cnt,top;do{s=pick(SENT);k=ri(1,25);ct=sh(s,k);cnt={};for(const c of ct.replace(/ /g,''))cnt[c]=(cnt[c]||0)+1;const v=Object.values(cnt).sort((a,b)=>b-a);top=v[0]>v[1]?Object.keys(cnt).find(c=>cnt[c]===v[0]):null}while(!top);
+  q.wide=1;q.ct=ct;q.cnt=cnt;q.text='Ciphertext: '+ct;q.opts=mo(top,Object.keys(cnt).filter(c=>c!==top));q.ans=top;q.why=top+' appears '+cnt[top]+' times — it probably stands for E. (Shift '+k+': '+s+')';q.fq=1;q.text2='Which cipher letter most likely stands for E?';return q}
+ if(m==='which'){const w=fromList(WORDS,q),t=pick(['c','a','k']);let ct,ans;const k=ri(1,5),kk=pick(KW);if(t==='c'){ct=sh(w,k);ans='Caesar shift '+k}else if(t==='a'){ct=atb(w);ans='Atbash'}else{ct=kenc(w,kk);ans='Keyword '+kk}
+  if(ct===w)return makeQ();const others=['Caesar shift '+(k%5+1),'Caesar shift '+((k+1)%5+1),'Atbash','Keyword '+pick(KW.filter(x=>x!==kk))].filter(o=>{const f=o==='Atbash'?atb(w):o.startsWith('Caesar')?sh(w,+o.split(' ')[2]):kenc(w,o.split(' ')[1]);return f!==ct&&o!==ans});
+  q.big=w+'\n→ '+ct;q.big=w+'  →  '+ct;q.bigSz=20;q.text='Which cipher turned '+w+' into '+ct+'?';q.opts=shuffle([ans,...shuffle(others).slice(0,3)]);q.ans=ans;q.why='That was '+ans+'.';return q}
+ quizQ(q,fromList(L.k||pick([Q_INTRO,Q_FREQ]),q));return q}
+// overlays for keyword table, frequency chart and pigpen key drawn on top of the standard options layout
+const _d=draw;draw=function(){_d();const q=Q;if(!q||CUSTOM[q.m])return;
+ if(q.tab){const y=H-118,cw=(W-40)/26;card(14,y-8,W-28,60,'#0006');for(let i=0;i<26;i++){txt(AB[i],20+cw*(i+.5),y+8,13,'#fff');txt(q.tab[i],20+cw*(i+.5),y+32,13,'#ffcf5a')}}
+ if(q.fq){const ks=Object.keys(q.cnt).sort(),mx=Math.max(...Object.values(q.cnt)),bw=(W-40)/ks.length,y0=H-28,hh=H-262;cx.fillStyle='#0005';cx.fillRect(14,y0-hh-24,W-28,hh+44);ks.forEach((c,i)=>{const h=q.cnt[c]/mx*hh;cx.fillStyle='#9a6ae0';cx.fillRect(20+i*bw+2,y0-h,bw-4,h);txt(c,20+i*bw+bw/2,y0+10,11,'#fff');txt(String(q.cnt[c]),20+i*bw+bw/2,y0-h-8,9,'#ccc')});txt(q.text2,W/2,y0-hh-14,13,'#ffcf5a')}
+ if(q.key){const px=W*.4+24,pw=W-px-14,s=Math.min(pw/12.6,26);pigKey(px+s*.6,H-58-s*2.4,s)}};
+window.G={get Q(){return Q},LV,step(){const q=Q;if(!q||q.m!=='wh')return null;if(q.k===q.ans)return 2;return ((q.ans-q.k+26)%26)<=13?1:0}};
+resize();cur=0;Q=makeQ();draw();showLevels();
+
+
+</script></body></html>

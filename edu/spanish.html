@@ -1,0 +1,179 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Spanish Quest</title><style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;height:100%;background:#3a0c22;color:#eef;font-family:system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden;user-select:none}
+#top{position:absolute;top:0;left:0;right:0;height:40px;display:flex;align-items:center;gap:6px;padding:0 8px;background:#0008;z-index:3}
+#top a,#top button{color:#fff;background:#283070;border:0;border-radius:8px;padding:6px 10px;font-size:13px;text-decoration:none;cursor:pointer;white-space:nowrap}
+#title{flex:1;font-weight:800;white-space:nowrap;overflow:hidden}#title b{color:#ffcf5a}#st{font-size:13px;white-space:nowrap}
+canvas{position:absolute;top:40px;left:0;touch-action:none}
+.btn{background:linear-gradient(#ffb340,#e07a10);color:#fff;border:0;border-radius:12px;padding:9px 13px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 #8a4a00;margin:3px}
+.btn:active{transform:translateY(2px)}
+#ov{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:9}
+#ov>div{background:#121a4a;border:2px solid #ffcf5a;border-radius:16px;padding:12px 16px;text-align:center;max-width:96%;max-height:94%;overflow:auto}
+#ov h2{margin:4px 0}#ov p{margin:6px 0;font-size:14px}
+.lv{display:inline-block;margin:3px;padding:5px 8px;border-radius:8px;background:#283070;font-size:13px;cursor:pointer;min-width:120px}
+.lv:hover{background:#e07a10}.lv.lock{opacity:.45;cursor:default}.stars{font-size:34px;color:#ffd54a}
+</style></head><body>
+<div id="top"><a id="lz" href="./index.html">◀ Learning Lab</a><a id="menu" href="../index.html">🏠</a><div id="title">🇪🇸 Spanish <b>Quest</b></div><span id="st"></span><button id="lvB">Levels</button><button id="pB">⏸</button><button id="mu">🔊</button></div>
+<canvas id="c"></canvas><div id="ov"><div id="ovc"></div></div>
+<script>
+const SAVEKEY='spanishQuestSave',TITLE='🇪🇸 Spanish Quest',INTRO='Learn beginner Spanish: greetings, numbers, colours, food, animals and phrases. Match pictures, listen, and spell with accents!';
+// shared skeleton injected into both games
+const $=id=>document.getElementById(id);
+const cv=$('c'),cx=cv.getContext('2d');let W=0,H=0,DPR=1;
+let save={mute:false,stars:{},unlocked:1};
+try{const s=JSON.parse(localStorage.getItem(SAVEKEY)||'null');if(s)save=Object.assign(save,s)}catch(e){}
+function persist(){try{localStorage.setItem(SAVEKEY,JSON.stringify(save))}catch(e){}}
+let AC=null;function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(AC&&AC.state==='suspended')AC.resume();return AC}
+function tone(f,d=0.12,t='sine',v=0.15,dl=0){if(save.mute)return;const a=ac();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type=t;o.frequency.value=f;const s=a.currentTime+dl;g.gain.setValueAtTime(v,s);g.gain.exponentialRampToValueAtTime(0.001,s+d);o.connect(g);g.connect(a.destination);o.start(s);o.stop(s+d+0.02)}
+const sfx={ok(){tone(660,.1,'triangle');tone(990,.15,'triangle',.15,.08)},bad(){tone(200,.25,'sawtooth',.08)},tap(){tone(500,.05,'square',.05)},win(){[523,659,784,1046].forEach((f,i)=>tone(f,.2,'triangle',.15,i*.12))}};
+function resize(){DPR=window.devicePixelRatio||1;W=innerWidth;H=innerHeight-40;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);cv.style.width=W+'px';cv.style.height=H+'px';cx.setTransform(DPR,0,0,DPR,0,0)}
+function rr(x,y,w,h,r){cx.beginPath();cx.roundRect?cx.roundRect(x,y,w,h,r):cx.rect(x,y,w,h)}
+function txt(s,x,y,sz,col='#fff',al='center',wt='700'){cx.font=wt+' '+sz+'px system-ui,Segoe UI,Roboto,sans-serif';cx.fillStyle=col;cx.textAlign=al;cx.textBaseline='middle';cx.fillText(s,x,y)}
+function fit(s,maxw,sz){cx.font='700 '+sz+'px system-ui';while(sz>9&&cx.measureText(s).width>maxw){sz--;cx.font='700 '+sz+'px system-ui'}return sz}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function pick(a){return a[Math.random()*a.length|0]}
+let paused=false,btns=[];
+function hit(x,y){for(let i=btns.length-1;i>=0;i--){const b=btns[i];if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){b.f();return true}}return false}
+function ptr(e){ac();if(paused||$('ov').style.display==='flex')return;const r=cv.getBoundingClientRect();const p=e.changedTouches?e.changedTouches[0]:e;onTap(p.clientX-r.left,p.clientY-r.top)}
+cv.addEventListener('pointerdown',e=>{e.preventDefault();ptr(e)});
+function ov(html){$('ovc').innerHTML=html;$('ov').style.display=html?'flex':'none'}
+function setPause(p){if($('ov').style.display==='flex'&&!paused)return;paused=p;$('pB').textContent=p?'▶':'⏸';ov(p?'<h2>⏸ Paused</h2><p>Press P or tap to resume. R restarts the level.</p><button class="btn" onclick="setPause(false)">▶ Resume</button> <button class="btn" onclick="setPause(false);restart()">↻ Restart</button>':'')}
+$('pB').onclick=()=>setPause(!paused);
+$('mu').textContent=save.mute?'🔇':'🔊';$('mu').onclick=()=>{save.mute=!save.mute;$('mu').textContent=save.mute?'🔇':'🔊';persist()};
+$('lvB').onclick=()=>{paused=false;showLevels()};
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function showLevels(){let h='<h2>'+TITLE+'</h2><p>'+INTRO+'</p>';LV.forEach((L,i)=>{const ok=i<save.unlocked;h+='<span class="lv'+(ok?'':' lock')+'" data-lv="'+i+'" '+(ok?'onclick="startLevel('+i+')"':'')+'>'+(ok?'':'🔒 ')+(i+1)+'. '+L.name+'<br><small>'+starStr(save.stars[i]||0)+'</small></span>'});h+='<p><small>Keys: 1-4 choose · P pause · R restart · M mute</small></p>';ov(h)}
+function finishLevel(stars){sfx.win();const i=cur;save.stars[i]=Math.max(save.stars[i]||0,stars);save.unlocked=Math.max(save.unlocked,Math.min(LV.length,i+2));persist();
+ ov('<h2>Level complete!</h2><div class="stars">'+starStr(stars)+'</div><p>'+LV[i].name+'</p>'+(i+1<LV.length?'<button class="btn" id="nextB" onclick="startLevel('+(i+1)+')">Next level ▶</button> ':'')+'<button class="btn" onclick="restart()">↻ Replay</button> <button class="btn" onclick="showLevels()">Levels</button>')}
+function restart(){ov('');startLevel(cur)}
+addEventListener('keydown',e=>{const k=e.key;if(k==='p'||k==='P'){setPause(!paused);return}if(paused)return;if($('ov').style.display==='flex'){if(k==='Enter'&&$('nextB'))$('nextB').click();return}
+ if(keyTyping()&&k.length===1&&k!=='p'&&k!=='P'){onKey(e);return}
+ if(k==='r'||k==='R'){restart();return}if(k==='m'||k==='M'){$('mu').click();return}onKey(e)});
+addEventListener('resize',()=>{resize();draw()});
+const V=[
+// greetings & phrases
+['hola','hello','greet','wave'],['adiós','goodbye','greet','bye'],['buenos días','good morning','greet','sun'],['buenas tardes','good afternoon','greet','sunset'],['buenas noches','good night','greet','moon'],['gracias','thank you','greet','heart'],['por favor','please','greet','please'],
+['sí','yes','phr'],['no','no','phr'],['de nada','you\'re welcome','phr'],['lo siento','I\'m sorry','phr'],['me llamo…','my name is…','phr'],['¿cómo estás?','how are you?','phr'],['estoy bien','I\'m fine','phr'],['hasta luego','see you later','phr'],['tengo hambre','I\'m hungry','phr'],['¿dónde está…?','where is…?','phr'],['no entiendo','I don\'t understand','phr'],['¿cuántos años tienes?','how old are you?','phr'],
+// numbers
+...['uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte'].map((w,i)=>[w,String(i+1),'num',i+1]),
+// colours
+['rojo','red','col','#e53935'],['azul','blue','col','#1e66f5'],['verde','green','col','#2ea043'],['amarillo','yellow','col','#fdd835'],['naranja','orange','col','#fb8c00'],['morado','purple','col','#8e44ad'],['rosa','pink','col','#f48fb1'],['negro','black','col','#111'],['blanco','white','col','#fafafa'],['marrón','brown','col','#7b4a24'],['gris','grey','col','#8a8a8a'],
+// food
+['la manzana','apple','food','apple'],['el plátano','banana','food','banana'],['el pan','bread','food','bread'],['el queso','cheese','food','cheese'],['la leche','milk','food','milk'],['el agua','water','food','water'],['el huevo','egg','food','egg'],['el pescado','fish (food)','food','fishfood'],['la fresa','strawberry','food','straw'],['la zanahoria','carrot','food','carrot'],['el helado','ice cream','food','ice'],['las uvas','grapes','food','grapes'],
+// animals
+['el perro','dog','ani','dog'],['el gato','cat','ani','cat'],['el pájaro','bird','ani','bird'],['el pez','fish (alive)','ani','fish'],['la vaca','cow','ani','cow'],['el cerdo','pig','ani','pig'],['el caballo','horse','ani','horse'],['el ratón','mouse','ani','mouse'],['el león','lion','ani','lion'],['el elefante','elephant','ani','elephant'],['la rana','frog','ani','frog'],['el conejo','rabbit','ani','rabbit']
+].map(a=>({es:a[0],en:a[1],cat:a[2],ic:a[3]}));
+const by=(c,f)=>V.filter(v=>c.includes(v.cat)&&(!f||f(v)));
+const num=(a,b)=>v=>v.cat!=='num'||(v.ic>=a&&v.ic<=b);
+const LV=[
+{name:'Saludos (greetings)',m:['p2w'],pool:by(['greet'])},
+{name:'Números 1–10',m:['w2p'],pool:by(['num'],num(1,10))},
+{name:'Colores (colours)',m:['p2w'],pool:by(['col'])},
+{name:'La comida (food)',m:['w2p'],pool:by(['food'])},
+{name:'Los animales',m:['p2w'],pool:by(['ani'])},
+{name:'Escucha: números',m:['listen'],pool:by(['num'],num(1,10))},
+{name:'Escucha: colores y animales',m:['listen'],pool:by(['col','ani'])},
+{name:'Deletrea: colores',m:['spell'],pool:by(['col'])},
+{name:'Frases útiles',m:['en2es','es2en'],pool:by(['phr'])},
+{name:'Números 11–20',m:['p2w','w2p'],pool:by(['num'],num(11,20))},
+{name:'Deletrea: comida',m:['spell'],pool:by(['food'])},
+{name:'Deletrea: animales (accents!)',m:['spell'],pool:by(['ani'])},
+{name:'Escucha: frases',m:['listen'],pool:by(['phr','greet'])},
+{name:'Deletrea: números 1–20',m:['spell'],pool:by(['num'])},
+{name:'Gran repaso (review)',m:['p2w','w2p','listen','spell','en2es'],pool:V.filter(v=>v.cat!=='phr'||v.es.length<14)}];
+const NQ=8;
+let cur=0,qi=0,miss=0,Q=null,msg='',msgCol='#fff',lock=false,esVoice=null,voicesChecked=false;
+// ---------- speech ----------
+function loadVoices(){if(!('speechSynthesis' in window))return;const vs=speechSynthesis.getVoices();esVoice=vs.find(v=>/^es[-_]ES/i.test(v.lang))||vs.find(v=>/^es/i.test(v.lang))||null;if(vs.length)voicesChecked=true}
+if('speechSynthesis' in window){loadVoices();speechSynthesis.onvoiceschanged=()=>{loadVoices();draw()}}
+setTimeout(()=>{voicesChecked=true;draw()},1500);
+function canSpeak(){return 'speechSynthesis' in window&&(esVoice||!voicesChecked)}
+function say(t){if(save.mute||!('speechSynthesis' in window))return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t.replace(/[¿?…]/g,''));u.lang='es-ES';if(esVoice)u.voice=esVoice;u.rate=.85;speechSynthesis.speak(u)}catch(e){}}
+// ---------- questions ----------
+const hasPic=v=>v.cat!=='phr';
+function distract(v,pool,n,key){const same=pool.filter(o=>o!==v&&o[key]!==v[key]);let src=same.length>=n?same:V.filter(o=>o.cat===v.cat&&o!==v&&o[key]!==v[key]);return shuffle(src).slice(0,n)}
+function makeQ(){const L=LV[cur];let v=pick(L.pool);while(Q&&L.pool.length>1&&Q.v===v)v=pick(L.pool);let m=pick(L.m);if(m==='spell'&&v.cat==='phr')m='en2es';if(m==='p2w'&&!hasPic(v))m='en2es';
+ const q={v,m,picked:null};const opts=shuffle([v,...distract(v,L.pool,3,'es')]);q.opts=opts;
+ if(m==='spell'){q.target=v.es;q.pos=0;const letters=[...v.es.replace(/ /g,'')];const dec=[];const pairs={a:'á',e:'é',i:'í',o:'ó',u:'ú',n:'ñ','á':'a','é':'e','í':'i','ó':'o','ú':'u','ñ':'n'};
+  letters.forEach(c=>{if(pairs[c]&&!letters.includes(pairs[c])&&!dec.includes(pairs[c])&&dec.length<4)dec.push(pairs[c])});while(letters.length+dec.length<10)dec.push(pick([...'abcdeilmnorstu']));q.tiles=shuffle([...letters,...dec]).map(c=>({c,used:false}))}
+ return q}
+function startLevel(i){ov('');paused=false;cur=i;qi=0;miss=0;msg='';lock=false;Q=null;Q=makeQ();draw();speakPrompt()}
+function speakPrompt(){if(!Q)return;if(Q.m==='w2p'||Q.m==='listen')setTimeout(()=>say(Q.v.es),250)}
+function keyTyping(){return Q&&Q.m==='spell'&&$('ov').style.display!=='flex'}
+// ---------- icons ----------
+function C(x,y,r,col){cx.fillStyle=col;cx.beginPath();cx.arc(x,y,r,0,7);cx.fill()}
+function E(x,y,rx,ry,col,rot=0){cx.fillStyle=col;cx.beginPath();cx.ellipse(x,y,rx,ry,rot,0,7);cx.fill()}
+function poly(pts,col){cx.fillStyle=col;cx.beginPath();pts.forEach(p=>cx.lineTo(p[0],p[1]));cx.fill()}
+function eyes(x,y,d,r=3){C(x-d,y,r,'#111');C(x+d,y,r,'#111');C(x-d+1,y-1,r*.35,'#fff');C(x+d+1,y-1,r*.35,'#fff')}
+function drawIcon(v,x,y,s){cx.save();cx.translate(x+s/2,y+s/2);const u=s/100;cx.scale(u,u);const k=v.ic;
+ if(v.cat==='num'){txt(String(k),0,-14,46,'#ffcf5a','center','900');const n=k,cols=Math.min(n,10);for(let i=0;i<n;i++){const r=Math.floor(i/10),c=i%10;C(-40+c*9,22+r*12,3.6,'#7fd')}}
+ else if(v.cat==='col'){const c=k;cx.fillStyle=c;cx.beginPath();for(let i=0;i<16;i++){const a=i/16*Math.PI*2,r=i%2?30:40;cx.lineTo(Math.cos(a)*r,Math.sin(a)*r)}cx.fill();cx.strokeStyle='#fff8';cx.lineWidth=2;cx.stroke();C(-12,-12,7,'#fff6')}
+ else if(k==='wave'){E(0,10,22,26,'#f2c18d');[-18,-7,4,15].forEach((fx,i)=>E(fx,-22,5,14,'#f2c18d'));E(24,8,6,13,'#f2c18d',-.6);cx.strokeStyle='#fff';cx.lineWidth=3;[0,1].forEach(i=>{cx.beginPath();cx.arc(0,0,40+i*8,-2.4,-1.9);cx.stroke()})}
+ else if(k==='bye'){cx.fillStyle='#8d5a2b';cx.fillRect(-25,-40,50,80);C(14,0,4,'#ffd54a');E(-38,0,10,14,'#f2c18d');cx.strokeStyle='#fff';cx.lineWidth=3;cx.beginPath();cx.arc(-38,0,22,2.3,3.9);cx.stroke()}
+ else if(k==='sun'||k==='sunset'){const yy=k==='sun'?-5:18;if(k==='sunset'){cx.fillStyle='#f57c00';cx.fillRect(-45,18,90,4)}C(0,yy,20,'#ffca28');cx.strokeStyle='#ffca28';cx.lineWidth=4;for(let i=0;i<10;i++){const a=i/10*Math.PI*2;if(k==='sunset'&&Math.sin(a)>0)continue;cx.beginPath();cx.moveTo(Math.cos(a)*27,yy+Math.sin(a)*27);cx.lineTo(Math.cos(a)*38,yy+Math.sin(a)*38);cx.stroke()}if(k==='sunset'){cx.fillStyle='#3a2a6a';cx.fillRect(-45,22,90,25)}}
+ else if(k==='moon'){C(0,0,30,'#fff3b0');C(14,-8,26,'#1b2350');[[-30,-30],[30,25],[25,-35],[-35,20]].forEach(p=>C(p[0],p[1],3,'#fff'))}
+ else if(k==='heart'){cx.fillStyle='#e53950';cx.beginPath();cx.moveTo(0,35);cx.bezierCurveTo(-60,-5,-25,-45,0,-15);cx.bezierCurveTo(25,-45,60,-5,0,35);cx.fill()}
+ else if(k==='please'){E(-9,5,11,30,'#f2c18d',.25);E(9,5,11,30,'#f2c18d',-.25);cx.strokeStyle='#ffd54a';cx.lineWidth=2;[[-35,-25],[35,-25],[0,-42]].forEach(p=>{cx.beginPath();cx.moveTo(p[0]*.8,p[1]*.8);cx.lineTo(p[0],p[1]);cx.stroke()})}
+ else if(k==='apple'){C(0,8,30,'#e53935');cx.fillStyle='#6d4c41';cx.fillRect(-2,-30,4,14);E(12,-24,10,5,'#43a047',-.4);C(-10,-2,6,'#fff5')}
+ else if(k==='banana'){cx.strokeStyle='#fdd835';cx.lineWidth=18;cx.lineCap='round';cx.beginPath();cx.arc(0,-25,45,.5,2.6);cx.stroke();cx.fillStyle='#6d4c41';C(36,-1,4,'#5d4037')}
+ else if(k==='bread'){cx.fillStyle='#c98a3c';rr(-38,-10,76,40,14);cx.fill();C(-20,-10,18,'#c98a3c');C(5,-14,20,'#c98a3c');C(25,-8,15,'#c98a3c');cx.strokeStyle='#8d5a2b';cx.lineWidth=3;[-15,0,15].forEach(xx=>{cx.beginPath();cx.moveTo(xx-6,-18);cx.lineTo(xx+6,-4);cx.stroke()})}
+ else if(k==='cheese'){poly([[-40,25],[40,25],[40,-5],[-40,-25]],'#fbc02d');poly([[-40,-25],[40,-5],[40,-12]],'#fdd835');[[-15,8,6],[12,14,4],[20,0,5]].forEach(c=>C(c[0],c[1],c[2],'#e0a800'))}
+ else if(k==='milk'){cx.fillStyle='#fff';cx.fillRect(-20,-15,40,55);poly([[-20,-15],[0,-35],[20,-15]],'#e3f2fd');cx.fillStyle='#1e88e5';cx.fillRect(-20,5,40,14)}
+ else if(k==='water'){cx.fillStyle='#b3e5fc';cx.beginPath();cx.moveTo(-22,-35);cx.lineTo(22,-35);cx.lineTo(16,38);cx.lineTo(-16,38);cx.fill();cx.fillStyle='#29b6f6';cx.beginPath();cx.moveTo(-19,-10);cx.lineTo(19,-10);cx.lineTo(16,38);cx.lineTo(-16,38);cx.fill()}
+ else if(k==='egg'){E(0,0,26,34,'#fff8e1');C(-8,-10,6,'#fff')}
+ else if(k==='fishfood'){E(0,10,42,12,'#fff');E(-5,0,32,16,'#ffab91');cx.strokeStyle='#fff';cx.lineWidth=2;[-15,0,15].forEach(xx=>{cx.beginPath();cx.moveTo(xx,-12);cx.lineTo(xx+6,10);cx.stroke()})}
+ else if(k==='straw'){cx.fillStyle='#e53935';cx.beginPath();cx.moveTo(-28,-12);cx.quadraticCurveTo(0,-30,28,-12);cx.quadraticCurveTo(15,40,0,40);cx.quadraticCurveTo(-15,40,-28,-12);cx.fill();poly([[-20,-20],[0,-32],[20,-20],[0,-14]],'#43a047');for(let i=0;i<8;i++)C(-14+(i%3)*14,-2+Math.floor(i/3)*13,2,'#ffeb3b')}
+ else if(k==='carrot'){poly([[-14,-20],[14,-20],[0,42]],'#fb8c00');poly([[-10,-20],[-14,-44],[0,-22],[8,-46],[10,-20]],'#43a047')}
+ else if(k==='ice'){poly([[-18,0],[18,0],[0,45]],'#d7a35a');C(0,-8,20,'#f48fb1');C(0,-26,14,'#fff3e0');C(0,-40,4,'#e53935')}
+ else if(k==='grapes'){[[-12,-12],[12,-12],[0,-12],[-18,2],[-6,2],[6,2],[18,2],[-12,16],[0,16],[12,16],[-6,30],[6,30]].forEach(p=>C(p[0],p[1]+2,9,'#8e44ad'));cx.fillStyle='#6d4c41';cx.fillRect(-2,-36,4,16)}
+ else if(k==='dog'){E(-28,-2,10,22,'#7b4a24',.3);E(28,-2,10,22,'#7b4a24',-.3);C(0,0,30,'#c98a3c');E(0,16,14,10,'#f3d9b1');C(0,10,6,'#111');eyes(0,-8,12)}
+ else if(k==='cat'){poly([[-28,-10],[-24,-40],[-6,-24]],'#9e9e9e');poly([[28,-10],[24,-40],[6,-24]],'#9e9e9e');C(0,0,30,'#9e9e9e');poly([[-5,8],[5,8],[0,14]],'#f48fb1');eyes(0,-6,12,4);cx.strokeStyle='#333';cx.lineWidth=1.5;[-1,1].forEach(s=>[0,6].forEach(d=>{cx.beginPath();cx.moveTo(s*8,12+d/2);cx.lineTo(s*38,8+d);cx.stroke()}))}
+ else if(k==='bird'){E(-5,8,30,22,'#42a5f5');C(20,-12,16,'#42a5f5');poly([[34,-14],[48,-8],[34,-4]],'#ffb300');C(24,-16,3,'#111');E(-10,8,16,9,'#1e88e5',-.4);cx.strokeStyle='#ffb300';cx.lineWidth=3;cx.beginPath();cx.moveTo(-8,28);cx.lineTo(-8,40);cx.moveTo(4,28);cx.lineTo(4,40);cx.stroke()}
+ else if(k==='fish'){poly([[-30,0],[-48,-18],[-48,18]],'#ff7043');E(5,0,34,20,'#ff8a65');C(22,-5,4,'#111');cx.strokeStyle='#e64a19';cx.lineWidth=2;cx.beginPath();cx.arc(-4,0,14,-1,1);cx.stroke()}
+ else if(k==='cow'){E(-30,-14,12,6,'#fff',.3);E(30,-14,12,6,'#fff',-.3);E(0,0,26,30,'#fafafa');E(-10,-8,8,10,'#222');E(0,20,20,13,'#f8bbd0');C(-7,20,3,'#a55');C(7,20,3,'#a55');eyes(0,-6,10);cx.strokeStyle='#ccc';cx.lineWidth=4;cx.beginPath();cx.moveTo(-14,-28);cx.lineTo(-20,-40);cx.moveTo(14,-28);cx.lineTo(20,-40);cx.stroke()}
+ else if(k==='pig'){poly([[-26,-14],[-22,-38],[-8,-24]],'#f48fb1');poly([[26,-14],[22,-38],[8,-24]],'#f48fb1');C(0,0,32,'#f8bbd0');E(0,12,14,10,'#f48fb1');C(-5,12,3,'#a55');C(5,12,3,'#a55');eyes(0,-10,12)}
+ else if(k==='horse'){E(0,0,18,38,'#8d5a2b',0);E(0,28,15,12,'#6d4c41');poly([[-12,-34],[-8,-48],[-2,-34]],'#8d5a2b');poly([[12,-34],[8,-48],[2,-34]],'#8d5a2b');cx.fillStyle='#3e2723';cx.fillRect(-4,-40,8,40);eyes(0,-12,10);C(-5,30,2,'#000');C(5,30,2,'#000')}
+ else if(k==='mouse'){C(-22,-20,16,'#bdbdbd');C(22,-20,16,'#bdbdbd');C(-22,-20,9,'#f8bbd0');C(22,-20,9,'#f8bbd0');E(0,6,24,22,'#bdbdbd');C(0,20,4,'#f06292');eyes(0,0,9)}
+ else if(k==='lion'){for(let i=0;i<14;i++){const a=i/14*Math.PI*2;C(Math.cos(a)*30,Math.sin(a)*30,13,'#c0611a')}C(0,0,28,'#f9a825');E(0,14,10,7,'#fff3e0');poly([[-5,8],[5,8],[0,13]],'#5d4037');eyes(0,-6,10)}
+ else if(k==='elephant'){E(-30,-2,18,24,'#90a4ae');E(30,-2,18,24,'#90a4ae');C(0,-4,26,'#b0bec5');cx.strokeStyle='#b0bec5';cx.lineWidth=12;cx.lineCap='round';cx.beginPath();cx.moveTo(0,10);cx.quadraticCurveTo(2,40,16,38);cx.stroke();eyes(0,-10,11)}
+ else if(k==='frog'){C(-16,-20,12,'#66bb6a');C(16,-20,12,'#66bb6a');E(0,6,34,24,'#66bb6a');C(-16,-22,6,'#fff');C(16,-22,6,'#fff');C(-16,-22,3,'#111');C(16,-22,3,'#111');cx.strokeStyle='#1b5e20';cx.lineWidth=3;cx.beginPath();cx.arc(0,6,16,.3,2.8);cx.stroke()}
+ else if(k==='rabbit'){E(-12,-30,8,22,'#eee');E(12,-30,8,22,'#eee');E(-12,-30,4,15,'#f8bbd0');E(12,-30,4,15,'#f8bbd0');C(0,8,26,'#eee');C(0,14,4,'#f06292');eyes(0,2,10)}
+ cx.restore()}
+// ---------- layout/draw ----------
+function card(x,y,w,h,col,stroke){cx.fillStyle=col;rr(x,y,w,h,12);cx.fill();if(stroke){cx.strokeStyle=stroke;cx.lineWidth=3;cx.stroke()}}
+function wrapC(s,x,y,w,sz,col){cx.font='700 '+sz+'px system-ui';const ws=s.split(' ');let lines=[],l='';for(const wd of ws){const t=l?l+' '+wd:wd;if(cx.measureText(t).width>w&&l){lines.push(l);l=wd}else l=t}lines.push(l);lines.forEach((ln,i)=>txt(ln,x,y+(i-(lines.length-1)/2)*(sz+4),sz,col))}
+function draw(){btns=[];cx.clearRect(0,0,W,H);const g=cx.createLinearGradient(0,0,W,H);g.addColorStop(0,'#5a1020');g.addColorStop(1,'#2a0c3a');cx.fillStyle=g;cx.fillRect(0,0,W,H);
+ if(!Q)return;$('st').textContent='Lv '+(cur+1)+' · '+Math.min(qi+1,NQ)+'/'+NQ+' · ✗'+miss;
+ const q=Q,v=q.v,lw=Math.min(W*.38,H*1.05),lx=10,ly=8,lh=H-16,rx=lx+lw+12,rw=W-rx-10;
+ card(lx,ly,lw,lh,'#ffffff14','#ffcf5a55');txt(LV[cur].name,lx+lw/2,ly+14,12,'#ffcf5a');
+ const prompts={p2w:'What is this in Spanish?',w2p:'Tap the matching picture',listen:'Listen! Tap what you hear',spell:'Spell it in Spanish',en2es:'Choose the Spanish',es2en:'What does it mean?'};
+ txt(prompts[q.m],rx+rw/2,16,15,'#fff');
+ const ps=Math.min(lw-40,lh-110);
+ if(q.m==='p2w'||q.m==='spell'){drawIcon(v,lx+(lw-ps)/2,ly+26,ps);txt(v.cat==='num'?'':(v.cat==='greet'||q.m==='spell'?'('+v.en+')':''),lx+lw/2,ly+ps+36,14,'#cde')}
+ if(q.m==='w2p'||q.m==='es2en'){wrapC(v.es,lx+lw/2,ly+lh*.42,lw-20,fit(v.es,lw-20,34),'#fff')}
+ if(q.m==='en2es')wrapC('“'+v.en+'”',lx+lw/2,ly+lh*.42,lw-20,fit('“'+v.en+'”',lw-20,28),'#fff');
+ if(q.m==='listen'){if(canSpeak()){C(lx+lw/2,ly+lh*.42,44,'#e07a10');txt('🔊',lx+lw/2,ly+lh*.42,40)}else{wrapC(v.es,lx+lw/2,ly+lh*.38,lw-20,fit(v.es,lw-20,30),'#fff');wrapC('(No Spanish voice on this device — read it aloud instead!)',lx+lw/2,ly+lh*.62,lw-30,12,'#fbb')}}
+ if(q.m!=='spell'&&q.m!=='en2es'&&q.m!=='p2w'||q.m==='p2w'&&false){}
+ if(q.m==='w2p'||q.m==='listen'||q.m==='es2en'||q.m==='p2w'||q.m==='en2es'){const sb={x:lx+lw/2-60,y:ly+lh-44,w:120,h:34};if(q.m!=='en2es'&&q.m!=='p2w'||q.picked){card(sb.x,sb.y,sb.w,sb.h,'#283070');txt('🔊 Hear it (H)',sb.x+60,sb.y+17,13);btns.push({...sb,f:()=>say(v.es)})}}
+ if(q.m==='spell')return drawSpell(rx,rw,lx,lw);
+ const picOpts=(q.m==='w2p'||q.m==='listen')&&hasPic(v);const bw=(rw-10)/2,top=32,bh=(H-top-58)/2;
+ q.opts.forEach((o,i)=>{const bx=rx+(i%2)*(bw+10),by=top+Math.floor(i/2)*(bh+10);let col='#283070';if(q.picked){if(o===v)col='#2a8a3a';else if(o===q.picked)col='#a33'}card(bx,by,bw,bh,col);txt(i+1,bx+12,by+12,12,'#ffcf5a');
+  if(picOpts){const s=Math.min(bw,bh)-10;drawIcon(o,bx+(bw-s)/2,by+(bh-s)/2,s)}else{const label=q.m==='es2en'||q.m==='listen'?o.en:o.es;wrapC(label,bx+bw/2,by+bh/2,bw-16,fit(label,bw-16,22),'#fff')}
+  btns.push({x:bx,y:by,w:bw,h:bh,f:()=>choose(o)})});
+ if(msg)wrapC(msg,rx+rw/2,H-22,rw,14,msgCol)}
+function drawSpell(rx,rw){const q=Q,t=[...q.target];const n=t.length,sw=Math.min(34,(rw-4)/n-3);let x=rx+(rw-n*(sw+3))/2;
+ t.forEach((c,i)=>{if(c===' '){x+=sw+3;return}card(x,34,sw,sw*1.25,i<q.pos?'#2a8a3a':'#ffffff22');if(i<q.pos)txt(c,x+sw/2,34+sw*.62,sw*.7);x+=sw+3});
+ const cols=Math.ceil(q.tiles.length/2),tw=Math.min(62,(rw-(cols-1)*8)/cols),th=Math.min(58,tw);const ty=34+sw*1.25+24;
+ q.tiles.forEach((tl,i)=>{const r=Math.floor(i/cols),c=i%cols,bx=rx+(rw-cols*(tw+8)+8)/2+c*(tw+8),by=ty+r*(th+10);if(tl.used)return;card(bx,by,tw,th,'#fff');txt(tl.c,bx+tw/2,by+th/2,th*.55,'#a01830','center','800');btns.push({x:bx,y:by,w:tw,h:th,f:()=>tile(i)})});
+ if(msg)wrapC(msg,rx+rw/2,H-22,rw,14,msgCol);else wrapC('Watch the accents: á é í ó ú and ñ are different letters!',rx+rw/2,H-22,rw,12,'#fcd')}
+function curChar(){const t=Q.target;while(t[Q.pos]===' ')Q.pos++;return t[Q.pos]}
+function tile(i){if(lock)return;const tl=Q.tiles[i],need=curChar();if(tl.c===need){tl.used=true;Q.pos++;sfx.tap();if(curChar()===undefined){lock=true;sfx.ok();msg='✔ ¡Muy bien! '+Q.v.es+' = '+Q.v.en;msgCol='#7f7';say(Q.v.es);draw();setTimeout(next,1300);return}msg=''}else{sfx.bad();miss++;msg=(tl.c.normalize('NFD')[0]===need.normalize('NFD')[0])?'✘ Careful with the accent: you need “'+need+'”':'✘ Not that letter. Next letter is '+(Q.pos+1)+' of the word.';msgCol='#f99'}draw()}
+function next(){msg='';lock=false;qi++;if(qi>=NQ){finishLevel(miss===0?3:miss<=2?2:1);return}Q=makeQ();draw();speakPrompt()}
+function choose(o){if(lock)return;Q.picked=o;lock=true;const ok=o===Q.v;if(ok){sfx.ok();msg='✔ ¡Correcto! '+Q.v.es+' = '+Q.v.en;msgCol='#7f7'}else{sfx.bad();miss++;msg='✘ '+Q.v.es+' means “'+Q.v.en+'”';msgCol='#f99'}say(Q.v.es);draw();setTimeout(next,ok?1100:2000)}
+function onTap(x,y){hit(x,y)}
+function onKey(e){if(!Q)return;const k=e.key;if(Q.m==='spell'){const i=Q.tiles.findIndex(t=>!t.used&&t.c===k.toLowerCase());if(i>=0)tile(i);else if(k.length===1&&/[a-zñáéíóú]/i.test(k)){miss++;sfx.bad();msg='✘ Try again — tap the tiles for accented letters.';msgCol='#f99';draw()}return}
+ if(k==='h'||k==='H'){say(Q.v.es);return}const n=+k;if(n>=1&&n<=4&&Q.opts[n-1])choose(Q.opts[n-1])}
+window.SQ={get Q(){return Q},V,LV};
+resize();cur=0;Q=makeQ();draw();showLevels();
+
+</script></body></html>

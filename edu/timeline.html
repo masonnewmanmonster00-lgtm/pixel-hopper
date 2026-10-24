@@ -1,0 +1,136 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Time Traveler</title><style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;height:100%;background:#1d1630;color:#eef;font-family:system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden;user-select:none}
+#top{position:absolute;top:0;left:0;right:0;height:40px;display:flex;align-items:center;gap:6px;padding:0 8px;background:#0008;z-index:3}
+#top a,#top button{color:#fff;background:#283070;border:0;border-radius:8px;padding:6px 10px;font-size:13px;text-decoration:none;cursor:pointer;white-space:nowrap}
+#title{flex:1;font-weight:800;white-space:nowrap;overflow:hidden}#title b{color:#ffcf5a}#st{font-size:13px;white-space:nowrap}
+canvas{position:absolute;top:40px;left:0;touch-action:none}
+.btn{background:linear-gradient(#ffb340,#e07a10);color:#fff;border:0;border-radius:12px;padding:9px 13px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 #8a4a00;margin:3px}
+.btn:active{transform:translateY(2px)}
+#ov{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:9}
+#ov>div{background:#121a4a;border:2px solid #ffcf5a;border-radius:16px;padding:12px 16px;text-align:center;max-width:96%;max-height:94%;overflow:auto}
+#ov h2{margin:4px 0}#ov p{margin:6px 0;font-size:14px}
+.lv{display:inline-block;margin:3px;padding:5px 8px;border-radius:8px;background:#283070;font-size:13px;cursor:pointer;min-width:120px}
+.lv:hover{background:#e07a10}.lv.lock{opacity:.45;cursor:default}.stars{font-size:34px;color:#ffd54a}
+</style></head><body>
+<div id="top"><a id="lz" href="./index.html">◀ Learning Lab</a><a id="menu" href="../index.html">🏠</a><div id="title">⏳ Time <b>Traveler</b></div><span id="st"></span><button id="lvB">Levels</button><button id="pB">⏸</button><button id="mu">🔊</button></div>
+<canvas id="c"></canvas><div id="ov"><div id="ovc"></div></div>
+<script>
+const SAVEKEY='timeTravelerSave',TITLE='⏳ Time Traveler',INTRO='Put history in order! Drag events, inventions and people onto the timeline, from ancient Egypt to the space age. Learn BC/AD and centuries along the way.';
+// shared skeleton injected into both games
+const $=id=>document.getElementById(id);
+const cv=$('c'),cx=cv.getContext('2d');let W=0,H=0,DPR=1;
+let save={mute:false,stars:{},unlocked:1};
+try{const s=JSON.parse(localStorage.getItem(SAVEKEY)||'null');if(s)save=Object.assign(save,s)}catch(e){}
+function persist(){try{localStorage.setItem(SAVEKEY,JSON.stringify(save))}catch(e){}}
+let AC=null;function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(AC&&AC.state==='suspended')AC.resume();return AC}
+function tone(f,d=0.12,t='sine',v=0.15,dl=0){if(save.mute)return;const a=ac();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type=t;o.frequency.value=f;const s=a.currentTime+dl;g.gain.setValueAtTime(v,s);g.gain.exponentialRampToValueAtTime(0.001,s+d);o.connect(g);g.connect(a.destination);o.start(s);o.stop(s+d+0.02)}
+const sfx={ok(){tone(660,.1,'triangle');tone(990,.15,'triangle',.15,.08)},bad(){tone(200,.25,'sawtooth',.08)},tap(){tone(500,.05,'square',.05)},win(){[523,659,784,1046].forEach((f,i)=>tone(f,.2,'triangle',.15,i*.12))}};
+function resize(){DPR=window.devicePixelRatio||1;W=innerWidth;H=innerHeight-40;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);cv.style.width=W+'px';cv.style.height=H+'px';cx.setTransform(DPR,0,0,DPR,0,0)}
+function rr(x,y,w,h,r){cx.beginPath();cx.roundRect?cx.roundRect(x,y,w,h,r):cx.rect(x,y,w,h)}
+function txt(s,x,y,sz,col='#fff',al='center',wt='700'){cx.font=wt+' '+sz+'px system-ui,Segoe UI,Roboto,sans-serif';cx.fillStyle=col;cx.textAlign=al;cx.textBaseline='middle';cx.fillText(s,x,y)}
+function fit(s,maxw,sz){cx.font='700 '+sz+'px system-ui';while(sz>9&&cx.measureText(s).width>maxw){sz--;cx.font='700 '+sz+'px system-ui'}return sz}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function pick(a){return a[Math.random()*a.length|0]}
+let paused=false,btns=[];
+function hit(x,y){for(let i=btns.length-1;i>=0;i--){const b=btns[i];if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){b.f();return true}}return false}
+function ptr(e){ac();if(paused||$('ov').style.display==='flex')return;const r=cv.getBoundingClientRect();const p=e.changedTouches?e.changedTouches[0]:e;onTap(p.clientX-r.left,p.clientY-r.top)}
+cv.addEventListener('pointerdown',e=>{e.preventDefault();ptr(e)});
+function ov(html){$('ovc').innerHTML=html;$('ov').style.display=html?'flex':'none'}
+function setPause(p){if($('ov').style.display==='flex'&&!paused)return;paused=p;$('pB').textContent=p?'▶':'⏸';ov(p?'<h2>⏸ Paused</h2><p>Press P or tap to resume. R restarts the level.</p><button class="btn" onclick="setPause(false)">▶ Resume</button> <button class="btn" onclick="setPause(false);restart()">↻ Restart</button>':'')}
+$('pB').onclick=()=>setPause(!paused);
+$('mu').textContent=save.mute?'🔇':'🔊';$('mu').onclick=()=>{save.mute=!save.mute;$('mu').textContent=save.mute?'🔇':'🔊';persist()};
+$('lvB').onclick=()=>{paused=false;showLevels()};
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function showLevels(){let h='<h2>'+TITLE+'</h2><p>'+INTRO+'</p>';LV.forEach((L,i)=>{const ok=i<save.unlocked;h+='<span class="lv'+(ok?'':' lock')+'" data-lv="'+i+'" '+(ok?'onclick="startLevel('+i+')"':'')+'>'+(ok?'':'🔒 ')+(i+1)+'. '+L.name+'<br><small>'+starStr(save.stars[i]||0)+'</small></span>'});h+='<p><small>Keys: 1-4 choose · P pause · R restart · M mute</small></p>';ov(h)}
+function finishLevel(stars){sfx.win();const i=cur;save.stars[i]=Math.max(save.stars[i]||0,stars);save.unlocked=Math.max(save.unlocked,Math.min(LV.length,i+2));persist();
+ ov('<h2>Level complete!</h2><div class="stars">'+starStr(stars)+'</div><p>'+LV[i].name+'</p>'+(i+1<LV.length?'<button class="btn" id="nextB" onclick="startLevel('+(i+1)+')">Next level ▶</button> ':'')+'<button class="btn" onclick="restart()">↻ Replay</button> <button class="btn" onclick="showLevels()">Levels</button>')}
+function restart(){ov('');startLevel(cur)}
+addEventListener('keydown',e=>{const k=e.key;if(k==='p'||k==='P'){setPause(!paused);return}if(paused)return;if($('ov').style.display==='flex'){if(k==='Enter'&&$('nextB'))$('nextB').click();return}
+ if(keyTyping()&&k.length===1&&k!=='p'&&k!=='P'){onKey(e);return}
+ if(k==='r'||k==='R'){restart();return}if(k==='m'||k==='M'){$('mu').click();return}onKey(e)});
+addEventListener('resize',()=>{resize();draw()});
+// [year (negative = BC), text, approx?]
+const EV=[[-3200,'Writing (cuneiform) invented in Sumer',1],[-3100,'Upper and Lower Egypt unite under one king',1],[-2560,'Great Pyramid of Giza completed',1],[-2500,'Stonehenge\'s big sarsen stones raised',1],[-1754,'Code of Hammurabi written in Babylon',1],[-1323,'Tutankhamun dies',1],[-1279,'Ramesses II becomes pharaoh',0],[-776,'First recorded Olympic Games',0],[-753,'Rome founded (legendary date)',0],[-551,'Confucius born',1],[-509,'Roman Republic founded',0],[-490,'Battle of Marathon',0],[-447,'Building of the Parthenon begins',0],[-384,'Aristotle born',0],[-323,'Alexander the Great dies',0],[-287,'Archimedes born',1],[-221,'Qin Shi Huang unites China',0],[-44,'Julius Caesar assassinated',0],[-30,'Cleopatra dies',0],
+[79,'Mount Vesuvius buries Pompeii',0],[105,'Cai Lun improves papermaking in China',1],[122,'Hadrian\'s Wall begun',0],[476,'Western Roman Empire falls',0],[537,'Hagia Sophia completed',0],[622,'Muhammad\'s journey (Hijra) to Medina',0],[800,'Charlemagne crowned emperor',0],[1000,'Leif Erikson reaches North America',1],[1066,'Battle of Hastings',0],[1088,'University of Bologna founded',0],[1215,'Magna Carta sealed',0],[1271,'Marco Polo sets off for China',0],[1347,'Black Death reaches Europe',0],[1440,'Gutenberg\'s printing press',1],[1452,'Leonardo da Vinci born',0],[1453,'Fall of Constantinople',0],[1492,'Columbus reaches the Americas',0],[1503,'Leonardo starts the Mona Lisa',0],[1517,'Luther posts his 95 Theses',0],[1519,'Magellan\'s round-the-world voyage sets sail',0],[1543,'Copernicus: Earth orbits the Sun',0],[1564,'Shakespeare born',0],[1609,'Galileo studies the sky with a telescope',0],[1620,'Mayflower reaches America',0],[1643,'Isaac Newton born',0],[1687,'Newton publishes his laws of motion',0],
+[1712,'Newcomen\'s steam engine',0],[1752,'Franklin\'s kite experiment',0],[1756,'Mozart born',0],[1769,'James Watt patents his steam engine',0],[1776,'US Declaration of Independence',0],[1789,'French Revolution begins',0],[1804,'First steam railway locomotive runs',0],[1815,'Battle of Waterloo',0],[1825,'First public steam railway opens',0],[1837,'Victoria becomes Queen',0],[1859,'Darwin\'s On the Origin of Species',0],[1865,'American Civil War ends',0],[1867,'Canada becomes a country (Confederation)',0],[1867,'Marie Curie born',0],[1869,'Mendeleev\'s periodic table',0],[1876,'Bell patents the telephone',0],[1879,'Edison\'s long-lasting light bulb',0],[1879,'Albert Einstein born',0],[1886,'Benz patents the motor car',0],
+[1903,'Wright brothers\' first powered flight',0],[1908,'Ford Model T goes on sale',0],[1912,'Titanic sinks',0],[1914,'World War I begins',0],[1918,'World War I ends',0],[1928,'Fleming discovers penicillin',0],[1929,'Wall Street Crash',0],[1939,'World War II begins',0],[1945,'World War II ends',0],[1947,'Transistor invented',0],
+[1953,'DNA double helix discovered',0],[1955,'Rosa Parks refuses to give up her bus seat',0],[1957,'Sputnik 1, first satellite',0],[1961,'Yuri Gagarin, first human in space',0],[1963,'Martin Luther King\'s "I Have a Dream"',0],[1969,'Apollo 11 lands on the Moon',0],[1971,'First email sent',0],[1981,'First Space Shuttle launch',0],[1989,'Berlin Wall falls',0],[1990,'Hubble Space Telescope launched',0],[1991,'World Wide Web opens to the public',0],[1998,'First module of the Space Station launched',0],[2007,'First iPhone released',0],[2012,'Curiosity rover lands on Mars',0],[2021,'James Webb Space Telescope launched',0]
+].map(a=>({y:a[0],t:a[1],c:a[2]}));
+const ERAS=[['Ancient Egypt & Mesopotamia',-99999,-1000,'#c9a227'],['Ancient Greece & Rome',-1000,476,'#c0392b'],['Middle Ages',476,1450,'#6c4bb4'],['Renaissance & Exploration',1450,1700,'#16a085'],['Industrial Age',1700,1900,'#7f6a54'],['World Wars era',1900,1950,'#5d6d7e'],['Space & Digital Age',1950,99999,'#2e86de']];
+const eraOf=y=>ERAS.findIndex(e=>y>=e[1]&&y<e[2]);
+const inE=(...ix)=>EV.filter(e=>ix.includes(eraOf(e.y)));
+const PEOPLE=EV.filter(e=>/born|dies|becomes pharaoh|Queen/.test(e.t));
+const LV=[
+{name:'What do BC and AD mean?',m:'bcad',k:['ago','between','bcorder']},
+{name:'Ancient Egypt: which came first?',m:'first',pool:inE(0)},
+{name:'Ancient world timeline',m:'order',n:3,pool:inE(0,1)},
+{name:'Greece & Rome: which came first?',m:'first',pool:inE(1)},
+{name:'Greece & Rome timeline',m:'order',n:4,pool:inE(1)},
+{name:'Centuries explained',m:'bcad',k:['cent','centbc','cent']},
+{name:'Middle Ages timeline',m:'order',n:4,pool:inE(1,2)},
+{name:'Renaissance: which came first?',m:'first',pool:inE(3)},
+{name:'Inventions of the Industrial Age',m:'order',n:5,pool:inE(4)},
+{name:'Which era is it from?',m:'era',pool:EV},
+{name:'Wars, flight & space timeline',m:'order',n:5,pool:inE(5,6)},
+{name:'Famous people in order',m:'order',n:5,pool:PEOPLE},
+{name:'Close call! Which came first?',m:'first',pool:EV,close:1},
+{name:'BC/AD master quiz',m:'bcad',k:['ago','between','cent','centbc','bcorder']},
+{name:'Grand Timeline: all of history',m:'order',n:6,pool:EV}];
+let cur=0,qi=0,miss=0,Q=null,msg='',msgCol='#fff',lock=false,drag=null;
+const fy=e=>(e.c?'c. ':'')+yr(e.y);const yr=y=>y<0?(-y)+' BC':y<1000?'AD '+y:String(y);
+const ord=n=>n+(n%100>=11&&n%100<=13?'th':['th','st','nd','rd'][n%10]||'th');
+const century=y=>Math.floor((Math.abs(y)-1)/100)+1;
+function NQ(){const m=LV[cur].m;return m==='order'?4:8}
+function sample(pool,n,minGap){for(let t=0;t<500;t++){const s=shuffle(pool).slice(0,n);const ys=s.map(e=>e.y).sort((a,b)=>a-b);if(ys.every((y,i)=>!i||y-ys[i-1]>=minGap))return s}return shuffle(pool).slice(0,n)}
+function makeQ(){const L=LV[cur],m=L.m,q={m};
+ if(m==='order'){q.cards=sample(L.pool,L.n,L.n>4?8:3);q.checked=false;q.ok=[]}
+ else if(m==='first'){let a,b;for(let t=0;t<500;t++){[a,b]=shuffle(L.pool);const d=Math.abs(a.y-b.y);if(d>=(L.close?1:10)&&(!L.close||d<=60))break}q.cards=[a,b];q.text='Which happened FIRST?'}
+ else if(m==='era'){const e=pick(L.pool),ei=eraOf(e.y);q.ev=e;const o=new Set([ei]);while(o.size<4)o.add(Math.max(0,Math.min(6,ei+pick([-2,-1,1,2,3,-3]))));q.opts=shuffle([...o]).map(i=>ERAS[i][0]);q.ans=ERAS[ei][0];q.text='Which era does this belong to?';q.sub=e.t;q.why=e.t+' — '+fy(e)}
+ else{const k=pick(L.k);if(k==='ago'){const a=ri(2,30)*50,b=ri(2,30)*50;const A=-a,B=pick([-b,b]);if(A===B)return makeQ();q.text='Which date is LONGER ago?';q.opts=shuffle([yr(A),yr(B)]);q.ans=yr(Math.min(A,B));q.why='BC years count DOWN towards year 1. Bigger BC number = longer ago. Every BC date is before every AD date.'}
+  else if(k==='bcorder'){const a=ri(1,20)*100;q.text='Put in order: '+a+' BC, AD '+a+', '+(a/2)+' BC. Which comes in the MIDDLE?';q.opts=shuffle([a+' BC','AD '+a,(a/2)+' BC']);q.ans=(a/2)+' BC';q.why='Timeline: '+a+' BC → '+(a/2)+' BC → year 1 → AD '+a+'.'}
+  else if(k==='between'){const a=ri(1,9)*10+ri(0,9),b=ri(1,9)*10;const ans=a+b-1;q.text='How many years from '+a+' BC to AD '+b+'?';q.opts=shuffle([...new Set([ans,ans+1,ans-2,ans+10])].map(String));q.ans=String(ans);q.why='Add them and take away 1, because there was no year 0: 1 BC was followed by AD 1. '+a+' + '+b+' − 1 = '+ans+'.'}
+  else if(k==='cent'||k==='centbc'){const y=k==='cent'?ri(101,2026):-ri(101,3000);const c=century(y),s=y<0?' BC':'';q.text='Which century is '+yr(y)+' in?';q.opts=shuffle([c-1,c,c+1,c+2].map(n=>ord(n)+' century'+s));q.ans=ord(c)+' century'+s;q.why=y>0?'The 1st century is years 1–100, so the century is one more than the hundreds: '+yr(y)+' → '+ord(c)+' century.':'BC centuries count backwards: 1–100 BC is the 1st century BC, so '+yr(y)+' → '+ord(c)+' century BC.'}}
+ return q}
+function ri(a,b){return a+Math.floor(Math.random()*(b-a+1))}
+function startLevel(i){ov('');paused=false;cur=i;qi=0;miss=0;msg='';lock=false;drag=null;Q=makeQ();draw();if(LV[i].m==='bcad'&&!save['intro'+i])bcInfo(i)}
+function bcInfo(i){save['intro'+i]=1;persist();ov(i===5?'<h2>🕰️ Centuries</h2><p>A century is 100 years. The <b>1st century</b> AD is years 1–100, so <b>1066</b> is in the <b>11th century</b>, and <b>1999</b> is the <b>20th</b>.</p><p>Tip: take the hundreds and add 1 (1066 → 10 + 1 = 11th).</p><button class="btn" onclick="ov(\'\')">Got it ▶</button>':'<h2>⏳ BC and AD</h2><p><b>BC</b> = “Before Christ”, also written <b>BCE</b>. <b>AD</b> = “Anno Domini” (in the year of the Lord), also written <b>CE</b>.</p><p>BC years count <b>down</b>: 500 BC is before 300 BC. Then 1 BC is followed by AD 1 — <b>there is no year 0</b>.</p><p>← 3000 BC … 500 BC … 1 BC | AD 1 … 1066 … 2026 →</p><button class="btn" onclick="ov(\'\')">Got it ▶</button>')}
+function keyTyping(){return false}
+// ---------- drawing ----------
+function card(x,y,w,h,col,stroke){cx.fillStyle=col;rr(x,y,w,h,12);cx.fill();if(stroke){cx.strokeStyle=stroke;cx.lineWidth=3;cx.stroke()}}
+function wrapC(s,x,y,w,sz,col){cx.font='700 '+sz+'px system-ui';const ws=s.split(' ');let lines=[],l='';for(const wd of ws){const t=l?l+' '+wd:wd;if(cx.measureText(t).width>w&&l){lines.push(l);l=wd}else l=t}lines.push(l);while(lines.length>4&&sz>9)return wrapC(s,x,y,w,sz-1,col);lines.forEach((ln,i)=>txt(ln,x,y+(i-(lines.length-1)/2)*(sz+3),sz,col))}
+function evCard(e,x,y,w,h,opt={}){const ec=ERAS[eraOf(e.y)][3];card(x,y,w,h,opt.col||'#fdf6e3',opt.stroke);cx.fillStyle=ec;rr(x,y,w,8,4);cx.fill();wrapC(e.t,x+w/2,y+h/2-(opt.show?8:0),w-14,Math.min(15,w/8),'#2b1d0e');if(opt.show)txt(fy(e),x+w/2,y+h-14,13,'#8a3b00','center','800')}
+function slots(){const n=Q.cards.length,gap=10,w=Math.min(150,(W-20-gap*(n-1))/n),h=Math.min(150,H-150),x0=(W-(n*w+gap*(n-1)))/2,y=56;return{n,w,h,x0,y,gap,pos:i=>x0+i*(w+gap)}}
+function draw(){btns=[];cx.clearRect(0,0,W,H);const g=cx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#2b1b3d');g.addColorStop(1,'#13213a');cx.fillStyle=g;cx.fillRect(0,0,W,H);
+ if(!Q)return;$('st').textContent='Lv '+(cur+1)+' · '+Math.min(qi+1,NQ())+'/'+NQ()+' · ✗'+miss;const q=Q;txt(LV[cur].name,W/2,14,13,'#ffcf5a');
+ if(q.m==='order'){const S=slots();txt(q.checked?'':'Drag the cards so the OLDEST is on the left',W/2,34,15,'#fff');
+  const ty=S.y+S.h+18;cx.strokeStyle='#ffcf5a';cx.lineWidth=3;cx.beginPath();cx.moveTo(20,ty);cx.lineTo(W-20,ty);cx.lineTo(W-30,ty-6);cx.moveTo(W-20,ty);cx.lineTo(W-30,ty+6);cx.stroke();txt('◀ older',40,ty+14,12,'#fc9','left');txt('newer ▶',W-40,ty+14,12,'#fc9','right');
+  q.cards.forEach((e,i)=>{if(drag&&drag.i===i)return;let x=S.pos(i);evCard(e,x,S.y,S.w,S.h,{show:q.checked,stroke:q.checked?(q.ok[i]?'#2ecc71':'#e74c3c'):null})});
+  if(drag){const e=q.cards[drag.i];const ins=insIndex(drag.x);cx.fillStyle='#ffcf5a';cx.fillRect(S.pos(ins)-6,S.y,3,S.h);evCard(e,drag.x-S.w/2,S.y-12+(drag.y-drag.y0)*.3,S.w,S.h,{stroke:'#ffcf5a'})}
+  const bw=170,bx=W/2-bw/2,by=H-50;if(!lock){card(bx,by,bw,40,'#e07a10');txt(q.checked?'Try again ↻':'✔ Check order',W/2,by+20,16);btns.push({x:bx,y:by,w:bw,h:40,f:checkOrder})}
+  if(msg)wrapC(msg,W/2,ty+34,W-40,14,msgCol)}
+ else if(q.m==='first'){txt(q.text,W/2,36,18,'#fff');const w=Math.min(300,(W-60)/2),h=Math.min(170,H-130),y=58;q.cards.forEach((e,i)=>{const x=W/2+(i?15:-15-w);evCard(e,x,y,w,h,{show:!!q.picked,stroke:q.picked?(e.y===Math.min(...q.cards.map(c=>c.y))?'#2ecc71':(q.picked===e?'#e74c3c':null)):null});txt(i?'→ key 2':'key 1 ←',x+w/2,y+h+12,11,'#aab');btns.push({x,y,w,h,f:()=>pickFirst(e)})});txt('OR',W/2,y+h/2,16,'#ffcf5a');if(msg)wrapC(msg,W/2,H-30,W-40,14,msgCol)}
+ else{wrapC(q.text,W/2,44,W-40,18,'#fff');if(q.sub){card(W/2-200,66,400,56,'#fdf6e3');wrapC(q.sub,W/2,94,380,16,'#2b1d0e')}const top=q.sub?134:80,n=q.opts.length,cols=2,bw=Math.min(300,(W-50)/2),bh=44;
+  q.opts.forEach((o,i)=>{const bx=W/2+((i%cols)?8:-8-bw),by=top+Math.floor(i/cols)*(bh+10);let col='#283070';if(q.picked){if(o===q.ans)col='#2a8a3a';else if(o===q.picked)col='#a33'}card(bx,by,bw,bh,col);txt((i+1)+'  '+o,bx+bw/2,by+bh/2,fit((i+1)+'  '+o,bw-10,16));btns.push({x:bx,y:by,w:bw,h:bh,f:()=>choose(o)})});
+  if(msg)wrapC(msg,W/2,H-34,W-40,13,msgCol);else if(q.m==='bcad'){card(W/2-60,H-46,120,32,'#283070');txt('📖 Explain',W/2,H-30,13);btns.push({x:W/2-60,y:H-46,w:120,h:32,f:()=>{save['intro'+cur]=0;bcInfo(cur===5?5:0)}})}}}
+function insIndex(x){const S=slots();let k=0;for(let i=0;i<S.n;i++){if(x>S.pos(i)+S.w/2)k=i+1}return k}
+function checkOrder(){const q=Q;if(q.checked){q.checked=false;msg='';draw();return}const ys=q.cards.map(c=>c.y);q.ok=ys.map((y,i)=>ys.slice(0,i).every(p=>p<=y)&&ys.slice(i+1).every(p=>p>=y));q.checked=true;
+ if(q.ok.every(Boolean)){sfx.ok();lock=true;msg='✔ Perfect timeline! '+q.cards.map(c=>yr(c.y)).join(' → ');msgCol='#7f7';draw();setTimeout(next,1800)}else{sfx.bad();miss++;msg='✘ Red cards are in the wrong place. Dates are shown — drag to fix, then check again.';msgCol='#f99';draw()}}
+function pickFirst(e){if(lock)return;Q.picked=e;lock=true;const f=Q.cards.reduce((a,b)=>a.y<=b.y?a:b);const ok=e.y===f.y;if(ok){sfx.ok();msg='✔ Yes! '+f.t+' ('+fy(f)+') came first.';msgCol='#7f7'}else{sfx.bad();miss++;msg='✘ '+f.t+' ('+fy(f)+') came first.';msgCol='#f99'}draw();setTimeout(next,ok?1300:2300)}
+function choose(o){if(lock)return;Q.picked=o;lock=true;const ok=o===Q.ans;if(ok)sfx.ok();else{sfx.bad();miss++}msg=(ok?'✔ Correct! ':'✘ Answer: '+Q.ans+'. ')+(Q.why||'');msgCol=ok?'#7f7':'#f99';draw();setTimeout(next,ok?1500:2800)}
+function next(){msg='';lock=false;drag=null;qi++;if(qi>=NQ()){const m=miss;finishLevel(m===0?3:m<=2?2:1);return}Q=makeQ();draw()}
+function onTap(x,y){if(hit(x,y))return;if(Q.m==='order'&&!lock){const S=slots();for(let i=0;i<S.n;i++){const px=S.pos(i);if(x>=px&&x<=px+S.w&&y>=S.y&&y<=S.y+S.h){if(Q.checked){Q.checked=false;msg=''}drag={i,x,y,y0:y};sfx.tap();draw();return}}}}
+function relXY(e){const r=cv.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
+cv.addEventListener('pointermove',e=>{if(!drag)return;e.preventDefault();[drag.x,drag.y]=relXY(e);drag.moved=1;draw()});
+function drop(e){if(!drag)return;const x=drag.moved?drag.x:relXY(e)[0];let k=insIndex(x);const c=Q.cards.splice(drag.i,1)[0];if(k>drag.i)k--;Q.cards.splice(Math.max(0,Math.min(Q.cards.length,k)),0,c);drag=null;sfx.tap();draw()}
+cv.addEventListener('pointerup',drop);cv.addEventListener('pointercancel',drop);
+let sel=-1;function onKey(e){const k=e.key,q=Q;if(!q||lock)return;
+ if(q.m==='first'&&(k==='1'||k==='2'))return pickFirst(q.cards[+k-1]);
+ if(q.opts){const n=+k;if(n>=1&&n<=q.opts.length)choose(q.opts[n-1]);return}
+ if(q.m==='order'){const n=+k;if(n>=1&&n<=q.cards.length){sel=n-1;msg='Card '+n+' picked — use ← → to move it, Enter to check.';msgCol='#fc9';draw()}
+  else if((k==='ArrowLeft'||k==='ArrowRight')&&sel>=0){const d=k==='ArrowLeft'?-1:1,t=sel+d;if(t>=0&&t<q.cards.length){[q.cards[sel],q.cards[t]]=[q.cards[t],q.cards[sel]];sel=t;q.checked=false;draw()}}
+  else if(k==='Enter')checkOrder()}}
+window.TT={get Q(){return Q},EV,LV,slots};
+resize();cur=0;Q=makeQ();draw();showLevels();
+
+</script></body></html>

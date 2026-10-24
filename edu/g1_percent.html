@@ -1,0 +1,163 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>Percent Shop</title>
+<style>
+:root{--bg:#0f1530;--card:#1b2350;--ink:#f4f6ff;--mut:#9aa6d8;--acc:#7ad0ff;--good:#3ddc84;--bad:#ff5c7a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:"Trebuchet MS",system-ui,sans-serif;background:radial-gradient(circle at 20% 0%,#2a3480,var(--bg) 60%);color:var(--ink);min-height:100vh;user-select:none;-webkit-user-select:none;overflow-x:hidden}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0008;position:sticky;top:0;z-index:5;backdrop-filter:blur(4px)}
+header a{color:var(--ink);text-decoration:none;background:#fff1;padding:6px 12px;border-radius:20px;font-weight:bold}
+header h1{font-size:20px;margin:0;flex:1;color:var(--acc);text-shadow:0 2px 0 #0006}
+.pill{background:#fff1;padding:5px 10px;border-radius:14px;font-size:14px}
+main{max-width:980px;margin:0 auto;padding:14px}
+.btn{font:inherit;font-weight:bold;border:0;border-radius:14px;padding:10px 16px;background:var(--acc);color:#111;cursor:pointer;box-shadow:0 4px 0 #0007;transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #0007}.btn.alt{background:#2c3770;color:var(--ink)}.btn.sel{outline:3px solid #fff}
+.btn:disabled{opacity:.4}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border-radius:18px;padding:14px;box-shadow:0 6px 18px #0005;border:2px solid #ffffff10}
+.tile{cursor:pointer;transition:transform .15s}.tile:hover{transform:translateY(-4px) rotate(-1deg)}
+.tile .em{font-size:40px}.tile h3{margin:6px 0}.tile p{margin:0;color:var(--mut);font-size:14px}
+.stars{color:#ffd34d;letter-spacing:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fb{min-height:28px;font-weight:bold;font-size:18px;margin:8px 0}
+.opt{display:block;width:100%;margin:6px 0;text-align:left;background:#2c3770;color:var(--ink)}
+.opt.ok{background:var(--good);color:#111}.opt.no{background:var(--bad)}
+.pop{animation:pop .35s}@keyframes pop{50%{transform:scale(1.12)}}
+.shake{animation:shk .35s}@keyframes shk{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:9}
+.bar{height:10px;background:#fff2;border-radius:6px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--acc);transition:width .3s}
+.fact{background:#ffd34d22;border-left:4px solid #ffd34d;padding:8px 12px;border-radius:8px;margin:8px 0}
+svg text{font-family:inherit}
+</style></head><body>
+<header><a href="./index.html">← Learning Lab</a><h1>Percent Shop</h1><span class="pill" id="starTotal">⭐ 0</span><button class="btn alt" id="snd" style="padding:6px 10px">🔊</button></header>
+<main id="app"></main><canvas id="fx"></canvas>
+<script>
+// ---- shared helpers ----
+const $=s=>document.querySelector(s),app=$('#app');
+const SAVEKEY='g1_percentShop';let SAVE=JSON.parse(localStorage.getItem(SAVEKEY)||'{}');SAVE.stars=SAVE.stars||{};SAVE.best=SAVE.best||{};
+function save(){localStorage.setItem(SAVEKEY,JSON.stringify(SAVE));$('#starTotal').textContent='⭐ '+Object.values(SAVE.stars).reduce((a,b)=>a+b,0)}
+let AC=null,muted=!!SAVE.muted;$('#snd').textContent=muted?'🔇':'🔊';
+$('#snd').onclick=()=>{muted=!muted;SAVE.muted=muted;save();$('#snd').textContent=muted?'🔇':'🔊'};
+function tone(f,d=.12,type='sine',v=.15,slide=0,delay=0){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.02)}catch(e){}}
+function noise(d=.4,v=.2,lp=800){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const n=AC.sampleRate*d,b=AC.createBuffer(1,n,AC.sampleRate),c=b.getChannelData(0);for(let i=0;i<n;i++)c[i]=(Math.random()*2-1)*(1-i/n);const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();f.type='lowpass';f.frequency.value=lp;g.gain.value=v;s.buffer=b;s.connect(f);f.connect(g);g.connect(AC.destination);s.start()}catch(e){}}
+const SFX={click:()=>tone(660,.05,'square',.06),good:()=>{tone(523,.1,'triangle');tone(784,.15,'triangle',.15,0,.08)},bad:()=>tone(200,.25,'sawtooth',.08,-80),
+win:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.15,0,i*.1)),pick:()=>tone(440,.06,'sine',.1,200),drop:()=>tone(330,.08,'sine',.12,-100)};
+// confetti
+const cv=$('#fx'),cx=cv.getContext('2d');let fxp=[];function rs(){cv.width=innerWidth;cv.height=innerHeight}rs();addEventListener('resize',rs);
+function confetti(x=innerWidth/2,y=innerHeight/3,n=60){for(let i=0;i<n;i++)fxp.push({x,y,vx:(Math.random()-.5)*10,vy:-Math.random()*9-2,c:`hsl(${Math.random()*360},90%,60%)`,l:90});}
+(function loop(){cx.clearRect(0,0,cv.width,cv.height);fxp=fxp.filter(p=>p.l-->0);for(const p of fxp){p.vy+=.3;p.x+=p.vx;p.y+=p.vy;cx.fillStyle=p.c;cx.fillRect(p.x,p.y,7,7)}requestAnimationFrame(loop)})();
+function flash(el,ok){el.classList.remove('pop','shake');void el.offsetWidth;el.classList.add(ok?'pop':'shake')}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function award(id,n){if((SAVE.stars[id]||0)<n)SAVE.stars[id]=n;save()}
+// generic timed quiz: qs=[{q,opts,a,fact}] ; a is correct string
+let __QZ=0;function runQuiz(id,title,qs,secs,back){let i=0,score=0,t=secs,timer;const tok=++__QZ;clearInterval(window.__qt);const alive=()=>tok===__QZ&&!!document.getElementById("qz"+tok);qs=shuffle(qs).slice(0,10);
+ function end(){clearInterval(timer);if(!alive())return;const st=score>=9?3:score>=7?2:score>=5?1:0;award(id,st);if(score>(SAVE.best[id]||0))SAVE.best[id]=score;save();if(st)SFX.win(),confetti();
+  app.innerHTML=`<div class="card" style="text-align:center"><h2>${title} — done!</h2><div style="font-size:48px" class="stars">${starStr(st)}</div><p>You got <b>${score}/${qs.length}</b>. Best: ${SAVE.best[id]}</p><div class="row" style="justify-content:center"><button class="btn" id="ag">Play again</button><button class="btn alt" id="bk">Back</button></div></div>`;$('#ag').onclick=()=>runQuiz(id,title,qs,secs,back);$('#bk').onclick=back}
+ function show(){if(i>=qs.length)return end();const q=qs[i];app.innerHTML=`<div class="card" id="qz${tok}"><div class="row"><b style="flex:1">${title} · Q${i+1}/${qs.length}</b>${secs?`<span class="pill">⏱ <span id="tm">${t}</span>s</span>`:''}<span class="pill">✅ ${score}</span></div><div class="bar" style="margin:8px 0"><i style="width:${i/qs.length*100}%"></i></div>${q.svg||''}<h2>${q.q}</h2><div id="os"></div><div class="fb" id="fb"></div></div>`;
+  shuffle(q.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.innerHTML=o;b.onclick=()=>{if(b.parentNode.dataset.done)return;b.parentNode.dataset.done=1;const ok=o==q.a;if(ok){score++;SFX.good();confetti(innerWidth/2,innerHeight/2,20)}else SFX.bad();[...$('#os').children].forEach(x=>{if(x.innerHTML==q.a)x.classList.add('ok')});if(!ok)b.classList.add('no');flash(b,ok);$('#fb').innerHTML=(ok?'✅ Correct! ':'❌ Not quite. ')+(q.fact?`<div class="fact">💡 ${q.fact}</div>`:'');setTimeout(()=>{if(!alive())return;i++;show()},q.fact?2200:1100)};$('#os').appendChild(b)})}
+ if(secs)window.__qt=timer=setInterval(()=>{if(!alive()){clearInterval(timer);return}t--;const e=$('#tm');if(e)e.textContent=t;if(t<=5&&t>0)tone(880,.05);if(t<=0)end()},1000);show()}
+save();
+</script>
+<script>
+// common menu/learn/levels helpers for g1 games
+function learnPage(i){const m=LEARN[i];app.innerHTML=`<div class="card"><div class="row"><b style="flex:1">📖 ${i+1} / ${LEARN.length}</b><button class="btn alt" id="bk">Menu</button></div><div style="text-align:center"><canvas id="lc" width="440" height="200" style="max-width:100%;background:#05081a;border-radius:14px"></canvas></div><h2>${m.h}</h2><p style="line-height:1.5">${m.p}</p>
+ <div class="row"><button class="btn alt" id="pv" ${i?'':'disabled'}>← Prev</button><span style="flex:1"></span><button class="btn" id="nx">${i<LEARN.length-1?'Next →':'Done ✓'}</button></div></div>`;
+ $('#bk').onclick=menu;$('#pv').onclick=()=>learnPage(i-1);$('#nx').onclick=()=>{SFX.click();if(i<LEARN.length-1)learnPage(i+1);else{SAVE.learned=1;save();SFX.win();confetti();menu()}};
+ const c=$('#lc'),g=c.getContext('2d'),t0=performance.now();(function f(n){if(!c.isConnected)return;g.clearRect(0,0,440,200);g.save();m.d(g,(n-t0)/1000);g.restore();requestAnimationFrame(f)})(t0)}
+function unlocked(i){return i==0||(SAVE.stars[LV[i-1].id]||0)>0}
+function levelGrid(title){app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">${title}</h2><button class="btn alt" id="bk">Menu</button></div><p style="color:var(--mut)">Earn a star to unlock the next level.</p><div class="grid" id="lg"></div></div>`;$('#bk').onclick=menu;
+ LV.forEach((l,i)=>{const d=document.createElement('div'),u=unlocked(i);d.className='card tile lv'+i;d.style.opacity=u?1:.45;d.innerHTML=`<div class="em">${u?l.em||'🎯':'🔒'}</div><h3>${i+1}. ${l.n}</h3><p class="stars">${starStr(SAVE.stars[l.id]||0)}</p>`;d.onclick=()=>{if(!u){SFX.bad();flash(d,0);return}SFX.click();play(i)};$('#lg').appendChild(d)})}
+function winLevel(i,st,msg){award(LV[i].id,st);SFX.win();confetti();const last=i>=LV.length-1;
+ $('#fb').innerHTML=`🎉 ${msg} <span class="stars">${starStr(st)}</span><div class="row" style="margin-top:6px"><button class="btn" id="nl">${last?'All levels ✓':'Next level →'}</button><button class="btn alt" id="rl">Retry</button></div>`;
+ $('#nl').onclick=()=>last?levels():play(i+1);$('#rl').onclick=()=>play(i)}
+function mainMenu(em,name,blurb,tiles){const tot=LV.length*3,got=LV.reduce((a,l)=>a+(SAVE.stars[l.id]||0),0);
+ app.innerHTML=`<div class="card" style="text-align:center"><div style="font-size:54px">${em}</div><h2 style="margin:4px">${name}</h2><p style="color:var(--mut)">${blurb}</p><div class="bar"><i style="width:${got/tot*100}%"></i></div><p class="stars">${got}/${tot} ★</p></div><div class="grid" style="margin-top:12px" id="mg"></div>`;
+ tiles.forEach(([id,e,h,p,fn])=>{const d=document.createElement('div');d.className='card tile';d.id=id;d.innerHTML=`<div class="em">${e}</div><h3>${h}</h3><p>${p}</p>`;d.onclick=()=>{SFX.click();fn()};$('#mg').appendChild(d)})}
+function stdTiles(qtitle){return[['mQ','❓','Quiz',`10 questions. <span class="stars">${starStr(SAVE.stars.quiz||0)}</span>`,()=>runQuiz('quiz',qtitle,QS,0,menu)],['mT','⏱️','Timed challenge',`60 seconds! <span class="stars">${starStr(SAVE.stars.timed||0)}</span>`,()=>runQuiz('timed','Timed Challenge',QS,60,menu)]]}
+// ---- keypad helper ----
+function keypad(onEnter){const k=document.createElement('div');k.id='kp';k.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:6px;max-width:340px;margin:8px auto';let v='';
+ const disp=document.createElement('div');disp.className='card';disp.id='kv';disp.style.cssText='text-align:center;font-size:28px;padding:8px;max-width:340px;margin:8px auto 0;background:#05081a;min-height:52px';
+ const show=()=>disp.textContent=v||'…';show();
+ ['7','8','9','⌫','4','5','6','C','1','2','3','-','0','.','✔'].forEach(c=>{const b=document.createElement('button');b.className='btn'+(c=='✔'?'':' alt');b.textContent=c;if(c=='✔')b.style.gridColumn='span 2';b.onclick=()=>{SFX.click();if(c=='⌫')v=v.slice(0,-1);else if(c=='C')v='';else if(c=='✔'){if(v!==''&&v!='-'&&v!='.')onEnter(parseFloat(v))}else if(c=='-'){v=v.startsWith('-')?v.slice(1):'-'+v}else if(!(c=='.'&&v.includes('.'))&&v.replace('-','').length<8)v+=c;show()};k.appendChild(b)});
+ const key=e=>{if(!k.isConnected){removeEventListener('keydown',key);return}if(/^[0-9.]$/.test(e.key)){if(!(e.key=='.'&&v.includes('.')))v+=e.key}else if(e.key=='Backspace')v=v.slice(0,-1);else if(e.key=='-')v=v.startsWith('-')?v.slice(1):'-'+v;else if(e.key=='Enter'){if(v!==''&&v!='-')onEnter(parseFloat(v))}else return;show()};addEventListener('keydown',key);
+ return{el:[disp,k],clear(){v='';show()},set(x){v=String(x);show()}}}
+// rounds of typed problems: L.gen(rnd)->{q,ans,hint,draw(g,t)}
+function roundLevel(L,i,opt={}){const N=L.rounds||5;let r=0,miss=0,cur,tries=0;const back=opt.back||levels;
+ app.innerHTML=(opt.head||lvHead(L,i))+`<p><b>${L.goal}</b></p><div class="bar"><i id="rb" style="width:0"></i></div><canvas id="rc" width="440" height="220" style="${CVS}"></canvas><h3 id="rq" style="text-align:center"></h3><div id="kpw"></div><div class="row" style="justify-content:center"><button class="btn alt" id="hn">💡 Hint</button></div><div class="fb" id="fb" style="text-align:center"></div></div>`;
+ $('#bk').onclick=back;const kp=keypad(v=>{if(!cur||r>=N)return;tries++;if(Math.abs(v-cur.ans)<0.006){SFX.good();confetti(innerWidth/2,innerHeight/2,15);$('#fb').innerHTML='✅ '+(cur.why||'Correct!');r++;$('#rb').style.width=r/N*100+'%';kp.clear();if(r>=N){if(opt.free){SFX.win();confetti();$('#fb').innerHTML+='<div class="row" style="justify-content:center;margin-top:6px"><button class="btn" id="again">More problems</button></div>';$('#again').onclick=()=>roundLevel(L,i,opt)}else winLevel(i,miss==0?3:miss<=2?2:1,`All ${N} solved!<div class="fact">💡 ${L.fact}</div>`)}else setTimeout(()=>{if($('#rc'))next()},900)}else{miss++;SFX.bad();flash($('#kv'),0);$('#fb').innerHTML=tries>=2?`❌ The answer is <b>${cur.ans}</b>. ${cur.hint}`:'❌ Not quite. Try again or tap Hint.';if(tries>=2){kp.clear();setTimeout(()=>{if($('#rc')&&r<N){r++;$('#rb').style.width=r/N*100+'%';r>=N?winLevel(i,miss<=2?2:1,`Round done!<div class="fact">💡 ${L.fact}</div>`):next()}},2200)}}});
+ kp.el.forEach(e=>$('#kpw').appendChild(e));$('#hn').onclick=()=>{SFX.click();$('#fb').innerHTML='💡 '+cur.hint};
+ function next(){tries=0;cur=L.gen();cur.ans=+(+cur.ans).toFixed(2);window.__cur=cur;$('#rq').innerHTML=cur.q;$('#fb').innerHTML='';const c=$('#rc');anim(c,cur.draw)}next()}
+const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1)),pick=a=>a[Math.random()*a.length|0];
+// ---- shared level kinds (g1r) ----
+function anim(c,fn){const g=c.getContext('2d'),t0=performance.now();(function f(n){if(!c.isConnected)return;g.clearRect(0,0,c.width,c.height);g.save();fn(g,(n-t0)/1000);g.restore();requestAnimationFrame(f)})(t0)}
+function lvHead(L,i){return `<div class="card"><div class="row"><h2 style="flex:1;margin:0">${L.em} ${i+1}. ${L.n}</h2><button class="btn alt" id="bk">Levels</button></div>`}
+const CVS='width:100%;max-width:620px;display:block;margin:8px auto 0;border-radius:14px;touch-action:manipulation';
+function mcLevel(L,i){let tries=0;app.innerHTML=lvHead(L,i)+`${L.svg||''}<h3>${L.q}</h3><div id="os"></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=levels;
+ shuffle(L.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.textContent=o;b.onclick=()=>{if(b.disabled||$('#nl'))return;tries++;if(o==L.ans){b.classList.add('ok');winLevel(i,tries<=1?3:tries<=2?2:1,`Correct!<div class="fact">💡 ${L.fact}</div>`)}else{b.classList.add('no');b.disabled=true;SFX.bad();flash(b,0);$('#fb').textContent='❌ Not quite — try again.'}};$('#os').appendChild(b)})}
+function orderLevel(L,i){let n=0,miss=0;app.innerHTML=lvHead(L,i)+`<p><b>${L.goal}</b></p><div id="ol" style="margin-bottom:8px"></div><div id="os"></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=levels;
+ shuffle(L.items).forEach(it=>{const b=document.createElement('button');b.className='btn opt';b.textContent=it;b.onclick=()=>{if(b.disabled)return;if(it==L.items[n]){n++;b.disabled=true;b.classList.add('ok');SFX.good();const d=document.createElement('div');d.className='card pop';d.style.margin='4px 0';d.style.padding='8px 12px';d.textContent=n+'. '+it;$('#ol').appendChild(d);if(n==L.items.length)winLevel(i,miss==0?3:miss<=1?2:1,`Perfect order!<div class="fact">💡 ${L.fact}</div>`)}else{miss++;SFX.bad();flash(b,0);$('#fb').textContent='❌ Not next — think again.'}};$('#os').appendChild(b)})}
+function matchLevel(L,i){let n=0,miss=0;const ord=shuffle(L.pairs);app.innerHTML=lvHead(L,i)+`<p><b>${L.goal}</b></p><div class="card" style="text-align:center;font-size:22px;background:#2c3770" id="mq"></div><div class="grid" id="os" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:8px"></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=levels;
+ const ask=()=>{$('#mq').innerHTML=`${ord[n][0]} <span style="color:var(--mut)">→ ?</span>`;flash($('#mq'),1)};ask();
+ shuffle(L.pairs).forEach(([a,r])=>{const b=document.createElement('button');b.className='btn opt';b.style.textAlign='center';b.textContent=r;b.onclick=()=>{if(b.disabled||n>=ord.length)return;if(r==ord[n][1]){b.disabled=true;b.classList.add('ok');SFX.good();b.textContent=r+' ✓ '+ord[n][0].split(' ')[0];n++;if(n==ord.length){$('#mq').textContent='All matched!';winLevel(i,miss==0?3:miss<=2?2:1,`Great matching!<div class="fact">💡 ${L.fact}</div>`)}else ask()}else{miss++;SFX.bad();flash(b,0);$('#fb').textContent='❌ Not a match — try another.'}};$('#os').appendChild(b)})}
+// ---- Percent Shop ----
+const ITEMS=[['👟','sneakers'],['🎧','headphones'],['🧸','teddy bear'],['🎮','video game'],['🛹','skateboard'],['📚','book set'],['🧥','jacket'],['⌚','watch'],['🎒','backpack'],['🏒','hockey stick']];
+const money=x=>'$'+x.toFixed(2);
+function shopDraw(item,price,tag,pc){return(g,t)=>{g.fillStyle='#ffe9c4';g.fillRect(0,0,440,220);g.fillStyle='#c0392b';g.fillRect(0,0,440,34);g.fillStyle='#fff';g.font='bold 18px sans-serif';g.fillText('🏪 PERCENT SHOP',140,23);
+ g.font='70px serif';g.fillText(item,50,140+Math.sin(t*2)*4);g.save();g.translate(250,110);g.rotate(Math.sin(t*1.5)*.05);g.fillStyle='#fff';g.strokeStyle='#333';g.lineWidth=2;g.beginPath();g.moveTo(-60,-40);g.lineTo(110,-40);g.lineTo(130,0);g.lineTo(110,40);g.lineTo(-60,40);g.closePath();g.fill();g.stroke();g.fillStyle='#222';g.font='bold 26px sans-serif';g.fillText(money(price),-50,10);if(tag){g.fillStyle='#e74c3c';g.font='bold 16px sans-serif';g.fillText(tag,-50,32)}g.restore();
+ if(pc!=null){g.fillStyle='#ddd';g.fillRect(20,190,400,16);g.fillStyle='#3ddc84';g.fillRect(20,190,4*Math.min(100,pc)*Math.min(1,t/1.2),16);g.fillStyle='#222';g.font='12px sans-serif';for(let k=0;k<=10;k++)g.fillRect(20+k*40,186,1,24);g.fillText(pc+'%',24+4*Math.min(100,pc),184)}}}
+const P10=[10,20,25,30,40,50,75];
+function genOf(){const p=pick([10,20,25,50,5,15,30]),n=pick([20,40,60,80,120,200,30,90,150]);return{q:`What is <b>${p}%</b> of <b>${n}</b>?`,ans:+(n*p/100).toFixed(2),hint:`${p}% means ${p} out of 100. ${n} × ${p} ÷ 100. (10% of ${n} is ${n/10}.)`,why:`${p}% of ${n} = ${+(n*p/100).toFixed(2)}`,draw:(g,t)=>{g.fillStyle='#ffe9c4';g.fillRect(0,0,440,220);for(let k=0;k<100;k++){g.fillStyle=k<p*Math.min(1,t)?'#3ddc84':'#fff';g.fillRect(120+(k%10)*20,10+Math.floor(k/10)*20,18,18)}g.fillStyle='#222';g.font='16px sans-serif';g.fillText(p+' of 100 squares',10,110)}}}
+function genDisc(){const[e,nm]=pick(ITEMS),p=pick([10,20,25,30,40,50]),pr=pick([20,40,60,80,100,120,50,150,200]);const d=pr*p/100;return{q:`${nm} costs ${money(pr)}. It's <b>${p}% off</b>. How many dollars do you <b>save</b>?`,ans:d,hint:`Find ${p}% of ${pr}: ${pr} × ${p} ÷ 100.`,why:`You save ${money(d)}.`,draw:shopDraw(e,pr,p+'% OFF!',p)}}
+function genSale(){const[e,nm]=pick(ITEMS),p=pick([10,20,25,30,40,50,75]),pr=pick([20,40,60,80,100,120,160,200]);const s=pr*(100-p)/100;return{q:`${nm}: ${money(pr)}, <b>${p}% off</b>. What is the <b>sale price</b>?`,ans:s,hint:`Discount = ${p}% of ${pr} = ${pr*p/100}. Sale price = ${pr} − ${pr*p/100}. Or pay ${100-p}% of the price.`,why:`${pr} − ${pr*p/100} = ${money(s)}`,draw:shopDraw(e,pr,p+'% OFF',100-p)}}
+function genTax(){const[e,nm]=pick(ITEMS),[p,where]=pick([[5,'Alberta (5% GST)'],[13,'Ontario (13% HST)']]),pr=pick([10,20,40,60,80,100,200]);const tx=+(pr*p/100).toFixed(2);return{q:`In ${where}, ${nm} costs ${money(pr)} plus tax. What is the <b>total</b>?`,ans:+(pr+tx).toFixed(2),hint:`Tax = ${p}% of ${pr} = ${tx}. Total = ${pr} + ${tx}.`,why:`Tax ${money(tx)}, total ${money(pr+tx)}`,draw:shopDraw(e,pr,'+ '+p+'% tax',p)}}
+function genTip(){const p=pick([10,15,20]),b=pick([20,40,60,80,30,50,100]);return{q:`A restaurant bill is ${money(b)}. You leave a <b>${p}% tip</b>. How much is the tip?`,ans:b*p/100,hint:p==15?`10% of ${b} is ${b/10}; 5% is half of that, ${b/20}. Add them.`:`10% of ${b} is ${b/10}.${p==20?' Double it.':''}`,why:`Tip = ${money(b*p/100)}`,draw:shopDraw('🍝',b,p+'% tip',p)}}
+function genFind(){const p=pick([10,20,25,50]),whole=pick([20,40,80,100,200]),part=whole*p/100;return{q:`<b>${part}</b> is what <b>percent</b> of <b>${whole}</b>?`,ans:p,hint:`Divide: ${part} ÷ ${whole}, then × 100.`,why:`${part} ÷ ${whole} = ${p/100} = ${p}%`,draw:(g,t)=>{g.fillStyle='#ffe9c4';g.fillRect(0,0,440,220);g.fillStyle='#fff';g.fillRect(20,90,400,40);g.fillStyle='#3ddc84';g.fillRect(20,90,400*p/100*Math.min(1,t),40);g.fillStyle='#222';g.font='bold 18px sans-serif';g.fillText(part+' of '+whole+' = ?%',150,70)}}}
+function genMix(){return pick([genSale,genTax,genTip,genDisc,genOf,genFind])()}
+function genDouble(){const[e,nm]=pick(ITEMS),pr=pick([40,80,100,200]),p=pick([25,50]);const s=pr*(100-p)/100,t=+(s*1.05).toFixed(2);return{q:`${nm}: ${money(pr)}, ${p}% off, then 5% GST is added to the sale price. <b>Total?</b>`,ans:t,hint:`Sale price = ${s}. Tax = 5% of ${s} = ${+(s*.05).toFixed(2)}. Add them.`,why:`${money(s)} + ${money(s*.05)} = ${money(t)}`,draw:shopDraw(e,pr,p+'% off + GST',100-p)}}
+const LV=[
+{n:'Percent of',em:'💯',k:'round',gen:genOf,goal:'Find the percent of each number.',fact:'Percent means "per hundred". 25% is 25 out of every 100, the same as ¼.'},
+{n:'Percent pals',em:'🤝',k:'match',goal:'Match each percent to the same fraction.',pairs:[['50%','½'],['25%','¼'],['10%','1/10'],['75%','¾'],['20%','1/5']],fact:'Knowing these helps with mental math: 25% off is the same as a quarter off.'},
+{n:'Money saved',em:'🏷️',k:'round',gen:genDisc,goal:'How much do you save with each discount?',fact:'The discount is the amount taken off. 30% off $80 saves you $24.'},
+{n:'Sale price',em:'🛍️',k:'round',gen:genSale,goal:'Work out what you actually pay.',fact:'Shortcut: 30% off means you pay 70% of the price.'},
+{n:'Best deal',em:'🤔',k:'mc',q:'Which is the better deal on a $60 game?',opts:['25% off','$10 off','Both the same','Neither saves money'],ans:'25% off',fact:'25% of $60 is $15, which beats $10 off. Always compare the dollars saved.'},
+{n:'Sales tax',em:'🧾',k:'round',gen:genTax,goal:'Add the sales tax to find the total.',fact:'In Alberta you only pay the 5% federal GST. Ontario combines federal and provincial tax into a 13% HST.'},
+{n:'Tip the server',em:'🍽️',k:'round',gen:genTip,goal:'Work out the tip on each bill.',fact:'In Canada people often tip 15% to 20% at restaurants. Find 10% first, then build from it.'},
+{n:'What percent?',em:'❓',k:'round',gen:genFind,goal:'Find what percent the part is of the whole.',fact:'Part ÷ whole × 100 = percent. 15 out of 60 is 0.25, which is 25%.'},
+{n:'Shopping trip',em:'🛒',k:'round',gen:genMix,rounds:6,goal:'A mixed shopping trip: sales, tax, tips and more!',fact:'Percents are everywhere: sales, tax, tips, test marks, phone batteries and sports stats.'},
+{n:'Sale plus tax',em:'🏆',k:'round',gen:genDouble,goal:'Take the discount off first, then add 5% GST.',fact:'Tax is charged on the sale price, not the original price, so the discount comes first.'}];
+LV.forEach((l,i)=>l.id='p'+i);
+const LEARN=[
+{h:'💯 What is a percent?',p:'<b>Percent</b> means "out of 100" (<i>per cent</i>). <b>40%</b> means 40 out of every 100. So 40% = 40/100 = 0.4. <b>100%</b> is the whole thing.',d:(g,t)=>{for(let k=0;k<100;k++){g.fillStyle=k<Math.min(40,t*20)?'#3ddc84':'#fff';g.fillRect(120+(k%10)*20,5+Math.floor(k/10)*19,18,17)}}},
+{h:'🔟 The 10% trick',p:'To find <b>10%</b>, divide by 10 (move the decimal one place left). 10% of $80 is $8. Then build: <b>20%</b> = double it ($16), <b>5%</b> = half of it ($4), <b>15%</b> = 10% + 5% ($12).',d:(g,t)=>{g.fillStyle='#fff';g.font='bold 30px sans-serif';g.fillText('$80',40,110);g.fillText('→',130,110);g.fillStyle='#3ddc84';g.fillText('10% = $8',190,80);g.fillStyle='#ffd34d';g.fillText('5% = $4',190,130);g.fillStyle='#7ad0ff';g.fillText('15% = $12',190,180)}},
+{h:'🧮 Percent of a number',p:'Multiply the number by the percent, then divide by 100. <b>30% of 50</b> = 50 × 30 ÷ 100 = <b>15</b>. Or use the decimal: 50 × 0.3 = 15.',d:(g,t)=>{g.fillStyle='#fff';g.fillRect(20,90,400,40);g.fillStyle='#3ddc84';g.fillRect(20,90,120*Math.min(1,t),40);g.fillStyle='#fff';g.font='18px sans-serif';g.fillText('30% of 50 = 15',150,70)}},
+{h:'🏷️ Discounts and sales',p:'A <b>discount</b> is money taken off. <b>Sale price = price − discount</b>. A $40 shirt at 25% off: discount = $10, sale price = $30. Shortcut: 25% off means you pay <b>75%</b>.',d:shopDraw('👕',40,'25% OFF',75)},
+{h:'🧾 Sales tax',p:'Tax is <b>added</b> to the price. Canada has a 5% federal <b>GST</b>. Some provinces add their own tax: Alberta adds none, while Ontario has a combined <b>13% HST</b>. Total = price + tax.',d:shopDraw('🎮',60,'+ 5% GST',5)},
+{h:'🍽️ Tips',p:'A <b>tip</b> (gratuity) thanks a server. In Canada, 15% to 20% is common at sit-down restaurants. On a $40 bill: 10% = $4, so 15% = $6 and 20% = $8.',d:shopDraw('🍝',40,'15% tip',15)},
+{h:'❓ Finding the percent',p:'To find what percent a part is: <b>part ÷ whole × 100</b>. You scored 18 out of 20: 18 ÷ 20 = 0.9 → <b>90%</b>.',d:(g,t)=>{g.fillStyle='#fff';g.font='bold 34px sans-serif';g.fillText('18 / 20',60,100);g.fillText('= 0.9',230,100);g.fillStyle='#3ddc84';g.fillText('= 90%',160,170+Math.sin(t*3)*4)}}];
+const QS=[
+{q:'Percent means…',a:'out of 100',opts:['out of 100','out of 10','times 100','out of 1000']},
+{q:'50% is the same as…',a:'½',opts:['½','¼','1/5','1/10']},
+{q:'25% is the same as…',a:'¼',opts:['¼','½','1/25','2/5']},
+{q:'10% of 70 =',a:'7',opts:['7','70','0.7','17']},
+{q:'50% of 36 =',a:'18',opts:['18','36','72','9']},
+{q:'25% of 80 =',a:'20',opts:['20','25','40','8']},
+{q:'20% of 50 =',a:'10',opts:['10','20','5','25']},
+{q:'$40 item, 50% off. Sale price?',a:'$20',opts:['$20','$40','$10','$35']},
+{q:'$100 jacket, 30% off. Sale price?',a:'$70',opts:['$70','$30','$97','$130']},
+{q:'$60 game, 10% off. How much do you save?',a:'$6',opts:['$6','$10','$54','$0.60']},
+{q:'If something is 40% off, you pay…',a:'60% of the price',opts:['60% of the price','40% of the price','140% of the price','nothing']},
+{q:'15% tip on a $20 bill =',a:'$3',opts:['$3','$1.50','$15','$5']},
+{q:'20% tip on a $50 bill =',a:'$10',opts:['$10','$20','$5','$2']},
+{q:'5% GST on $20 =',a:'$1',opts:['$1','$5','$0.50','$2']},
+{q:'$40 item plus 5% GST. Total?',a:'$42',opts:['$42','$45','$40.50','$38']},
+{q:'Canada\'s federal sales tax (GST) is…',a:'5%',opts:['5%','13%','20%','50%']},
+{q:'Alberta adds a provincial sales tax of…',a:'0% (none)',opts:['0% (none)','8%','13%','5%']},
+{q:'9 out of 10 as a percent is…',a:'90%',opts:['90%','9%','10%','19%']},
+{q:'12 is what percent of 48?',a:'25%',opts:['25%','12%','48%','4%']},
+{q:'100% of 35 =',a:'35',opts:['35','100','3.5','0']},
+{q:'Better deal on $80: 20% off or $15 off?',a:'20% off',opts:['20% off','$15 off','same','neither']},
+{q:'Is tax added before or after the discount?',a:'after the discount',opts:['after the discount','before the discount','never','instead of it']}];
+function menu(){mainMenu('🏷️💯🛍️','Percent Shop','Spot the deals, add the tax, tip the server and become a percent pro shopper!',[['mL','📖','Learn','Percents, the 10% trick, sales, tax and tips.',()=>learnPage(0)],['mS','🛒','Practice Shop','Endless mixed problems.',()=>roundLevel({n:'Practice Shop',em:'🛒',gen:genMix,rounds:5,goal:'Mixed practice. No stars, just skills!'},0,{free:1,back:menu,head:`<div class="card"><div class="row"><h2 style="flex:1;margin:0">🛒 Practice Shop</h2><button class="btn alt" id="bk">Menu</button></div>`})],['mP','🧩','Levels',`${LV.length} shopping challenges.`,()=>levels()],...stdTiles('Percent Quiz')])}
+function levels(){levelGrid('🧩 Shopping challenges')}
+function play(i){const L=LV[i];({round:roundLevel,order:orderLevel,match:matchLevel,mc:mcLevel})[L.k](L,i)}
+menu();
+</script></body></html>

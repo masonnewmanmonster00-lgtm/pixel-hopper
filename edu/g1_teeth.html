@@ -1,0 +1,154 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>Tooth Team</title>
+<style>
+:root{--bg:#0f1530;--card:#1b2350;--ink:#f4f6ff;--mut:#9aa6d8;--acc:#7ad0ff;--good:#3ddc84;--bad:#ff5c7a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:"Trebuchet MS",system-ui,sans-serif;background:radial-gradient(circle at 20% 0%,#2a3480,var(--bg) 60%);color:var(--ink);min-height:100vh;user-select:none;-webkit-user-select:none;overflow-x:hidden}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0008;position:sticky;top:0;z-index:5;backdrop-filter:blur(4px)}
+header a{color:var(--ink);text-decoration:none;background:#fff1;padding:6px 12px;border-radius:20px;font-weight:bold}
+header h1{font-size:20px;margin:0;flex:1;color:var(--acc);text-shadow:0 2px 0 #0006}
+.pill{background:#fff1;padding:5px 10px;border-radius:14px;font-size:14px}
+main{max-width:980px;margin:0 auto;padding:14px}
+.btn{font:inherit;font-weight:bold;border:0;border-radius:14px;padding:10px 16px;background:var(--acc);color:#111;cursor:pointer;box-shadow:0 4px 0 #0007;transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #0007}.btn.alt{background:#2c3770;color:var(--ink)}.btn.sel{outline:3px solid #fff}
+.btn:disabled{opacity:.4}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border-radius:18px;padding:14px;box-shadow:0 6px 18px #0005;border:2px solid #ffffff10}
+.tile{cursor:pointer;transition:transform .15s}.tile:hover{transform:translateY(-4px) rotate(-1deg)}
+.tile .em{font-size:40px}.tile h3{margin:6px 0}.tile p{margin:0;color:var(--mut);font-size:14px}
+.stars{color:#ffd34d;letter-spacing:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fb{min-height:28px;font-weight:bold;font-size:18px;margin:8px 0}
+.opt{display:block;width:100%;margin:6px 0;text-align:left;background:#2c3770;color:var(--ink)}
+.opt.ok{background:var(--good);color:#111}.opt.no{background:var(--bad)}
+.pop{animation:pop .35s}@keyframes pop{50%{transform:scale(1.12)}}
+.shake{animation:shk .35s}@keyframes shk{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:9}
+.bar{height:10px;background:#fff2;border-radius:6px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--acc);transition:width .3s}
+.fact{background:#ffd34d22;border-left:4px solid #ffd34d;padding:8px 12px;border-radius:8px;margin:8px 0}
+svg text{font-family:inherit}
+</style></head><body>
+<header><a href="./index.html">← Learning Lab</a><h1>Tooth Team</h1><span class="pill" id="starTotal">⭐ 0</span><button class="btn alt" id="snd" style="padding:6px 10px">🔊</button></header>
+<main id="app"></main><canvas id="fx"></canvas>
+<script>
+// ---- shared helpers ----
+const $=s=>document.querySelector(s),app=$('#app');
+const SAVEKEY='g1_toothTeam';let SAVE=JSON.parse(localStorage.getItem(SAVEKEY)||'{}');SAVE.stars=SAVE.stars||{};SAVE.best=SAVE.best||{};
+function save(){localStorage.setItem(SAVEKEY,JSON.stringify(SAVE));$('#starTotal').textContent='⭐ '+Object.values(SAVE.stars).reduce((a,b)=>a+b,0)}
+let AC=null,muted=!!SAVE.muted;$('#snd').textContent=muted?'🔇':'🔊';
+$('#snd').onclick=()=>{muted=!muted;SAVE.muted=muted;save();$('#snd').textContent=muted?'🔇':'🔊'};
+function tone(f,d=.12,type='sine',v=.15,slide=0,delay=0){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.02)}catch(e){}}
+function noise(d=.4,v=.2,lp=800){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const n=AC.sampleRate*d,b=AC.createBuffer(1,n,AC.sampleRate),c=b.getChannelData(0);for(let i=0;i<n;i++)c[i]=(Math.random()*2-1)*(1-i/n);const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();f.type='lowpass';f.frequency.value=lp;g.gain.value=v;s.buffer=b;s.connect(f);f.connect(g);g.connect(AC.destination);s.start()}catch(e){}}
+const SFX={click:()=>tone(660,.05,'square',.06),good:()=>{tone(523,.1,'triangle');tone(784,.15,'triangle',.15,0,.08)},bad:()=>tone(200,.25,'sawtooth',.08,-80),
+win:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.15,0,i*.1)),pick:()=>tone(440,.06,'sine',.1,200),drop:()=>tone(330,.08,'sine',.12,-100)};
+// confetti
+const cv=$('#fx'),cx=cv.getContext('2d');let fxp=[];function rs(){cv.width=innerWidth;cv.height=innerHeight}rs();addEventListener('resize',rs);
+function confetti(x=innerWidth/2,y=innerHeight/3,n=60){for(let i=0;i<n;i++)fxp.push({x,y,vx:(Math.random()-.5)*10,vy:-Math.random()*9-2,c:`hsl(${Math.random()*360},90%,60%)`,l:90});}
+(function loop(){cx.clearRect(0,0,cv.width,cv.height);fxp=fxp.filter(p=>p.l-->0);for(const p of fxp){p.vy+=.3;p.x+=p.vx;p.y+=p.vy;cx.fillStyle=p.c;cx.fillRect(p.x,p.y,7,7)}requestAnimationFrame(loop)})();
+function flash(el,ok){el.classList.remove('pop','shake');void el.offsetWidth;el.classList.add(ok?'pop':'shake')}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function award(id,n){if((SAVE.stars[id]||0)<n)SAVE.stars[id]=n;save()}
+// generic timed quiz: qs=[{q,opts,a,fact}] ; a is correct string
+let __QZ=0;function runQuiz(id,title,qs,secs,back){let i=0,score=0,t=secs,timer;const tok=++__QZ;clearInterval(window.__qt);const alive=()=>tok===__QZ&&!!document.getElementById("qz"+tok);qs=shuffle(qs).slice(0,10);
+ function end(){clearInterval(timer);if(!alive())return;const st=score>=9?3:score>=7?2:score>=5?1:0;award(id,st);if(score>(SAVE.best[id]||0))SAVE.best[id]=score;save();if(st)SFX.win(),confetti();
+  app.innerHTML=`<div class="card" style="text-align:center"><h2>${title} — done!</h2><div style="font-size:48px" class="stars">${starStr(st)}</div><p>You got <b>${score}/${qs.length}</b>. Best: ${SAVE.best[id]}</p><div class="row" style="justify-content:center"><button class="btn" id="ag">Play again</button><button class="btn alt" id="bk">Back</button></div></div>`;$('#ag').onclick=()=>runQuiz(id,title,qs,secs,back);$('#bk').onclick=back}
+ function show(){if(i>=qs.length)return end();const q=qs[i];app.innerHTML=`<div class="card" id="qz${tok}"><div class="row"><b style="flex:1">${title} · Q${i+1}/${qs.length}</b>${secs?`<span class="pill">⏱ <span id="tm">${t}</span>s</span>`:''}<span class="pill">✅ ${score}</span></div><div class="bar" style="margin:8px 0"><i style="width:${i/qs.length*100}%"></i></div>${q.svg||''}<h2>${q.q}</h2><div id="os"></div><div class="fb" id="fb"></div></div>`;
+  shuffle(q.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.innerHTML=o;b.onclick=()=>{if(b.parentNode.dataset.done)return;b.parentNode.dataset.done=1;const ok=o==q.a;if(ok){score++;SFX.good();confetti(innerWidth/2,innerHeight/2,20)}else SFX.bad();[...$('#os').children].forEach(x=>{if(x.innerHTML==q.a)x.classList.add('ok')});if(!ok)b.classList.add('no');flash(b,ok);$('#fb').innerHTML=(ok?'✅ Correct! ':'❌ Not quite. ')+(q.fact?`<div class="fact">💡 ${q.fact}</div>`:'');setTimeout(()=>{if(!alive())return;i++;show()},q.fact?2200:1100)};$('#os').appendChild(b)})}
+ if(secs)window.__qt=timer=setInterval(()=>{if(!alive()){clearInterval(timer);return}t--;const e=$('#tm');if(e)e.textContent=t;if(t<=5&&t>0)tone(880,.05);if(t<=0)end()},1000);show()}
+save();
+</script>
+<script>
+// common menu/learn/levels helpers for g1 games
+function learnPage(i){const m=LEARN[i];app.innerHTML=`<div class="card"><div class="row"><b style="flex:1">📖 ${i+1} / ${LEARN.length}</b><button class="btn alt" id="bk">Menu</button></div><div style="text-align:center"><canvas id="lc" width="440" height="200" style="max-width:100%;background:#05081a;border-radius:14px"></canvas></div><h2>${m.h}</h2><p style="line-height:1.5">${m.p}</p>
+ <div class="row"><button class="btn alt" id="pv" ${i?'':'disabled'}>← Prev</button><span style="flex:1"></span><button class="btn" id="nx">${i<LEARN.length-1?'Next →':'Done ✓'}</button></div></div>`;
+ $('#bk').onclick=menu;$('#pv').onclick=()=>learnPage(i-1);$('#nx').onclick=()=>{SFX.click();if(i<LEARN.length-1)learnPage(i+1);else{SAVE.learned=1;save();SFX.win();confetti();menu()}};
+ const c=$('#lc'),g=c.getContext('2d'),t0=performance.now();(function f(n){if(!c.isConnected)return;g.clearRect(0,0,440,200);g.save();m.d(g,(n-t0)/1000);g.restore();requestAnimationFrame(f)})(t0)}
+function unlocked(i){return i==0||(SAVE.stars[LV[i-1].id]||0)>0}
+function levelGrid(title){app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">${title}</h2><button class="btn alt" id="bk">Menu</button></div><p style="color:var(--mut)">Earn a star to unlock the next level.</p><div class="grid" id="lg"></div></div>`;$('#bk').onclick=menu;
+ LV.forEach((l,i)=>{const d=document.createElement('div'),u=unlocked(i);d.className='card tile lv'+i;d.style.opacity=u?1:.45;d.innerHTML=`<div class="em">${u?l.em||'🎯':'🔒'}</div><h3>${i+1}. ${l.n}</h3><p class="stars">${starStr(SAVE.stars[l.id]||0)}</p>`;d.onclick=()=>{if(!u){SFX.bad();flash(d,0);return}SFX.click();play(i)};$('#lg').appendChild(d)})}
+function winLevel(i,st,msg){award(LV[i].id,st);SFX.win();confetti();const last=i>=LV.length-1;
+ $('#fb').innerHTML=`🎉 ${msg} <span class="stars">${starStr(st)}</span><div class="row" style="margin-top:6px"><button class="btn" id="nl">${last?'All levels ✓':'Next level →'}</button><button class="btn alt" id="rl">Retry</button></div>`;
+ $('#nl').onclick=()=>last?levels():play(i+1);$('#rl').onclick=()=>play(i)}
+function mainMenu(em,name,blurb,tiles){const tot=LV.length*3,got=LV.reduce((a,l)=>a+(SAVE.stars[l.id]||0),0);
+ app.innerHTML=`<div class="card" style="text-align:center"><div style="font-size:54px">${em}</div><h2 style="margin:4px">${name}</h2><p style="color:var(--mut)">${blurb}</p><div class="bar"><i style="width:${got/tot*100}%"></i></div><p class="stars">${got}/${tot} ★</p></div><div class="grid" style="margin-top:12px" id="mg"></div>`;
+ tiles.forEach(([id,e,h,p,fn])=>{const d=document.createElement('div');d.className='card tile';d.id=id;d.innerHTML=`<div class="em">${e}</div><h3>${h}</h3><p>${p}</p>`;d.onclick=()=>{SFX.click();fn()};$('#mg').appendChild(d)})}
+function stdTiles(qtitle){return[['mQ','❓','Quiz',`10 questions. <span class="stars">${starStr(SAVE.stars.quiz||0)}</span>`,()=>runQuiz('quiz',qtitle,QS,0,menu)],['mT','⏱️','Timed challenge',`60 seconds! <span class="stars">${starStr(SAVE.stars.timed||0)}</span>`,()=>runQuiz('timed','Timed Challenge',QS,60,menu)]]}
+// ---- shared level kinds (g1r) ----
+function anim(c,fn){const g=c.getContext('2d'),t0=performance.now();(function f(n){if(!c.isConnected)return;g.clearRect(0,0,c.width,c.height);g.save();fn(g,(n-t0)/1000);g.restore();requestAnimationFrame(f)})(t0)}
+function lvHead(L,i){return `<div class="card"><div class="row"><h2 style="flex:1;margin:0">${L.em} ${i+1}. ${L.n}</h2><button class="btn alt" id="bk">Levels</button></div>`}
+const CVS='width:100%;max-width:620px;display:block;margin:8px auto 0;border-radius:14px;touch-action:manipulation';
+function mcLevel(L,i){let tries=0;app.innerHTML=lvHead(L,i)+`${L.svg||''}<h3>${L.q}</h3><div id="os"></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=levels;
+ shuffle(L.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.textContent=o;b.onclick=()=>{if(b.disabled||$('#nl'))return;tries++;if(o==L.ans){b.classList.add('ok');winLevel(i,tries<=1?3:tries<=2?2:1,`Correct!<div class="fact">💡 ${L.fact}</div>`)}else{b.classList.add('no');b.disabled=true;SFX.bad();flash(b,0);$('#fb').textContent='❌ Not quite — try again.'}};$('#os').appendChild(b)})}
+function orderLevel(L,i){let n=0,miss=0;app.innerHTML=lvHead(L,i)+`<p><b>${L.goal}</b></p><div id="ol" style="margin-bottom:8px"></div><div id="os"></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=levels;
+ shuffle(L.items).forEach(it=>{const b=document.createElement('button');b.className='btn opt';b.textContent=it;b.onclick=()=>{if(b.disabled)return;if(it==L.items[n]){n++;b.disabled=true;b.classList.add('ok');SFX.good();const d=document.createElement('div');d.className='card pop';d.style.margin='4px 0';d.style.padding='8px 12px';d.textContent=n+'. '+it;$('#ol').appendChild(d);if(n==L.items.length)winLevel(i,miss==0?3:miss<=1?2:1,`Perfect order!<div class="fact">💡 ${L.fact}</div>`)}else{miss++;SFX.bad();flash(b,0);$('#fb').textContent='❌ Not next — think again.'}};$('#os').appendChild(b)})}
+function matchLevel(L,i){let n=0,miss=0;const ord=shuffle(L.pairs);app.innerHTML=lvHead(L,i)+`<p><b>${L.goal}</b></p><div class="card" style="text-align:center;font-size:22px;background:#2c3770" id="mq"></div><div class="grid" id="os" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:8px"></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=levels;
+ const ask=()=>{$('#mq').innerHTML=`${ord[n][0]} <span style="color:var(--mut)">→ ?</span>`;flash($('#mq'),1)};ask();
+ shuffle(L.pairs).forEach(([a,r])=>{const b=document.createElement('button');b.className='btn opt';b.style.textAlign='center';b.textContent=r;b.onclick=()=>{if(b.disabled||n>=ord.length)return;if(r==ord[n][1]){b.disabled=true;b.classList.add('ok');SFX.good();b.textContent=r+' ✓ '+ord[n][0].split(' ')[0];n++;if(n==ord.length){$('#mq').textContent='All matched!';winLevel(i,miss==0?3:miss<=2?2:1,`Great matching!<div class="fact">💡 ${L.fact}</div>`)}else ask()}else{miss++;SFX.bad();flash(b,0);$('#fb').textContent='❌ Not a match — try another.'}};$('#os').appendChild(b)})}
+// ---- Tooth Team ----
+function toothShapes(){const T=[];for(let k=0;k<10;k++){const x=40+k*38,w=34;const kind=k<2||k>7?'molar':k==2||k==7?'canine':'incisor';T.push({x,y:40,w,h:kind=='molar'?70:80,kind,top:1});T.push({x,y:150,w,h:kind=='molar'?70:80,kind,top:0})}return T}
+function drawTeeth(g,T,t){g.fillStyle='#7a1f3d';g.fillRect(0,0,440,260);g.fillStyle='#e0607e';g.fillRect(0,0,440,46);g.fillRect(0,214,440,46);
+ for(const s of T){g.fillStyle='#fbfbf2';g.strokeStyle='#cfcfc0';g.lineWidth=2;g.beginPath();const y=s.top?s.y:s.y+(80-s.h);
+  if(s.kind=='canine'){if(s.top){g.moveTo(s.x,y);g.lineTo(s.x+s.w,y);g.lineTo(s.x+s.w,y+s.h-18);g.lineTo(s.x+s.w/2,y+s.h);g.lineTo(s.x,y+s.h-18)}else{g.moveTo(s.x,y+s.h);g.lineTo(s.x+s.w,y+s.h);g.lineTo(s.x+s.w,y+18);g.lineTo(s.x+s.w/2,y);g.lineTo(s.x,y+18)}g.closePath()}
+  else g.roundRect?g.roundRect(s.x,y,s.w,s.h,8):g.rect(s.x,y,s.w,s.h);g.fill();g.stroke()}}
+function brushGame(L,i){const free=!L;const P=L||{cnt:14,secs:40,regrow:0,goal:'Free brushing! Scrub off all the plaque.'};
+ app.innerHTML=(free?`<div class="card"><div class="row"><h2 style="flex:1;margin:0">🪥 Brushing Practice</h2><button class="btn alt" id="bk">Menu</button></div>`:lvHead(L,i))+`<p><b>${P.goal}</b></p><div class="row"><span class="pill">⏱ <span id="bt">${P.secs}</span>s</span><span class="pill">🦠 <span id="bl">${P.cnt}</span> plaque left</span></div><canvas id="bc" width="440" height="260" style="${CVS};touch-action:none;cursor:grab"></canvas><p style="color:var(--mut);font-size:14px">Drag the toothbrush (mouse or finger) back and forth over the yellow plaque.${P.regrow?' Sugar bugs 🍬 make new plaque grow — be quick!':''}</p><div class="fb" id="fb"></div></div>`;
+ $('#bk').onclick=free?menu:levels;const c=$('#bc'),T=toothShapes();let blobs=[],t=P.secs,done=false,br={x:220,y:130,on:false},lastS=0;
+ const mk=()=>{const s=T[Math.random()*T.length|0];return{x:s.x+6+Math.random()*(s.w-12),y:(s.top?s.y+10:s.y+20)+Math.random()*50,hp:100,r:9+Math.random()*5}};
+ for(let k=0;k<P.cnt;k++)blobs.push(mk());window.__br=blobs;
+ const pos=e=>{const r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*440/r.width,y:(e.clientY-r.top)*260/r.height}};
+ const scrub=p=>{if(done)return;const mv=Math.hypot(p.x-br.x,p.y-br.y);br.x=p.x;br.y=p.y;if(!br.on)return;for(const b of blobs)if(b.hp>0&&Math.hypot(b.x-p.x,b.y-p.y)<b.r+18){b.hp-=12+Math.min(30,mv);if(b.hp<=0){SFX.pick();confetti(innerWidth/2,innerHeight/2,6)}}
+  if(performance.now()-lastS>90&&mv>3){noise(.06,.05,3000);lastS=performance.now()}check()};
+ c.onpointerdown=e=>{c.setPointerCapture&&c.setPointerCapture(e.pointerId);br.on=true;scrub(pos(e))};c.onpointermove=e=>scrub(pos(e));c.onpointerup=c.onpointercancel=()=>br.on=false;
+ const left=()=>blobs.filter(b=>b.hp>0).length;
+ function check(){$('#bl')&&($('#bl').textContent=left());if(!done&&left()==0){done=true;clearInterval(tm);if(free){SFX.win();confetti();$('#fb').innerHTML='✨ Sparkling clean! Real brushing takes 2 minutes, twice a day.'}else{const f=t/P.secs;winLevel(i,f>.45?3:f>.2?2:1,`Sparkling clean with ${t}s to spare!<div class="fact">💡 ${L.fact}</div>`)}}}
+ const tm=setInterval(()=>{if(!c.isConnected){clearInterval(tm);return}if(done)return;t--;$('#bt').textContent=t;if(P.regrow&&t%P.regrow==0&&left()<P.cnt+4){blobs.push(mk());check()}if(t<=5&&t>0)tone(880,.05);if(t<=0){done=true;clearInterval(tm);SFX.bad();$('#fb').innerHTML=`⏰ Time! ${left()} plaque spots left. <button class="btn" id="rt">Try again</button>`;$('#rt').onclick=()=>free?brushGame(null):play(i)}},1000);
+ anim(c,(g,tt)=>{drawTeeth(g,T,tt);for(const b of blobs)if(b.hp>0){g.globalAlpha=.35+.65*b.hp/100;g.fillStyle='#d8c93a';g.beginPath();g.arc(b.x,b.y,b.r,0,7);g.fill();g.fillStyle='#6a8f1f';g.beginPath();g.arc(b.x-3,b.y-2,2,0,7);g.arc(b.x+3,b.y-2,2,0,7);g.fill()}g.globalAlpha=1;
+  g.save();g.translate(br.x,br.y);g.rotate(-.5);g.fillStyle='#3aa0ff';g.fillRect(10,-5,70,10);g.fillStyle='#fff';g.fillRect(-18,-12,30,12);g.fillStyle='#9fe3ff';for(let k=0;k<6;k++)g.fillRect(-17+k*5,-20,3,9);g.restore();
+  if(done&&left()==0){g.font='28px serif';for(let k=0;k<5;k++)g.fillText('✨',60+k*80,130+Math.sin(tt*5+k)*10)}})}
+const LV=[
+{n:'First brush',em:'🪥',k:'brush',goal:'Scrub away all the plaque before time runs out!',fact:'Plaque is a sticky film of germs. Brushing removes it before it can harm your teeth.'},
+{n:'Tooth jobs',em:'🦷',k:'match',goal:'Match each kind of tooth to its job.',pairs:[['Incisors','cut and bite'],['Canines','tear food'],['Molars','grind and chew']],fact:'Incisors are at the front, canines are the pointy ones and molars are the wide back teeth.'},
+{n:'Bigger mess',em:'🦠',k:'brush',goal:'More plaque this time. Get every spot!',fact:'Brush for 2 minutes, twice a day: in the morning and before bed.'},
+{n:'Brushing steps',em:'📋',k:'order',goal:'Put the brushing steps in order.',items:['Put a pea-sized dab of fluoride toothpaste on the brush','Brush the outside, inside and chewing surfaces','Brush gently along the gum line','Brush your tongue','Spit out the toothpaste'],fact:'Spit, but don\'t rinse a lot afterwards, so the fluoride keeps protecting your teeth.'},
+{n:'Snack check',em:'🍎',k:'match',goal:'Is each snack tooth-friendly or a sugar risk?',pairs:[['🧀 Cheese','tooth-friendly'],['🍬 Sticky candy','sugar risk'],['🥕 Carrot sticks','crunchy & friendly'],['🥤 Pop','sugar & acid risk']],fact:'Germs in plaque turn sugar into acid, and acid wears away enamel. Water is the best drink for teeth.'},
+{n:'Sugar bugs',em:'🍬',k:'brush',regrow:4,goal:'Sugar bugs keep adding plaque. Clean faster than they grow!',fact:'Snacking on sugar all day feeds plaque germs again and again. Fewer sugary snacks means fewer acid attacks.'},
+{n:'Count your teeth',em:'🔢',k:'mc',q:'How many baby (primary) teeth does a child usually have?',opts:['20','32','10','28'],ans:'20',fact:'Kids have 20 baby teeth. Most adults end up with 32 permanent teeth, including 4 wisdom teeth.'},
+{n:'Between the teeth',em:'🧵',k:'mc',q:'Your toothbrush can\'t reach between your teeth. What cleans there?',opts:['Floss','Mouthwash only','Chewing gum','A bigger toothbrush'],ans:'Floss',fact:'Floss once a day to clean between teeth, where cavities often start.'},
+{n:'Super shell',em:'💎',k:'mc',q:'What is the hardest substance in the human body?',opts:['Tooth enamel','Bone','Fingernails','Hair'],ans:'Tooth enamel',fact:'Enamel is the hard outer layer of a tooth. It can\'t grow back, so protect it!'},
+{n:'Plaque attack',em:'🏆',k:'brush',regrow:3,goal:'The ultimate clean: lots of plaque, fast sugar bugs!',fact:'Visit the dentist for regular check-ups. They can spot small problems before they grow.'}];
+LV.forEach((l,i)=>{l.id='t'+i});
+Object.assign(LV[0],{n_:0,cfg:{cnt:8,secs:30}});Object.assign(LV[2],{cfg:{cnt:16,secs:35}});Object.assign(LV[5],{cfg:{cnt:12,secs:35}});Object.assign(LV[9],{cfg:{cnt:18,secs:40}});
+const LEARN=[
+{h:'🦷 Meet your teeth',p:'Kids have <b>20 baby teeth</b>. Starting around age 6 they fall out and <b>permanent teeth</b> grow in. Most adults have <b>32</b>. Front <b>incisors</b> cut, pointy <b>canines</b> tear, and wide <b>molars</b> grind food.',d:(g,t)=>{drawTeeth(g,toothShapes(),t)}},
+{h:'💎 Inside a tooth',p:'The outside is <b>enamel</b>, the hardest stuff in your body. Under it is <b>dentin</b>, and in the middle is the <b>pulp</b>, with nerves and blood vessels. <b>Roots</b> hold the tooth in your jaw, under the <b>gums</b>.',d:(g,t)=>{g.fillStyle='#e0607e';g.fillRect(0,120,440,80);g.fillStyle='#fbfbf2';g.beginPath();g.moveTo(170,20);g.lineTo(270,20);g.lineTo(260,120);g.lineTo(245,190);g.lineTo(225,130);g.lineTo(215,130);g.lineTo(195,190);g.lineTo(180,120);g.fill();g.fillStyle='#f2d9a6';g.fillRect(195,40,50,80);g.fillStyle='#ff8a8a';g.fillRect(210,60,20,70);g.fillStyle='#fff';g.font='13px sans-serif';g.fillText('enamel',280,30);g.fillText('dentin',280,70);g.fillText('pulp',280,100);g.fillText('gum',30,150);g.fillText('root',280,170)}},
+{h:'🦠 Plaque and cavities',p:'<b>Plaque</b> is a sticky film of germs (bacteria). When you eat sugar, plaque germs make <b>acid</b>. Acid eats tiny holes in enamel called <b>cavities</b>. Brushing removes plaque before it can do damage.',d:(g,t)=>{g.font='40px serif';g.fillText('🍬',40,110);g.fillText('➡️',110,110);g.fillText('🦠',180,110+Math.sin(t*4)*6);g.fillText('➡️',250,110);g.fillText('🕳️',330,110)}},
+{h:'🪥 How to brush',p:'Brush for <b>2 minutes, twice a day</b>, with a <b>pea-sized</b> bit of <b>fluoride toothpaste</b> (a rice-grain smear for kids under 3). Use gentle circles on the outside, inside and chewing surfaces, and along the gum line. Spit, don\'t swallow.',d:(g,t)=>{g.fillStyle='#fbfbf2';g.fillRect(140,60,160,80);g.save();g.translate(220+Math.sin(t*6)*60,100);g.fillStyle='#3aa0ff';g.fillRect(10,-5,80,10);g.fillStyle='#fff';g.fillRect(-20,-14,32,14);g.restore()}},
+{h:'🧵 Floss and fluoride',p:'<b>Floss</b> once a day to clean between teeth. <b>Fluoride</b> is a mineral that makes enamel stronger and helps fight cavities. Many Canadian towns add a little to tap water.',d:(g,t)=>{for(let k=0;k<4;k++){g.fillStyle='#fbfbf2';g.fillRect(60+k*90,50,70,100)}g.strokeStyle='#7ad0ff';g.lineWidth=3;const x=130+((t*40)%270);g.beginPath();g.moveTo(x,20);g.lineTo(x+10,180);g.stroke()}},
+{h:'🍎 Food and drinks',p:'Sugary and sticky snacks and pop feed plaque germs. <b>Water</b>, milk, cheese, vegetables and crunchy fruit are tooth-friendly. Snacking all day means more acid attacks, so save treats for mealtimes.',d:(g,t)=>{['💧','🥛','🧀','🥕','🍎'].forEach((e,k)=>{g.font='34px serif';g.fillText(e,30+k*80,100+Math.sin(t*3+k)*8)})}},
+{h:'👩‍⚕️ The dentist',p:'Visit the dentist for regular <b>check-ups</b>. A dental hygienist cleans off hard plaque (<b>tartar</b>) that brushing can\'t remove. Wear a <b>mouthguard</b> for sports like hockey to protect your teeth.',d:(g,t)=>{g.font='60px serif';g.fillText('🦷',120,130+Math.sin(t*3)*6);g.fillText('😁',240,130)}}];
+const QS=[
+{q:'How many baby teeth do kids usually have?',a:'20',opts:['20','32','12','26']},
+{q:'How many teeth do most adults have?',a:'32',opts:['32','20','40','24']},
+{q:'How long should you brush?',a:'2 minutes',opts:['2 minutes','10 seconds','30 seconds','10 minutes']},
+{q:'How often should you brush?',a:'twice a day',opts:['twice a day','once a week','only after candy','once a month']},
+{q:'How much toothpaste for a kid aged 3 and up?',a:'pea-sized',opts:['pea-sized','cover the whole brush','none','a big blob']},
+{q:'The sticky film of germs on teeth is…',a:'plaque',opts:['plaque','enamel','dentin','fluoride']},
+{q:'Plaque germs turn sugar into…',a:'acid',opts:['acid','vitamins','water','enamel']},
+{q:'A hole in a tooth caused by decay is a…',a:'cavity',opts:['cavity','crown','filling','root']},
+{q:'The hard outer layer of a tooth is…',a:'enamel',opts:['enamel','pulp','gum','root']},
+{q:'The soft middle of a tooth, with nerves, is the…',a:'pulp',opts:['pulp','enamel','crown','plaque']},
+{q:'Which teeth grind food?',a:'molars',opts:['molars','incisors','canines','baby teeth only']},
+{q:'Which teeth are pointy and tear food?',a:'canines',opts:['canines','molars','incisors','wisdom teeth']},
+{q:'What cleans between your teeth?',a:'floss',opts:['floss','gum','juice','a comb']},
+{q:'Which mineral helps make enamel stronger?',a:'fluoride',opts:['fluoride','sugar','salt','iron']},
+{q:'The best drink for your teeth is…',a:'water',opts:['water','pop','sports drinks','juice']},
+{q:'Hard plaque that only a dental hygienist can remove is…',a:'tartar',opts:['tartar','enamel','floss','pulp']},
+{q:'What protects your teeth in hockey?',a:'a mouthguard',opts:['a mouthguard','a helmet strap','gum','a scarf']},
+{q:'After brushing, it\'s best to…',a:'spit out the toothpaste',opts:['spit out the toothpaste','swallow it','eat candy','skip flossing forever']},
+{q:'Permanent teeth usually start coming in around age…',a:'6',opts:['6','1','12','16']},
+{q:'Which snack is most tooth-friendly?',a:'cheese',opts:['cheese','sticky toffee','gummy bears','pop']}];
+function menu(){mainMenu('🦷🪥✨','Tooth Team','Scrub away plaque, beat the sugar bugs and learn how to keep your teeth healthy!',[['mL','📖','Learn','Teeth, plaque, brushing, floss and the dentist.',()=>learnPage(0)],['mB','🪥','Brushing Practice','Scrub with no pressure.',()=>brushGame(null)],['mP','🧩','Levels',`${LV.length} tooth challenges.`,()=>levels()],...stdTiles('Tooth Quiz')])}
+function levels(){levelGrid('🧩 Tooth challenges')}
+function play(i){const L=LV[i];if(L.k=='brush')return brushGame(Object.assign({},L,L.cfg,{regrow:L.regrow||0}),i);({order:orderLevel,match:matchLevel,mc:mcLevel})[L.k](L,i)}
+menu();
+</script></body></html>

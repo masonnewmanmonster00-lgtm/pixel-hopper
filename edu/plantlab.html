@@ -1,0 +1,201 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Plant Lab</title><style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;height:100%;background:#1d1630;color:#eef;font-family:system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden;user-select:none}
+#top{position:absolute;top:0;left:0;right:0;height:40px;display:flex;align-items:center;gap:6px;padding:0 8px;background:#0008;z-index:3}
+#top a,#top button{color:#fff;background:#283070;border:0;border-radius:8px;padding:6px 10px;font-size:13px;text-decoration:none;cursor:pointer;white-space:nowrap}
+#title{flex:1;font-weight:800;white-space:nowrap;overflow:hidden}#title b{color:#ffcf5a}#st{font-size:13px;white-space:nowrap}
+canvas{position:absolute;top:40px;left:0;touch-action:none}
+.btn{background:linear-gradient(#ffb340,#e07a10);color:#fff;border:0;border-radius:12px;padding:9px 13px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 #8a4a00;margin:3px}
+.btn:active{transform:translateY(2px)}
+#ov{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:9}
+#ov>div{background:#121a4a;border:2px solid #ffcf5a;border-radius:16px;padding:12px 16px;text-align:center;max-width:96%;max-height:94%;overflow:auto}
+#ov h2{margin:4px 0}#ov p{margin:6px 0;font-size:14px}
+.lv{display:inline-block;margin:3px;padding:5px 8px;border-radius:8px;background:#283070;font-size:13px;cursor:pointer;min-width:120px}
+.lv:hover{background:#e07a10}.lv.lock{opacity:.45;cursor:default}.stars{font-size:34px;color:#ffd54a}
+</style></head><body>
+<div id="top"><a id="lz" href="./index.html">◀ Learning Lab</a><a id="menu" href="../index.html">🏠</a><div id="title">🌱 Plant <b>Lab</b></div><span id="st"></span><button id="lvB">Levels</button><button id="pB">⏸</button><button id="mu">🔊</button></div>
+<canvas id="c"></canvas><div id="ov"><div id="ovc"></div></div>
+<script>
+const SAVEKEY='plantLabSave',TITLE='🌱 Plant Lab',INTRO='Be a plant scientist! Grow plants by controlling light, water and soil, run fair tests with a growth chart, and learn photosynthesis, flower parts, the life cycle and pollinators.';
+// shared skeleton injected into both games
+const $=id=>document.getElementById(id);
+const cv=$('c'),cx=cv.getContext('2d');let W=0,H=0,DPR=1;
+let save={mute:false,stars:{},unlocked:1};
+try{const s=JSON.parse(localStorage.getItem(SAVEKEY)||'null');if(s)save=Object.assign(save,s)}catch(e){}
+function persist(){try{localStorage.setItem(SAVEKEY,JSON.stringify(save))}catch(e){}}
+let AC=null;function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(AC&&AC.state==='suspended')AC.resume();return AC}
+function tone(f,d=0.12,t='sine',v=0.15,dl=0){if(save.mute)return;const a=ac();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type=t;o.frequency.value=f;const s=a.currentTime+dl;g.gain.setValueAtTime(v,s);g.gain.exponentialRampToValueAtTime(0.001,s+d);o.connect(g);g.connect(a.destination);o.start(s);o.stop(s+d+0.02)}
+const sfx={ok(){tone(660,.1,'triangle');tone(990,.15,'triangle',.15,.08)},bad(){tone(200,.25,'sawtooth',.08)},tap(){tone(500,.05,'square',.05)},win(){[523,659,784,1046].forEach((f,i)=>tone(f,.2,'triangle',.15,i*.12))}};
+function resize(){DPR=window.devicePixelRatio||1;W=innerWidth;H=innerHeight-40;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);cv.style.width=W+'px';cv.style.height=H+'px';cx.setTransform(DPR,0,0,DPR,0,0)}
+function rr(x,y,w,h,r){cx.beginPath();cx.roundRect?cx.roundRect(x,y,w,h,r):cx.rect(x,y,w,h)}
+function txt(s,x,y,sz,col='#fff',al='center',wt='700'){cx.font=wt+' '+sz+'px system-ui,Segoe UI,Roboto,sans-serif';cx.fillStyle=col;cx.textAlign=al;cx.textBaseline='middle';cx.fillText(s,x,y)}
+function fit(s,maxw,sz){cx.font='700 '+sz+'px system-ui';while(sz>9&&cx.measureText(s).width>maxw){sz--;cx.font='700 '+sz+'px system-ui'}return sz}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function pick(a){return a[Math.random()*a.length|0]}
+let paused=false,btns=[];
+function hit(x,y){for(let i=btns.length-1;i>=0;i--){const b=btns[i];if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){b.f();return true}}return false}
+function ptr(e){ac();if(paused||$('ov').style.display==='flex')return;const r=cv.getBoundingClientRect();const p=e.changedTouches?e.changedTouches[0]:e;onTap(p.clientX-r.left,p.clientY-r.top)}
+cv.addEventListener('pointerdown',e=>{e.preventDefault();ptr(e)});
+function ov(html){$('ovc').innerHTML=html;$('ov').style.display=html?'flex':'none'}
+function setPause(p){if($('ov').style.display==='flex'&&!paused)return;paused=p;$('pB').textContent=p?'▶':'⏸';ov(p?'<h2>⏸ Paused</h2><p>Press P or tap to resume. R restarts the level.</p><button class="btn" onclick="setPause(false)">▶ Resume</button> <button class="btn" onclick="setPause(false);restart()">↻ Restart</button>':'')}
+$('pB').onclick=()=>setPause(!paused);
+$('mu').textContent=save.mute?'🔇':'🔊';$('mu').onclick=()=>{save.mute=!save.mute;$('mu').textContent=save.mute?'🔇':'🔊';persist()};
+$('lvB').onclick=()=>{paused=false;showLevels()};
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function showLevels(){let h='<h2>'+TITLE+'</h2><p>'+INTRO+'</p>';LV.forEach((L,i)=>{const ok=i<save.unlocked;h+='<span class="lv'+(ok?'':' lock')+'" data-lv="'+i+'" '+(ok?'onclick="startLevel('+i+')"':'')+'>'+(ok?'':'🔒 ')+(i+1)+'. '+L.name+'<br><small>'+starStr(save.stars[i]||0)+'</small></span>'});h+='<p><small>Keys: 1-9 / arrows / Enter · P pause · R restart · M mute</small></p>';ov(h)}
+function finishLevel(stars){sfx.win();const i=cur;save.stars[i]=Math.max(save.stars[i]||0,stars);save.unlocked=Math.max(save.unlocked,Math.min(LV.length,i+2));persist();
+ ov('<h2>Level complete!</h2><div class="stars">'+starStr(stars)+'</div><p>'+LV[i].name+'</p>'+(i+1<LV.length?'<button class="btn" id="nextB" onclick="startLevel('+(i+1)+')">Next level ▶</button> ':'')+'<button class="btn" onclick="restart()">↻ Replay</button> <button class="btn" onclick="showLevels()">Levels</button>')}
+function restart(){ov('');startLevel(cur)}
+addEventListener('keydown',e=>{const k=e.key;if(k==='p'||k==='P'){setPause(!paused);return}if(paused)return;if($('ov').style.display==='flex'){if(k==='Enter'&&$('nextB'))$('nextB').click();return}
+ if(keyTyping()&&k.length===1&&k!=='p'&&k!=='P'){onKey(e);return}
+ if(k==='r'||k==='R'){restart();return}if(k==='m'||k==='M'){$('mu').click();return}onKey(e)});
+addEventListener('resize',()=>{resize();draw()});
+// ---------- shared modes ----------
+let cur=0,qi=0,miss=0,Q=null,msg='',msgCol='#fff',lock=false,drag=null,S={},anim=null;const MODES={};let gen=0;function later(f,ms){const g=gen;setTimeout(()=>{if(g===gen)f()},ms)}
+function card(x,y,w,h,col,stroke,r=12){cx.fillStyle=col;rr(x,y,w,h,r);cx.fill();if(stroke){cx.strokeStyle=stroke;cx.lineWidth=3;cx.stroke()}}
+function wrapC(s,x,y,w,sz,col,maxL=4,al='center'){cx.font='700 '+sz+'px system-ui';const ws=String(s).split(' ');let lines=[],l='';for(const wd of ws){const t=l?l+' '+wd:wd;if(cx.measureText(t).width>w&&l){lines.push(l);l=wd}else l=t}lines.push(l);if(lines.length>maxL&&sz>9)return wrapC(s,x,y,w,sz-1,col,maxL,al);lines.forEach((ln,i)=>txt(ln,x,y+(i-(lines.length-1)/2)*(sz+3),sz,col,al));return lines.length}
+function button(x,y,w,h,label,f,col='#283070',sz=15,dis){card(x,y,w,h,dis?'#3a3f58':col);txt(label,x+w/2,y+h/2,fit(label,w-10,sz),dis?'#99a':'#fff');if(!dis)btns.push({x,y,w,h,f,label})}
+function say(s,c){msg=s;msgCol=c===1?'#7f7':c===0?'#f99':'#fc9'}
+function M(){return MODES[LV[cur].m]}
+function startLevel(i){gen++;ov('');paused=false;cur=i;qi=0;miss=0;msg='';lock=false;drag=null;anim=null;S={};M().init(LV[i]);draw();const L=LV[i];if(L.intro&&!save['in'+i]){save['in'+i]=1;persist();ov('<h2>'+L.name+'</h2><p>'+L.intro+'</p><button class="btn" onclick="ov(\'\')">Let\'s go ▶</button>')}}
+function bg(){const g=cx.createLinearGradient(0,0,0,H);g.addColorStop(0,BG[0]);g.addColorStop(1,BG[1]);cx.fillStyle=g;cx.fillRect(0,0,W,H)}
+function draw(){btns=[];cx.clearRect(0,0,W,H);bg();const m=M();if(!m)return;$('st').textContent='Lv '+(cur+1)+(m.st?' · '+m.st():'')+' · ✗'+miss;m.draw(LV[cur])}
+function onTap(x,y){if(hit(x,y))return;const m=M();if(m.tap)m.tap(x,y)}
+function relXY(e){const r=cv.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
+cv.addEventListener('pointermove',e=>{const m=M();if(m&&m.move&&!paused){e.preventDefault();const[x,y]=relXY(e);m.move(x,y)}});
+function upH(e){const m=M();if(m&&m.up){const[x,y]=relXY(e);m.up(x,y)}}
+cv.addEventListener('pointerup',upH);cv.addEventListener('pointercancel',upH);
+function onKey(e){const m=M();if(m&&m.key&&!lock)m.key(e.key)}
+function keyTyping(){return false}
+function byMiss(a=0,b=2){return miss<=a?3:miss<=b?2:1}
+let lastT=performance.now();function loop(now){const dt=Math.min(.05,(now-lastT)/1000);lastT=now;if(anim&&!paused&&$('ov').style.display!=='flex'){anim(dt)}requestAnimationFrame(loop)}
+function ri(a,b){return a+Math.floor(Math.random()*(b-a+1))}
+// QUIZ: qs = array of [question,[correct,...wrong],why] or function returning one
+function qMake(L){const raw=typeof L.qs==='function'?L.qs():S.list[qi%S.list.length];Q={text:raw[0],ans:raw[1][0],opts:shuffle(raw[1]),why:raw[2]||''}}
+MODES.quiz={init(L){S.n=L.n||6;S.list=typeof L.qs==='function'?null:shuffle(L.qs).slice(0,S.n);qMake(L)},st(){return Math.min(qi+1,S.n)+'/'+S.n},
+ draw(L){const k=Math.max(1,Math.min(1.7,H/350));txt(L.name,W/2,14,13,'#ffcf5a');card(20,30,W-40,64*k,'#fdf6e3');wrapC(Q.text,W/2,30+32*k,W-70,18*k,'#2b1d0e',3);const bw=Math.min(330*k,(W-50)/2),bh=46*k,top=30+76*k;
+  Q.opts.forEach((o,i)=>{const bx=W/2+((i%2)?8:-8-bw),by=top+Math.floor(i/2)*(bh+10);let col='#283070';if(Q.picked){if(o===Q.ans)col='#2a8a3a';else if(o===Q.picked)col='#a33'}card(bx,by,bw,bh,col);const s=(i+1)+'  '+o;txt(s,bx+bw/2,by+bh/2,fit(s,bw-12,16*k));btns.push({x:bx,y:by,w:bw,h:bh,f:()=>qChoose(o),opt:o})});
+  if(msg)wrapC(msg,W/2,top+2*(bh+10)+(H-top-2*(bh+10))/2,W-40,14*k,msgCol,4)},
+ key(k){const n=+k;if(n>=1&&n<=Q.opts.length)qChoose(Q.opts[n-1])}};
+function qChoose(o){if(lock)return;Q.picked=o;lock=true;const ok=o===Q.ans;if(ok)sfx.ok();else{sfx.bad();miss++}say((ok?'✔ Correct! ':'✘ Answer: '+Q.ans+'. ')+Q.why,ok?1:0);draw();later(qNext,ok?1700:3400)}
+function qNext(){msg='';lock=false;qi++;if(qi>=S.n){finishLevel(byMiss(0,1));return}qMake(LV[cur]);draw()}
+// LABEL: L.pic(x,y,w,h) draws picture; L.targets [{n:name,x,y (0-1),f:fact}]
+MODES.label={init(L){S.order=shuffle(L.targets.map((t,i)=>i));S.placed={}},st(){return Object.keys(S.placed).length+'/'+LV[cur].targets.length},
+ area(){const w=Math.min(W*0.64-20,(H-36)*1.6);return{x:10,y:30,w,h:H-36}},
+ tp(t){const A=this.area();return[A.x+t.x*A.w,A.y+t.y*A.h]},
+ chips(){const L=LV[cur],A=this.area(),x=A.x+A.w+14,w=W-x-10,left=S.order.filter(i=>!S.placed[i]),h=Math.min(36,(H-40)/Math.max(1,left.length)-6);return left.map((i,k)=>({i,x,y:32+k*(h+6),w,h}))},
+ draw(L){txt(L.name+' — drag each label onto its dot',W/2,14,13,'#ffcf5a');const A=this.area();L.pic(A.x,A.y,A.w,A.h);
+  L.targets.forEach((t,i)=>{const[px,py]=this.tp(t);if(S.placed[i]){cx.font='800 12px system-ui';const tw=cx.measureText(t.n).width+12;const lx=Math.max(A.x+tw/2,Math.min(A.x+A.w-tw/2,px));card(lx-tw/2,py-11,tw,22,'#1f7a3a','#fff',8);txt(t.n,lx,py,12)}else{cx.fillStyle='#ffcf5a';cx.beginPath();cx.arc(px,py,11,0,7);cx.fill();cx.strokeStyle='#000';cx.lineWidth=2;cx.stroke();txt(String.fromCharCode(65+i),px,py,12,'#000')}});
+  this.chips().forEach((c,k)=>{if(drag&&drag.i===c.i)return;card(c.x,c.y,c.w,c.h,'#283070','#6a7ad0',9);const s=(k+1)+'. '+L.targets[c.i].n;txt(s,c.x+c.w/2,c.y+c.h/2,fit(s,c.w-10,14))});
+  if(drag){const t=L.targets[drag.i];cx.font='800 14px system-ui';const tw=cx.measureText(t.n).width+20;card(drag.x-tw/2,drag.y-16,tw,32,'#e07a10','#fff',9);txt(t.n,drag.x,drag.y,14)}
+  if(msg){card(A.x+6,H-52,A.w-12,46,'#000b');wrapC(msg,A.x+A.w/2,H-29,A.w-24,12,msgCol,3)}},
+ tap(x,y){if(lock)return;for(const c of this.chips())if(x>=c.x&&x<=c.x+c.w&&y>=c.y&&y<=c.y+c.h){drag={i:c.i,x,y};sfx.tap();draw();return}},
+ move(x,y){if(drag){drag.x=x;drag.y=y;draw()}},
+ up(x,y){if(!drag)return;const i=drag.i;drag=null;const L=LV[cur];let best=-1,bd=40;L.targets.forEach((t,j)=>{if(S.placed[j])return;const[px,py]=this.tp(t);const d=Math.hypot(px-x,py-y);if(d<bd){bd=d;best=j}});if(best<0){draw();return}this.place(i,best)},
+ place(i,j){const L=LV[cur];if(i===j||L.targets[i].n===L.targets[j].n){S.placed[j]=1;if(i!==j){const k=S.order.indexOf(i),m=S.order.indexOf(j);[S.order[k],S.order[m]]=[S.order[m],S.order[k]]}sfx.ok();say('✔ '+L.targets[j].n+': '+(L.targets[j].f||''),1);if(Object.keys(S.placed).length===L.targets.length){lock=true;draw();later(()=>finishLevel(byMiss(0,2)),1600);return}}else{sfx.bad();miss++;say('✘ That dot is not the '+L.targets[i].n+'. Try another!',0)}draw()},
+ key(k){const ch=this.chips();if(/^[1-9]$/.test(k)&&ch[+k-1]){S.sel=ch[+k-1].i;say('Picked '+LV[cur].targets[S.sel].n+' — now press the letter of its dot.',2);draw()}else if(/^[a-l]$/i.test(k)&&S.sel!=null){const j=k.toUpperCase().charCodeAt(0)-65;if(LV[cur].targets[j]&&!S.placed[j]){const s=S.sel;S.sel=null;this.place(s,j)}}}};
+// SORT: L.bins [a,b], L.items [[text,bin,why]]
+MODES.sort={init(L){S.items=shuffle(L.items).slice(0,L.n||8);S.k=0;S.home=null},st(){return Math.min(S.k+1,S.items.length)+'/'+S.items.length},
+ bins(){const w=(W-60)/2,h=Math.min(120,H*0.34),y=H-h-10;return[{x:20,y,w,h},{x:40+w,y,w,h}]},
+ cardR(){const w=Math.min(380,W-60),h=72;return{x:W/2-w/2,y:44,w,h}},
+ draw(L){txt(L.name+' — drag the card into the right box',W/2,14,13,'#ffcf5a');const B=this.bins();B.forEach((b,i)=>{card(b.x,b.y,b.w,b.h,i?'#24563a':'#5a2e6e','#fff');txt((i?'→ ':'← ')+L.bins[i],b.x+b.w/2,b.y+b.h/2,fit(L.bins[i],b.w-40,18))});
+  const it=S.items[S.k];if(!it)return;const C=this.cardR();let x=C.x,y=C.y;if(drag){x=drag.x-C.w/2;y=drag.y-C.h/2}card(x,y,C.w,C.h,'#fdf6e3',drag?'#ffcf5a':null);if(L.icon)L.icon(it,x+30,y+C.h/2);wrapC(it[0],x+C.w/2+(L.icon?20:0),y+C.h/2,C.w-(L.icon?80:20),17,'#2b1d0e',3);
+  if(msg)wrapC(msg,W/2,(C.y+C.h+B[0].y)/2,W-40,13,msgCol,4)},
+ tap(x,y){if(lock)return;const C=this.cardR();if(x>=C.x&&x<=C.x+C.w&&y>=C.y&&y<=C.y+C.h){drag={x,y};sfx.tap();draw();return}const B=this.bins();B.forEach((b,i)=>{if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h)this.choose(i)})},
+ move(x,y){if(drag){drag.x=x;drag.y=y;draw()}},
+ up(x,y){if(!drag)return;drag=null;const B=this.bins();let c=-1;B.forEach((b,i)=>{if(x>=b.x-10&&x<=b.x+b.w+10&&y>=b.y-30)c=i});if(c<0){draw();return}this.choose(c)},
+ choose(b){if(lock)return;const it=S.items[S.k];const ok=it[1]===b;lock=true;if(ok)sfx.ok();else{sfx.bad();miss++}say((ok?'✔ ':'✘ It goes in “'+LV[cur].bins[it[1]]+'”. ')+(it[2]||''),ok?1:0);draw();later(()=>{lock=false;msg='';S.k++;if(S.k>=S.items.length){finishLevel(byMiss(0,2));return}draw()},ok?1500:3000)},
+ key(k){if(k==='1'||k==='ArrowLeft')this.choose(0);else if(k==='2'||k==='ArrowRight')this.choose(1)}};
+// ORDER: L.steps [[name,desc]] — tap in the right order
+MODES.order={init(L){S.cards=shuffle(L.steps.map((s,i)=>i));S.next=0},st(){return S.next+'/'+LV[cur].steps.length},
+ rects(){const n=S.cards.length,cols=Math.min(n,Math.ceil(n/2)),rows=Math.ceil(n/cols),gw=(W-30)/cols,gh=Math.min(70,(H-170)/rows);return S.cards.map((c,k)=>({c,x:15+(k%cols)*gw+4,y:84+Math.floor(k/cols)*(gh+8),w:gw-8,h:gh}))},
+ draw(L){txt(L.name+' — tap the stages in order, starting with the first',W/2,14,13,'#ffcf5a');const done=L.steps.slice(0,S.next).map(s=>s[0]).join(' → ')||'(start with the very first stage)';card(15,28,W-30,46,'#0006');wrapC(done,W/2,51,W-50,14,'#cfe',2);
+  this.rects().forEach((r,k)=>{const d=r.c<S.next;card(r.x,r.y,r.w,r.h,d?'#2a8a3a':'#fdf6e3');if(L.icon&&!d)L.icon(r.c,r.x+22,r.y+r.h/2);wrapC((d?(r.c+1)+'. ':'')+L.steps[r.c][0],r.x+r.w/2+(L.icon&&!d?14:0),r.y+r.h/2,r.w-(L.icon?50:14),15,d?'#fff':'#2b1d0e',2);if(!d)btns.push({x:r.x,y:r.y,w:r.w,h:r.h,f:()=>this.pick(r.c)})});
+  if(msg)wrapC(msg,W/2,H-34,W-40,13,msgCol,3)},
+ pick(c){if(lock)return;const L=LV[cur];if(c===S.next){S.next++;sfx.ok();say('✔ '+L.steps[c][0]+': '+L.steps[c][1],1);if(S.next>=L.steps.length){lock=true;draw();later(()=>finishLevel(byMiss(0,2)),1800);return}}else{sfx.bad();miss++;say('✘ Not yet — '+L.steps[c][0]+' comes later. What happens before it?',0)}draw()},
+ key(k){const n=+k;const left=this.rects().filter(r=>r.c>=S.next);if(n>=1&&left[n-1])this.pick(left[n-1].c)}};
+
+const BG=['#163a2a','#0f2433'];
+const VAR={light:['Dark cupboard','Dim shade','Bright window','Scorching sun'],water:['No water','A little','Just right','Flooded'],soil:['Sand','Compost loam','Heavy clay']};
+const VN={light:'Light',water:'Water',soil:'Soil'},VI={light:'☀️',water:'💧',soil:'🟫'};
+const LF=[0,.45,1,.8],WF=[0,.55,1,.3],SF=[.6,1,.7];
+function sim(p){let h=.5;const a=[h];for(let d=1;d<=14;d++){let dh;if(p.light===0)dh=d<=6?1.3:0;else if(p.water===0)dh=d<=3?.4:0;else dh=2.6*LF[p.light]*WF[p.water]*SF[p.soil]*(1-h/40);h+=dh;a.push(h)}return a}
+function tip(p){if(p.light===0)return 'In the dark the seedling grew tall and pale using food stored in its seed, then stopped. Without light it cannot photosynthesise.';if(p.water===0)return 'With no water the plant wilted. Plants need water for photosynthesis and to carry minerals up the stem.';if(p.water===3)return 'Flooded soil has no air spaces, so the roots cannot get oxygen and start to rot.';if(p.light===1)return 'Dim shade means slow photosynthesis, so less food for growing.';if(p.light===3)return 'Scorching sun dries the plant out faster than the roots can drink, and leaves can scorch. Bright but not extreme is best.';if(p.water===1)return 'A little water is not enough: the leaves close their pores (stomata) to save water, which slows photosynthesis.';if(p.soil===0)return 'Sand drains water away quickly and holds few nutrients.';if(p.soil===2)return 'Heavy clay holds too much water and packs tightly, squeezing the roots.';return 'Bright light, just-right water and compost loam: perfect conditions!'}
+function drawPot(x,gy,p,h,day,sc,lab){// gy = pot rim y
+ const sun=p.light;cx.save();if(sun>0){cx.fillStyle=['','#c8b45a','#ffd84a','#ff9a2a'][sun];cx.beginPath();cx.arc(x+46,26,9+sun*2,0,7);cx.fill();cx.strokeStyle=cx.fillStyle;cx.lineWidth=2;for(let a=0;a<6.28;a+=.785){cx.beginPath();cx.moveTo(x+46+Math.cos(a)*(13+sun*2),26+Math.sin(a)*(13+sun*2));cx.lineTo(x+46+Math.cos(a)*(18+sun*3),26+Math.sin(a)*(18+sun*3));cx.stroke()}}else{cx.fillStyle='#0008';cx.fillRect(x-48,10,96,gy-10)}cx.restore();
+ const sh=Math.max(0,h-.5)*sc,healthy=p.light>0&&p.water>0&&p.water<3,pale=p.light===0,wilt=p.water===0&&day>4;
+ const col=pale?'#d6d27a':p.water===3&&day>6?'#8a9a3a':wilt?'#9a8a3a':'#3aa84a';
+ cx.strokeStyle=col;cx.lineWidth=4;cx.lineCap='round';const bend=wilt?sh*.4:0;cx.beginPath();cx.moveTo(x,gy+4);cx.quadraticCurveTo(x,gy-sh*.6,x+bend,gy-sh);cx.stroke();
+ const nl=Math.min(8,Math.floor(h/2.5));for(let i=0;i<nl;i++){const t=(i+1)/(nl+1),ly=gy-sh*t,dir=i%2?1:-1,ls=pale?6:10+Math.min(8,h/3);cx.fillStyle=col;cx.beginPath();cx.ellipse(x+dir*ls*.9+bend*t*t,ly+(wilt?ls*.5:0),ls,ls*.45,dir*(wilt?.9:-.4),0,7);cx.fill()}
+ if(healthy&&h>18&&day>=10){cx.fillStyle='#ff6fae';for(let a=0;a<6.28;a+=1.256){cx.beginPath();cx.arc(x+bend+Math.cos(a)*7,gy-sh-6+Math.sin(a)*7,6,0,7);cx.fill()}cx.fillStyle='#ffd84a';cx.beginPath();cx.arc(x+bend,gy-sh-6,5,0,7);cx.fill()}
+ cx.fillStyle=['#e2c98a','#5a3a1e','#9a5a3a'][p.soil];cx.fillRect(x-34,gy,68,8);cx.fillStyle='#c0603a';cx.beginPath();cx.moveTo(x-38,gy+6);cx.lineTo(x+38,gy+6);cx.lineTo(x+28,gy+52);cx.lineTo(x-28,gy+52);cx.closePath();cx.fill();cx.fillStyle='#a04a2a';cx.fillRect(x-40,gy+4,80,10);
+ if(p.water===3){cx.fillStyle='#5ab0ff99';cx.fillRect(x-34,gy-4,68,8)}for(let i=0;i<p.water;i++){cx.fillStyle='#5ab0ff';cx.beginPath();cx.arc(x-40+i*9,gy-14,3.5,0,7);cx.fill()}
+ txt(lab+' · '+h.toFixed(1)+' cm',x,gy+64,12,'#fff')}
+function chart(x,y,w,h,lines,goal,day){card(x,y,w,h,'#0b1a26','#2e5a6a',8);const px=x+28,pw=w-36,py=y+10,ph=h-34,maxH=30;
+ cx.strokeStyle='#2e4a5a';cx.lineWidth=1;for(let v=0;v<=30;v+=10){const yy=py+ph-v/maxH*ph;cx.beginPath();cx.moveTo(px,yy);cx.lineTo(px+pw,yy);cx.stroke();txt(v+'',px-6,yy,10,'#9bc','right')}
+ for(let d=0;d<=14;d+=2)txt(d+'',px+d/14*pw,py+ph+9,10,'#9bc');txt('days →   height (cm) ↑',x+w/2,y+h-6,10,'#9bc');
+ if(goal){const yy=py+ph-goal/maxH*ph;cx.strokeStyle='#ff6a6a';cx.setLineDash([5,4]);cx.beginPath();cx.moveTo(px,yy);cx.lineTo(px+pw,yy);cx.stroke();cx.setLineDash([]);txt('goal '+goal,px+pw-2,yy-7,10,'#f88','right')}
+ lines.forEach(L=>{cx.strokeStyle=L.c;cx.lineWidth=L.ghost?1.5:3;cx.beginPath();const n=L.ghost?14:Math.floor(day);for(let d=0;d<=n;d++){const xx=px+d/14*pw,yy=py+ph-Math.min(maxH,L.a[d])/maxH*ph;d?cx.lineTo(xx,yy):cx.moveTo(xx,yy)}if(!L.ghost&&day<14&&n<14){const f=day-n,v=L.a[n]+(L.a[n+1]-L.a[n])*f;cx.lineTo(px+day/14*pw,py+ph-Math.min(maxH,v)/maxH*ph)}cx.stroke()})}
+const hAt=(a,day)=>{const n=Math.floor(day);return n>=14?a[14]:a[n]+(a[n+1]-a[n])*(day-n)};
+MODES.grow={init(L){S.pots=[];for(let i=0;i<(L.pots||1);i++)S.pots.push({...L.start,...(L.startB&&i?L.startB:{})});S.phase='set';S.day=0;S.runs=0;S.ghost=[];S.res=null},
+ st(){return 'Day '+Math.floor(S.day)+(LV[cur].goal?' · goal '+LV[cur].goal+' cm':'')},
+ draw(L){txt(L.name,W/2,12,13,'#ffcf5a');const two=S.pots.length>1,cw=W*.36,gy=H-128;S.pots.forEach((p,i)=>{const a=S.res?S.res[i]:[.5];drawPot(two?cw*(i?.74:.26):cw/2,gy,p,S.res?hAt(a,S.day):.5,S.day,(gy-40)/30,two?(i?'Pot B':'Pot A'):'Your plant')});
+  const ccx=W*.36+4,ccw=W*.27;chart(W*.64,24,W*.36-8,H*.62,S.ghost.map(a=>({a,c:'#567',ghost:1})).concat(S.res?S.res.map((a,i)=>({a,c:i?'#ffa64a':'#5fe36f'})):[]),L.goal,S.day);
+  if(S.phase==='q'){const qw=W*.62;card(8,26,qw,H-84,'#0d1b2ae8','#ffcf5a');wrapC(Q.text,8+qw/2,54,qw-24,15,'#fff',3);Q.opts.forEach((o,i)=>{let col='#283070';if(Q.picked){if(o===Q.ans)col='#2a8a3a';else if(o===Q.picked)col='#a33'}button(20,86+i*42,qw-24,36,(i+1)+'  '+o,()=>this.answer(o),col,14)});}
+  let y=30;if(S.phase==='set'){for(const v of ['light','water','soil']){S.pots.forEach((p,i)=>{if(L.vary.includes(v)){txt((two?(i?'B ':'A '):'')+VI[v]+' '+VN[v],ccx+ccw/2,y+6,12,'#cfe');button(ccx,y+14,36,30,'◀',()=>this.ch(i,v,-1),'#283070',14);card(ccx+40,y+14,ccw-80,30,'#fdf6e3');txt(VAR[v][p[v]],ccx+ccw/2,y+29,fit(VAR[v][p[v]],ccw-90,13),'#2b1d0e');button(ccx+ccw-36,y+14,36,30,'▶',()=>this.ch(i,v,1),'#283070',14);y+=50}});if(!L.vary.includes(v)){txt('🔒 '+VN[v]+': '+VAR[v][S.pots[0][v]],ccx+ccw/2,y+8,12,'#99a');y+=20}}
+   button(ccx,Math.max(y+6,H-150),ccw,40,'▶ Grow for 14 days',()=>this.run(),'#e07a10',15)}
+  else if(S.phase==='done'&&!lock)button(ccx,y+10,ccw,40,'↻ Change & try again',()=>{S.phase='set';S.ghost=S.ghost.concat(S.res);S.res=null;S.day=0;msg='';draw()},'#e07a10',14);
+  if(msg){const mw=W*.62;card(8,H-50,mw,46,'#000b');wrapC(msg,8+mw/2,H-27,mw-16,12,msgCol,3)}
+  else if(S.phase==='set'&&L.hint){card(8,H-50,W*.62,46,'#0006');wrapC(L.hint,8+W*.31,H-27,W*.6,12,'#cfe',3)}},
+ ch(i,v,d){const n=VAR[v].length;S.pots[i][v]=(S.pots[i][v]+d+n)%n;sfx.tap();draw()},
+ run(){const L=LV[cur];if(S.phase!=='set')return;if(S.pots.length>1&&L.vary.every(v=>S.pots[0][v]===S.pots[1][v])){sfx.bad();say('Both pots are the same! Give Pot B a different '+VN[L.vary[0]].toLowerCase()+' so you have something to compare.',2);draw();return}
+  S.runs++;S.res=S.pots.map(sim);S.phase='run';S.day=0;msg='';sfx.tap();anim=dt=>{S.day=Math.min(14,S.day+dt*5);if(Math.floor(S.day)!==S.lastD){S.lastD=Math.floor(S.day);tone(300+S.lastD*30,.04,'triangle',.05)}draw();if(S.day>=14){anim=null;this.done()}}},
+ done(){const L=LV[cur];if(!L.compare){const h=S.res[0][14];if(h>=L.goal){sfx.win();say('✔ '+h.toFixed(1)+' cm! '+tip(S.pots[0]),1);lock=true;S.phase='done';draw();later(()=>finishLevel(S.runs===1?3:S.runs===2?2:1),2200)}else{sfx.bad();miss++;S.phase='done';say('✘ Only '+h.toFixed(1)+' cm. '+tip(S.pots[0]),0);draw()}return}
+  const v=L.vary[0],[a,b]=S.res.map(r=>r[14]),A=VAR[v][S.pots[0][v]],B=VAR[v][S.pots[1][v]];const other=['light','water','soil'].filter(x=>x!==v);
+  const hi=a>=b?A:B,lo=a>=b?B:A,same=Math.abs(a-b)<.5;
+  S.qs=[[`Pot A (${A}) grew ${a.toFixed(1)} cm; Pot B (${B}) grew ${b.toFixed(1)} cm. What did you find out?`,same?[VN[v]+' made no real difference here',`“${A}” grew much taller`,`“${B}” grew much taller`,'The '+VN[other[0]].toLowerCase()+' caused it']:[`“${hi}” grew a taller plant than “${lo}”`,`“${lo}” grew a taller plant than “${hi}”`,VN[v]+' made no difference','The '+VN[other[0]].toLowerCase()+' caused it'],same?'Both results were almost the same.':'Only the '+VN[v].toLowerCase()+' was different, so it caused the difference in growth.'],
+   [`Why did both pots get the same ${VN[other[0]].toLowerCase()} and ${VN[other[1]].toLowerCase()}?`,['So only the '+VN[v].toLowerCase()+' could cause a difference','To save money','Plants like matching pots','To make both grow faster'],'That is a fair test: change one variable, keep everything else the same.']];
+  S.qi=0;S.phase='q';this.mkQ();draw()},
+ mkQ(){const r=S.qs[S.qi];Q={text:r[0],ans:r[1][0],opts:shuffle(r[1]),why:r[2]}},
+ answer(o){if(lock||!Q||Q.picked)return;Q.picked=o;const ok=o===Q.ans;ok?sfx.ok():(sfx.bad(),miss++);say((ok?'✔ ':'✘ Answer: '+Q.ans+'. ')+Q.why,ok?1:0);lock=true;draw();later(()=>{lock=false;msg='';S.qi++;if(S.qi>=S.qs.length){finishLevel(byMiss(0,1));return}this.mkQ();draw()},ok?2000:3400)},
+ key(k){if(S.phase==='q'){const n=+k;if(n>=1&&n<=4)this.answer(Q.opts[n-1]);return}if(S.phase==='set'){const L=LV[cur],v=L.vary;const n=+k;if(n>=1&&n<=3&&v[n-1])this.ch(0,v[n-1],1);else if(n>=4&&n<=6&&v[n-4]&&S.pots[1])this.ch(1,v[n-4],1);else if(k==='Enter'||k===' ')this.run()}else if(S.phase==='done'&&(k==='Enter'||k===' ')&&!lock){S.phase='set';S.ghost=S.ghost.concat(S.res);S.res=null;S.day=0;msg='';draw()}}};
+// pictures
+function drawPlantPic(x,y,w,h){const X=f=>x+f*w,Y=f=>y+f*h;cx.fillStyle='#6a4a2a';cx.fillRect(x,Y(.64),w,h*.36);cx.fillStyle='#3a8a3a';cx.fillRect(x,Y(.62),w,h*.03);
+ cx.strokeStyle='#e8d8b0';cx.lineWidth=2;[[.5,.65,.38,.95],[.5,.65,.62,.93],[.5,.68,.5,.98],[.45,.8,.36,.86],[.56,.78,.66,.84]].forEach(r=>{cx.beginPath();cx.moveTo(X(r[0]),Y(r[1]));cx.quadraticCurveTo(X((r[0]+r[2])/2+.03),Y((r[1]+r[3])/2),X(r[2]),Y(r[3]));cx.stroke()});
+ cx.strokeStyle='#2f8a3a';cx.lineWidth=6;cx.beginPath();cx.moveTo(X(.5),Y(.64));cx.lineTo(X(.5),Y(.16));cx.stroke();cx.lineWidth=3;cx.beginPath();cx.moveTo(X(.5),Y(.34));cx.lineTo(X(.64),Y(.3));cx.stroke();
+ cx.fillStyle='#3fb04a';[[.34,.42,-.5],[.64,.5,.5],[.38,.26,-.4]].forEach(l=>{cx.beginPath();cx.ellipse(X(l[0]),Y(l[1]),w*.13,h*.04,l[2],0,7);cx.fill()});
+ cx.fillStyle='#e23a2a';cx.beginPath();cx.arc(X(.66),Y(.37),Math.min(w,h)*.075,0,7);cx.fill();cx.fillStyle='#2f8a3a';cx.fillRect(X(.655),Y(.29),4,8);
+ cx.fillStyle='#ffd84a';for(let a=0;a<6.28;a+=.9){cx.beginPath();cx.ellipse(X(.5)+Math.cos(a)*14,Y(.12)+Math.sin(a)*14,10,6,a,0,7);cx.fill()}cx.fillStyle='#8a4a1a';cx.beginPath();cx.arc(X(.5),Y(.12),8,0,7);cx.fill()}
+function drawFlowerPic(x,y,w,h){const X=f=>x+f*w,Y=f=>y+f*h;cx.fillStyle='#f6eedd';cx.fillRect(x,y,w,h);cx.strokeStyle='#2f8a3a';cx.lineWidth=8;cx.beginPath();cx.moveTo(X(.5),Y(.76));cx.lineTo(X(.5),Y(1));cx.stroke();
+ cx.fillStyle='#ff8ac0';[-1,1].forEach(s=>{cx.beginPath();cx.moveTo(X(.5+s*.05),Y(.72));cx.bezierCurveTo(X(.5+s*.42),Y(.7),X(.5+s*.44),Y(.2),X(.5+s*.3),Y(.14));cx.bezierCurveTo(X(.5+s*.2),Y(.35),X(.5+s*.12),Y(.55),X(.5+s*.05),Y(.72));cx.fill()});
+ cx.fillStyle='#3fb04a';[-1,1].forEach(s=>{cx.beginPath();cx.ellipse(X(.5+s*.18),Y(.79),w*.14,h*.035,s*-.5,0,7);cx.fill()});cx.fillStyle='#7ac04a';cx.beginPath();cx.ellipse(X(.5),Y(.75),w*.1,h*.04,0,0,7);cx.fill();
+ cx.fillStyle='#9ad06a';cx.beginPath();cx.ellipse(X(.5),Y(.63),w*.07,h*.09,0,0,7);cx.fill();cx.strokeStyle='#4a8a2a';cx.lineWidth=2;cx.stroke();cx.fillStyle='#fff';for(let i=0;i<3;i++){cx.beginPath();cx.arc(X(.5),Y(.58+i*.05),3,0,7);cx.fill()}
+ cx.strokeStyle='#9ad06a';cx.lineWidth=5;cx.beginPath();cx.moveTo(X(.5),Y(.55));cx.lineTo(X(.5),Y(.16));cx.stroke();cx.fillStyle='#6aa83a';cx.beginPath();cx.ellipse(X(.5),Y(.14),9,6,0,0,7);cx.fill();
+ cx.strokeStyle='#e0c060';cx.lineWidth=2.5;[-1,1].forEach(s=>{cx.beginPath();cx.moveTo(X(.5+s*.06),Y(.7));cx.lineTo(X(.5+s*.14),Y(.24));cx.stroke();cx.fillStyle='#e8a020';cx.beginPath();cx.ellipse(X(.5+s*.14),Y(.24),7,11,0,0,7);cx.fill()})}
+const PARTS=[{n:'Flower',x:.5,y:.12,f:'Flowers make seeds; their colours and scent attract pollinators.'},{n:'Leaf',x:.34,y:.42,f:'Leaves catch sunlight and make food by photosynthesis.'},{n:'Stem',x:.5,y:.55,f:'The stem holds the plant up and carries water (xylem) and sugar (phloem).'},{n:'Roots',x:.4,y:.88,f:'Roots anchor the plant and soak up water and minerals.'},{n:'Fruit',x:.66,y:.37,f:'Fruit grows from the ovary and protects the seeds inside.'}];
+const FPARTS=[{n:'Petal',x:.2,y:.36,f:'Bright petals attract insects and birds.'},{n:'Sepal',x:.31,y:.8,f:'Sepals protect the flower while it is a bud.'},{n:'Anther',x:.36,y:.24,f:'The anther makes pollen (male part).'},{n:'Filament',x:.41,y:.5,f:'The filament holds up the anther. Anther + filament = stamen.'},{n:'Stigma',x:.5,y:.13,f:'The sticky stigma catches pollen (female part).'},{n:'Style',x:.5,y:.36,f:'The style joins the stigma to the ovary.'},{n:'Ovary',x:.5,y:.63,f:'The ovary holds ovules, which become seeds; the ovary becomes the fruit.'}];
+const CYCLE=[['Seed','A seed holds a tiny baby plant (embryo) and a store of food, inside a tough seed coat.'],['Germination','Water, warmth and oxygen wake the seed: a root grows down, then a shoot grows up.'],['Seedling','The first leaves open and the young plant starts making its own food by photosynthesis.'],['Adult plant','The plant grows more stems, leaves and roots.'],['Flowering','The plant makes flowers containing pollen and ovules.'],['Pollination','Pollen is carried from an anther to a stigma by insects, birds, bats or the wind.'],['Fertilisation','Pollen travels down the style and joins with an ovule in the ovary.'],['Fruit & seeds form','The ovary swells into a fruit and the ovules become new seeds.'],['Seed dispersal','Wind, water and animals carry seeds away to grow somewhere new — and the cycle starts again.']];
+const POLL=[['Grass',0,'Grasses have tiny dull flowers and release clouds of light pollen into the wind.'],['Corn (maize)',0,'The tassels at the top shed pollen that blows onto the silks.'],['Wheat',0,'Wheat flowers have no petals or scent: they don\'t need to attract animals.'],['Pine tree',0,'Pine cones release so much pollen it can look like yellow dust.'],['Oak tree',0,'Oaks dangle catkins that shake pollen into the breeze.'],['Birch catkins',0,'Birch catkins release pollen on the wind (and cause hay fever!).'],['Sunflower',1,'Bees visit sunflowers for nectar and pollen.'],['Apple blossom',1,'Apple growers rely on bees to pollinate their trees.'],['Orchid',1,'Many orchids have shapes and scents to lure one special insect.'],['Honeysuckle',1,'Its sweet night-time scent attracts moths.'],['Tomato flower',1,'Bumblebees vibrate (“buzz pollinate”) tomato flowers to shake the pollen loose.'],['Cacao (chocolate) tree',1,'Tiny flies called midges pollinate cacao flowers.']];
+const PHOTO=[['What do plants make during photosynthesis?',['Glucose (sugar) and oxygen','Carbon dioxide','Salt and water','Soil'],'Carbon dioxide + water → glucose + oxygen, using light energy.'],['Which gas do plants take in for photosynthesis?',['Carbon dioxide','Oxygen','Helium','Nitrogen'],'CO₂ enters through tiny pores in the leaves.'],['Which gas do plants release during photosynthesis?',['Oxygen','Carbon dioxide','Hydrogen','Smoke'],'The oxygen we breathe comes from plants and algae.'],['What is the green pigment that traps light?',['Chlorophyll','Cellulose','Haemoglobin','Melanin'],'Chlorophyll lives in chloroplasts.'],['Where does most photosynthesis happen?',['In the leaves','In the roots','In the flowers','In the soil'],'Leaves are flat and wide to catch lots of light.'],['What are the tiny holes in leaves called?',['Stomata','Petals','Xylem','Roots'],'Stomata let carbon dioxide in and oxygen and water vapour out.'],['Which tubes carry water up from the roots?',['Xylem','Phloem','Veins of sugar','Stomata'],'Xylem carries water up; phloem carries sugar around the plant.'],['What energy source powers photosynthesis?',['Light (sunlight)','Heat from soil','Sound','Wind'],'Light energy is turned into chemical energy in sugar.']];
+const POLQ=[['What is pollination?',['Moving pollen from an anther to a stigma','Watering a plant','Planting a seed','Picking fruit'],'Pollination lets plants make seeds.'],['Which pollinator loves red, tube-shaped flowers?',['Hummingbirds','Beetles','Wind','Bats'],'Hummingbirds see red well and have long beaks for tube flowers.'],['Pale, strongly scented flowers that open at night are often visited by…',['Moths and bats','Butterflies','Hummingbirds','Bees'],'Pale colours show up in the dark and scent guides them.'],['What sweet liquid do flowers offer pollinators?',['Nectar','Sap','Honey','Juice'],'Bees turn nectar into honey back at the hive.'],['Bees can see a kind of light humans cannot. Which?',['Ultraviolet','Infrared','X-rays','Radio waves'],'Many petals have UV patterns that guide bees to the nectar.'],['Agave plants (in Mexico) are pollinated mainly by…',['Bats','Penguins','Fish','Wind only'],'Nectar-feeding bats visit agave flowers at night.'],['Why are wind-pollinated flowers usually small and dull?',['They don\'t need to attract animals','They are sick','They have no pollen','They grow underwater'],'They put energy into making lots of light pollen instead.'],['How can people help pollinators?',['Plant flowers and avoid pesticides','Cut down hedges','Pave over gardens','Spray weedkiller everywhere'],'Wildflowers and fewer chemicals give pollinators food and safety.']];
+const SEEDQ=[['How are dandelion seeds dispersed?',['By wind, on tiny parachutes','By exploding pods','By floating on rivers','By ants only'],'Each seed has a fluffy parachute called a pappus.'],['How do coconuts travel to new islands?',['They float on the sea','Birds carry them','Wind blows them','They roll'],'A coconut\'s fibrous husk keeps it afloat for weeks.'],['How do burdock burrs spread?',['Hooks catch on animal fur','They explode','They float','Bees carry them'],'Burrs inspired the invention of Velcro!'],['Why do plants put seeds inside tasty fruits?',['Animals eat them and drop the seeds elsewhere','To feed the plant','To keep seeds warm','No reason'],'Seeds often pass through the animal unharmed.'],['How do maple (sycamore) seeds travel?',['They spin on the wind like helicopters','They roll downhill','Fish carry them','They explode'],'Their wings slow their fall so the wind carries them further.'],['Why is it good for seeds to travel away from the parent plant?',['Less competition for light, water and space','So they can see the world','To stay warm','It isn\'t good'],'Seedlings under the parent would be shaded out.'],['What does a seed need to germinate?',['Water, warmth and oxygen','Only sunlight','Fertiliser and salt','Nothing at all'],'Most seeds germinate underground in the dark, using their food store.'],['What is inside a seed?',['A baby plant, a food store and a seed coat','A flower','Only water','Pollen'],'The food store feeds the seedling until its leaves work.'],['Pea and gorse pods dry out and then…',['Burst open, flinging the seeds','Grow legs','Melt','Turn into flowers'],'This is called explosive (self) dispersal.']];
+const LV=[
+{name:'Parts of a plant',m:'label',pic:drawPlantPic,targets:PARTS,intro:'Drag each label onto the right dot. On a keyboard: press a number to pick a label, then the dot\'s letter.'},
+{name:'Photosynthesis basics',m:'quiz',qs:PHOTO,n:6,intro:'Plants make their own food! Carbon dioxide + water → glucose + oxygen, using light energy trapped by chlorophyll.'},
+{name:'Grow it: light',m:'grow',vary:['light'],start:{light:0,water:2,soil:1},goal:21,hint:'Change the light, then press Grow. Reach the red goal line in 14 days.',intro:'Grow a bean plant to 21 cm in 14 days. You can only change the LIGHT. Watch the growth chart as it grows.'},
+{name:'Life cycle of a flowering plant',m:'order',steps:CYCLE},
+{name:'Grow it: water',m:'grow',vary:['water'],start:{light:2,water:0,soil:1},goal:21,hint:'This time only the water can change. Too little or too much both cause problems!'},
+{name:'Parts of a flower',m:'label',pic:drawFlowerPic,targets:FPARTS,intro:'This is a flower cut in half. Male parts (stamens) make pollen; female parts (carpel: stigma, style, ovary) make seeds.'},
+{name:'Grow it: soil',m:'grow',vary:['soil'],start:{light:2,water:2,soil:0},goal:21,hint:'Which soil holds water, air and nutrients best?'},
+{name:'Fair test: light',m:'grow',pots:2,compare:1,vary:['light'],start:{light:2,water:2,soil:1},startB:{light:2},intro:'Scientists change ONE thing and keep everything else the same: a fair test. Give the two pots different light, grow them, then explain the result.',hint:'Pick a different light for Pot A and Pot B, then grow.'},
+{name:'Wind or animal pollinated?',m:'sort',bins:['Wind pollinated','Animal pollinated'],items:POLL,n:8,intro:'Wind flowers are small and dull with lots of light pollen. Animal flowers are colourful, scented and offer nectar.'},
+{name:'Pollinator quiz',m:'quiz',qs:POLQ,n:6},
+{name:'Fair test: water',m:'grow',pots:2,compare:1,vary:['water'],start:{light:2,water:2,soil:1},startB:{water:2},hint:'Give the pots different amounts of water, then grow.'},
+{name:'Seeds & dispersal',m:'quiz',qs:SEEDQ,n:7},
+{name:'Fair test: soil',m:'grow',pots:2,compare:1,vary:['soil'],start:{light:2,water:2,soil:1},startB:{soil:1},hint:'Give the pots different soils, then grow.'},
+{name:'Master gardener',m:'grow',vary:['light','water','soil'],start:{light:0,water:3,soil:2},goal:22,hint:'Everything is wrong! Fix light, water AND soil to reach 22 cm.',intro:'A neglected plant: dark cupboard, flooded clay. Fix all three conditions to grow it to 22 cm in one try for 3 stars.'},
+{name:'Plant Lab final quiz',m:'quiz',qs:PHOTO.concat(POLQ,SEEDQ),n:10}];
+window.G={get S(){return S},get Q(){return Q},LV,MODES,sim};
+
+resize();cur=0;M().init(LV[0]);draw();showLevels();requestAnimationFrame(loop);
+</script></body></html>

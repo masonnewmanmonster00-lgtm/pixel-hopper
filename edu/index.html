@@ -208,14 +208,44 @@
 <div class="art times" aria-hidden="true"><span>🤿 −5</span></div>
 <div class="info"><span class="tag">Math</span><h2>Number Line Diver</h2><p>Dive below zero: negative numbers, temperature and depth.</p><p class="best" data-best="negatives">Best —</p></div>
 </a>
+<a class="card" href="./cells.html">
+<div class="art spelling" aria-hidden="true"><span>🔬</span></div>
+<div class="info"><span class="tag">Science</span><h2>Cell Explorer</h2><p>Zoom into plant and animal cells, label parts, use a microscope (15 levels).</p><p class="best" data-best="cellExplorerSave">Best —</p></div>
+</a>
+<a class="card" href="./plantlab.html">
+<div class="art science" aria-hidden="true"><span>🌱</span></div>
+<div class="info"><span class="tag">Science</span><h2>Plant Lab</h2><p>Grow plants by tuning light, water and soil, run fair tests, flower parts (15 levels).</p><p class="best" data-best="plantLabSave">Best —</p></div>
+</a>
+<a class="card" href="./lemonade.html">
+<div class="art money" aria-hidden="true"><span>🍋</span></div>
+<div class="info"><span class="tag">Math</span><h2>Lemonade Stand</h2><p>Run a stand with forecasts, prices and profit, pretend money (12 levels).</p><p class="best" data-best="lemonadeSave">Best —</p></div>
+</a>
 </main>
 <p class="footer">The rest of the cabinet lives in the <a href="../index.html">Pixel Arcade</a>.</p>
 </div>
 <script src="./common.js"></script>
 <script>
 "use strict";
+function readBest(key) {
+  const plain = Edu.loadBest(key);
+  if (plain > 0) return plain;
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw == null || raw === "") return 0;
+    const o = JSON.parse(raw);
+    if (!o || typeof o !== "object" || Array.isArray(o) || !o.stars || typeof o.stars !== "object") return 0;
+    let sum = 0;
+    Object.keys(o.stars).forEach(function (k) {
+      const s = Number(o.stars[k]);
+      if (Number.isFinite(s) && s > 0) sum += s;
+    });
+    return sum;
+  } catch (e) {
+    return 0;
+  }
+}
 document.querySelectorAll("[data-best]").forEach(function (el) {
-  const n = Edu.loadBest(el.getAttribute("data-best"));
+  const n = readBest(el.getAttribute("data-best"));
   el.textContent = n > 0 ? "Best " + n : "Best —";
 });
 </script>

@@ -1,0 +1,191 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Lemonade Stand</title><style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;height:100%;background:#1d1630;color:#eef;font-family:system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden;user-select:none}
+#top{position:absolute;top:0;left:0;right:0;height:40px;display:flex;align-items:center;gap:6px;padding:0 8px;background:#0008;z-index:3}
+#top a,#top button{color:#fff;background:#283070;border:0;border-radius:8px;padding:6px 10px;font-size:13px;text-decoration:none;cursor:pointer;white-space:nowrap}
+#title{flex:1;font-weight:800;white-space:nowrap;overflow:hidden}#title b{color:#ffcf5a}#st{font-size:13px;white-space:nowrap}
+canvas{position:absolute;top:40px;left:0;touch-action:none}
+.btn{background:linear-gradient(#ffb340,#e07a10);color:#fff;border:0;border-radius:12px;padding:9px 13px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 #8a4a00;margin:3px}
+.btn:active{transform:translateY(2px)}
+#ov{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:9}
+#ov>div{background:#121a4a;border:2px solid #ffcf5a;border-radius:16px;padding:12px 16px;text-align:center;max-width:96%;max-height:94%;overflow:auto}
+#ov h2{margin:4px 0}#ov p{margin:6px 0;font-size:14px}
+.lv{display:inline-block;margin:3px;padding:5px 8px;border-radius:8px;background:#283070;font-size:13px;cursor:pointer;min-width:120px}
+.lv:hover{background:#e07a10}.lv.lock{opacity:.45;cursor:default}.stars{font-size:34px;color:#ffd54a}
+</style></head><body>
+<div id="top"><a id="lz" href="./index.html">◀ Learning Lab</a><a id="menu" href="../index.html">🏠</a><div id="title">🍋 Lemonade <b>Stand</b></div><span id="st"></span><button id="lvB">Levels</button><button id="pB">⏸</button><button id="mu">🔊</button></div>
+<canvas id="c"></canvas><div id="ov"><div id="ovc"></div></div>
+<script>
+const SAVEKEY='lemonadeSave',TITLE='🍋 Lemonade Stand',INTRO='Run your own lemonade stand with pretend money! Buy supplies, set prices, react to the weather and track profit = revenue − costs in your ledger.';
+// shared skeleton injected into both games
+const $=id=>document.getElementById(id);
+const cv=$('c'),cx=cv.getContext('2d');let W=0,H=0,DPR=1;
+let save={mute:false,stars:{},unlocked:1};
+try{const s=JSON.parse(localStorage.getItem(SAVEKEY)||'null');if(s)save=Object.assign(save,s)}catch(e){}
+function persist(){try{localStorage.setItem(SAVEKEY,JSON.stringify(save))}catch(e){}}
+let AC=null;function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(AC&&AC.state==='suspended')AC.resume();return AC}
+function tone(f,d=0.12,t='sine',v=0.15,dl=0){if(save.mute)return;const a=ac();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type=t;o.frequency.value=f;const s=a.currentTime+dl;g.gain.setValueAtTime(v,s);g.gain.exponentialRampToValueAtTime(0.001,s+d);o.connect(g);g.connect(a.destination);o.start(s);o.stop(s+d+0.02)}
+const sfx={ok(){tone(660,.1,'triangle');tone(990,.15,'triangle',.15,.08)},bad(){tone(200,.25,'sawtooth',.08)},tap(){tone(500,.05,'square',.05)},win(){[523,659,784,1046].forEach((f,i)=>tone(f,.2,'triangle',.15,i*.12))}};
+function resize(){DPR=window.devicePixelRatio||1;W=innerWidth;H=innerHeight-40;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);cv.style.width=W+'px';cv.style.height=H+'px';cx.setTransform(DPR,0,0,DPR,0,0)}
+function rr(x,y,w,h,r){cx.beginPath();cx.roundRect?cx.roundRect(x,y,w,h,r):cx.rect(x,y,w,h)}
+function txt(s,x,y,sz,col='#fff',al='center',wt='700'){cx.font=wt+' '+sz+'px system-ui,Segoe UI,Roboto,sans-serif';cx.fillStyle=col;cx.textAlign=al;cx.textBaseline='middle';cx.fillText(s,x,y)}
+function fit(s,maxw,sz){cx.font='700 '+sz+'px system-ui';while(sz>9&&cx.measureText(s).width>maxw){sz--;cx.font='700 '+sz+'px system-ui'}return sz}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function pick(a){return a[Math.random()*a.length|0]}
+let paused=false,btns=[];
+function hit(x,y){for(let i=btns.length-1;i>=0;i--){const b=btns[i];if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){b.f();return true}}return false}
+function ptr(e){ac();if(paused||$('ov').style.display==='flex')return;const r=cv.getBoundingClientRect();const p=e.changedTouches?e.changedTouches[0]:e;onTap(p.clientX-r.left,p.clientY-r.top)}
+cv.addEventListener('pointerdown',e=>{e.preventDefault();ptr(e)});
+function ov(html){$('ovc').innerHTML=html;$('ov').style.display=html?'flex':'none'}
+function setPause(p){if($('ov').style.display==='flex'&&!paused)return;paused=p;$('pB').textContent=p?'▶':'⏸';ov(p?'<h2>⏸ Paused</h2><p>Press P or tap to resume. R restarts the level.</p><button class="btn" onclick="setPause(false)">▶ Resume</button> <button class="btn" onclick="setPause(false);restart()">↻ Restart</button>':'')}
+$('pB').onclick=()=>setPause(!paused);
+$('mu').textContent=save.mute?'🔇':'🔊';$('mu').onclick=()=>{save.mute=!save.mute;$('mu').textContent=save.mute?'🔇':'🔊';persist()};
+$('lvB').onclick=()=>{paused=false;showLevels()};
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function showLevels(){let h='<h2>'+TITLE+'</h2><p>'+INTRO+'</p>';LV.forEach((L,i)=>{const ok=i<save.unlocked;h+='<span class="lv'+(ok?'':' lock')+'" data-lv="'+i+'" '+(ok?'onclick="startLevel('+i+')"':'')+'>'+(ok?'':'🔒 ')+(i+1)+'. '+L.name+'<br><small>'+starStr(save.stars[i]||0)+'</small></span>'});h+='<p><small>Keys: 1-9 / arrows / Enter · P pause · R restart · M mute</small></p>';ov(h)}
+function finishLevel(stars){sfx.win();const i=cur;save.stars[i]=Math.max(save.stars[i]||0,stars);save.unlocked=Math.max(save.unlocked,Math.min(LV.length,i+2));persist();
+ ov('<h2>Level complete!</h2><div class="stars">'+starStr(stars)+'</div><p>'+LV[i].name+'</p>'+(i+1<LV.length?'<button class="btn" id="nextB" onclick="startLevel('+(i+1)+')">Next level ▶</button> ':'')+'<button class="btn" onclick="restart()">↻ Replay</button> <button class="btn" onclick="showLevels()">Levels</button>')}
+function restart(){ov('');startLevel(cur)}
+addEventListener('keydown',e=>{const k=e.key;if(k==='p'||k==='P'){setPause(!paused);return}if(paused)return;if($('ov').style.display==='flex'){if(k==='Enter'&&$('nextB'))$('nextB').click();return}
+ if(keyTyping()&&k.length===1&&k!=='p'&&k!=='P'){onKey(e);return}
+ if(k==='r'||k==='R'){restart();return}if(k==='m'||k==='M'){$('mu').click();return}onKey(e)});
+addEventListener('resize',()=>{resize();draw()});
+// ---------- shared modes ----------
+let cur=0,qi=0,miss=0,Q=null,msg='',msgCol='#fff',lock=false,drag=null,S={},anim=null;const MODES={};let gen=0;function later(f,ms){const g=gen;setTimeout(()=>{if(g===gen)f()},ms)}
+function card(x,y,w,h,col,stroke,r=12){cx.fillStyle=col;rr(x,y,w,h,r);cx.fill();if(stroke){cx.strokeStyle=stroke;cx.lineWidth=3;cx.stroke()}}
+function wrapC(s,x,y,w,sz,col,maxL=4,al='center'){cx.font='700 '+sz+'px system-ui';const ws=String(s).split(' ');let lines=[],l='';for(const wd of ws){const t=l?l+' '+wd:wd;if(cx.measureText(t).width>w&&l){lines.push(l);l=wd}else l=t}lines.push(l);if(lines.length>maxL&&sz>9)return wrapC(s,x,y,w,sz-1,col,maxL,al);lines.forEach((ln,i)=>txt(ln,x,y+(i-(lines.length-1)/2)*(sz+3),sz,col,al));return lines.length}
+function button(x,y,w,h,label,f,col='#283070',sz=15,dis){card(x,y,w,h,dis?'#3a3f58':col);txt(label,x+w/2,y+h/2,fit(label,w-10,sz),dis?'#99a':'#fff');if(!dis)btns.push({x,y,w,h,f,label})}
+function say(s,c){msg=s;msgCol=c===1?'#7f7':c===0?'#f99':'#fc9'}
+function M(){return MODES[LV[cur].m]}
+function startLevel(i){gen++;ov('');paused=false;cur=i;qi=0;miss=0;msg='';lock=false;drag=null;anim=null;S={};M().init(LV[i]);draw();const L=LV[i];if(L.intro&&!save['in'+i]){save['in'+i]=1;persist();ov('<h2>'+L.name+'</h2><p>'+L.intro+'</p><button class="btn" onclick="ov(\'\')">Let\'s go ▶</button>')}}
+function bg(){const g=cx.createLinearGradient(0,0,0,H);g.addColorStop(0,BG[0]);g.addColorStop(1,BG[1]);cx.fillStyle=g;cx.fillRect(0,0,W,H)}
+function draw(){btns=[];cx.clearRect(0,0,W,H);bg();const m=M();if(!m)return;$('st').textContent='Lv '+(cur+1)+(m.st?' · '+m.st():'')+' · ✗'+miss;m.draw(LV[cur])}
+function onTap(x,y){if(hit(x,y))return;const m=M();if(m.tap)m.tap(x,y)}
+function relXY(e){const r=cv.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
+cv.addEventListener('pointermove',e=>{const m=M();if(m&&m.move&&!paused){e.preventDefault();const[x,y]=relXY(e);m.move(x,y)}});
+function upH(e){const m=M();if(m&&m.up){const[x,y]=relXY(e);m.up(x,y)}}
+cv.addEventListener('pointerup',upH);cv.addEventListener('pointercancel',upH);
+function onKey(e){const m=M();if(m&&m.key&&!lock)m.key(e.key)}
+function keyTyping(){return false}
+function byMiss(a=0,b=2){return miss<=a?3:miss<=b?2:1}
+let lastT=performance.now();function loop(now){const dt=Math.min(.05,(now-lastT)/1000);lastT=now;if(anim&&!paused&&$('ov').style.display!=='flex'){anim(dt)}requestAnimationFrame(loop)}
+function ri(a,b){return a+Math.floor(Math.random()*(b-a+1))}
+// QUIZ: qs = array of [question,[correct,...wrong],why] or function returning one
+function qMake(L){const raw=typeof L.qs==='function'?L.qs():S.list[qi%S.list.length];Q={text:raw[0],ans:raw[1][0],opts:shuffle(raw[1]),why:raw[2]||''}}
+MODES.quiz={init(L){S.n=L.n||6;S.list=typeof L.qs==='function'?null:shuffle(L.qs).slice(0,S.n);qMake(L)},st(){return Math.min(qi+1,S.n)+'/'+S.n},
+ draw(L){const k=Math.max(1,Math.min(1.7,H/350));txt(L.name,W/2,14,13,'#ffcf5a');card(20,30,W-40,64*k,'#fdf6e3');wrapC(Q.text,W/2,30+32*k,W-70,18*k,'#2b1d0e',3);const bw=Math.min(330*k,(W-50)/2),bh=46*k,top=30+76*k;
+  Q.opts.forEach((o,i)=>{const bx=W/2+((i%2)?8:-8-bw),by=top+Math.floor(i/2)*(bh+10);let col='#283070';if(Q.picked){if(o===Q.ans)col='#2a8a3a';else if(o===Q.picked)col='#a33'}card(bx,by,bw,bh,col);const s=(i+1)+'  '+o;txt(s,bx+bw/2,by+bh/2,fit(s,bw-12,16*k));btns.push({x:bx,y:by,w:bw,h:bh,f:()=>qChoose(o),opt:o})});
+  if(msg)wrapC(msg,W/2,top+2*(bh+10)+(H-top-2*(bh+10))/2,W-40,14*k,msgCol,4)},
+ key(k){const n=+k;if(n>=1&&n<=Q.opts.length)qChoose(Q.opts[n-1])}};
+function qChoose(o){if(lock)return;Q.picked=o;lock=true;const ok=o===Q.ans;if(ok)sfx.ok();else{sfx.bad();miss++}say((ok?'✔ Correct! ':'✘ Answer: '+Q.ans+'. ')+Q.why,ok?1:0);draw();later(qNext,ok?1700:3400)}
+function qNext(){msg='';lock=false;qi++;if(qi>=S.n){finishLevel(byMiss(0,1));return}qMake(LV[cur]);draw()}
+// LABEL: L.pic(x,y,w,h) draws picture; L.targets [{n:name,x,y (0-1),f:fact}]
+MODES.label={init(L){S.order=shuffle(L.targets.map((t,i)=>i));S.placed={}},st(){return Object.keys(S.placed).length+'/'+LV[cur].targets.length},
+ area(){const w=Math.min(W*0.64-20,(H-36)*1.6);return{x:10,y:30,w,h:H-36}},
+ tp(t){const A=this.area();return[A.x+t.x*A.w,A.y+t.y*A.h]},
+ chips(){const L=LV[cur],A=this.area(),x=A.x+A.w+14,w=W-x-10,left=S.order.filter(i=>!S.placed[i]),h=Math.min(36,(H-40)/Math.max(1,left.length)-6);return left.map((i,k)=>({i,x,y:32+k*(h+6),w,h}))},
+ draw(L){txt(L.name+' — drag each label onto its dot',W/2,14,13,'#ffcf5a');const A=this.area();L.pic(A.x,A.y,A.w,A.h);
+  L.targets.forEach((t,i)=>{const[px,py]=this.tp(t);if(S.placed[i]){cx.font='800 12px system-ui';const tw=cx.measureText(t.n).width+12;const lx=Math.max(A.x+tw/2,Math.min(A.x+A.w-tw/2,px));card(lx-tw/2,py-11,tw,22,'#1f7a3a','#fff',8);txt(t.n,lx,py,12)}else{cx.fillStyle='#ffcf5a';cx.beginPath();cx.arc(px,py,11,0,7);cx.fill();cx.strokeStyle='#000';cx.lineWidth=2;cx.stroke();txt(String.fromCharCode(65+i),px,py,12,'#000')}});
+  this.chips().forEach((c,k)=>{if(drag&&drag.i===c.i)return;card(c.x,c.y,c.w,c.h,'#283070','#6a7ad0',9);const s=(k+1)+'. '+L.targets[c.i].n;txt(s,c.x+c.w/2,c.y+c.h/2,fit(s,c.w-10,14))});
+  if(drag){const t=L.targets[drag.i];cx.font='800 14px system-ui';const tw=cx.measureText(t.n).width+20;card(drag.x-tw/2,drag.y-16,tw,32,'#e07a10','#fff',9);txt(t.n,drag.x,drag.y,14)}
+  if(msg){card(A.x+6,H-52,A.w-12,46,'#000b');wrapC(msg,A.x+A.w/2,H-29,A.w-24,12,msgCol,3)}},
+ tap(x,y){if(lock)return;for(const c of this.chips())if(x>=c.x&&x<=c.x+c.w&&y>=c.y&&y<=c.y+c.h){drag={i:c.i,x,y};sfx.tap();draw();return}},
+ move(x,y){if(drag){drag.x=x;drag.y=y;draw()}},
+ up(x,y){if(!drag)return;const i=drag.i;drag=null;const L=LV[cur];let best=-1,bd=40;L.targets.forEach((t,j)=>{if(S.placed[j])return;const[px,py]=this.tp(t);const d=Math.hypot(px-x,py-y);if(d<bd){bd=d;best=j}});if(best<0){draw();return}this.place(i,best)},
+ place(i,j){const L=LV[cur];if(i===j||L.targets[i].n===L.targets[j].n){S.placed[j]=1;if(i!==j){const k=S.order.indexOf(i),m=S.order.indexOf(j);[S.order[k],S.order[m]]=[S.order[m],S.order[k]]}sfx.ok();say('✔ '+L.targets[j].n+': '+(L.targets[j].f||''),1);if(Object.keys(S.placed).length===L.targets.length){lock=true;draw();later(()=>finishLevel(byMiss(0,2)),1600);return}}else{sfx.bad();miss++;say('✘ That dot is not the '+L.targets[i].n+'. Try another!',0)}draw()},
+ key(k){const ch=this.chips();if(/^[1-9]$/.test(k)&&ch[+k-1]){S.sel=ch[+k-1].i;say('Picked '+LV[cur].targets[S.sel].n+' — now press the letter of its dot.',2);draw()}else if(/^[a-l]$/i.test(k)&&S.sel!=null){const j=k.toUpperCase().charCodeAt(0)-65;if(LV[cur].targets[j]&&!S.placed[j]){const s=S.sel;S.sel=null;this.place(s,j)}}}};
+// SORT: L.bins [a,b], L.items [[text,bin,why]]
+MODES.sort={init(L){S.items=shuffle(L.items).slice(0,L.n||8);S.k=0;S.home=null},st(){return Math.min(S.k+1,S.items.length)+'/'+S.items.length},
+ bins(){const w=(W-60)/2,h=Math.min(120,H*0.34),y=H-h-10;return[{x:20,y,w,h},{x:40+w,y,w,h}]},
+ cardR(){const w=Math.min(380,W-60),h=72;return{x:W/2-w/2,y:44,w,h}},
+ draw(L){txt(L.name+' — drag the card into the right box',W/2,14,13,'#ffcf5a');const B=this.bins();B.forEach((b,i)=>{card(b.x,b.y,b.w,b.h,i?'#24563a':'#5a2e6e','#fff');txt((i?'→ ':'← ')+L.bins[i],b.x+b.w/2,b.y+b.h/2,fit(L.bins[i],b.w-40,18))});
+  const it=S.items[S.k];if(!it)return;const C=this.cardR();let x=C.x,y=C.y;if(drag){x=drag.x-C.w/2;y=drag.y-C.h/2}card(x,y,C.w,C.h,'#fdf6e3',drag?'#ffcf5a':null);if(L.icon)L.icon(it,x+30,y+C.h/2);wrapC(it[0],x+C.w/2+(L.icon?20:0),y+C.h/2,C.w-(L.icon?80:20),17,'#2b1d0e',3);
+  if(msg)wrapC(msg,W/2,(C.y+C.h+B[0].y)/2,W-40,13,msgCol,4)},
+ tap(x,y){if(lock)return;const C=this.cardR();if(x>=C.x&&x<=C.x+C.w&&y>=C.y&&y<=C.y+C.h){drag={x,y};sfx.tap();draw();return}const B=this.bins();B.forEach((b,i)=>{if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h)this.choose(i)})},
+ move(x,y){if(drag){drag.x=x;drag.y=y;draw()}},
+ up(x,y){if(!drag)return;drag=null;const B=this.bins();let c=-1;B.forEach((b,i)=>{if(x>=b.x-10&&x<=b.x+b.w+10&&y>=b.y-30)c=i});if(c<0){draw();return}this.choose(c)},
+ choose(b){if(lock)return;const it=S.items[S.k];const ok=it[1]===b;lock=true;if(ok)sfx.ok();else{sfx.bad();miss++}say((ok?'✔ ':'✘ It goes in “'+LV[cur].bins[it[1]]+'”. ')+(it[2]||''),ok?1:0);draw();later(()=>{lock=false;msg='';S.k++;if(S.k>=S.items.length){finishLevel(byMiss(0,2));return}draw()},ok?1500:3000)},
+ key(k){if(k==='1'||k==='ArrowLeft')this.choose(0);else if(k==='2'||k==='ArrowRight')this.choose(1)}};
+// ORDER: L.steps [[name,desc]] — tap in the right order
+MODES.order={init(L){S.cards=shuffle(L.steps.map((s,i)=>i));S.next=0},st(){return S.next+'/'+LV[cur].steps.length},
+ rects(){const n=S.cards.length,cols=Math.min(n,Math.ceil(n/2)),rows=Math.ceil(n/cols),gw=(W-30)/cols,gh=Math.min(70,(H-170)/rows);return S.cards.map((c,k)=>({c,x:15+(k%cols)*gw+4,y:84+Math.floor(k/cols)*(gh+8),w:gw-8,h:gh}))},
+ draw(L){txt(L.name+' — tap the stages in order, starting with the first',W/2,14,13,'#ffcf5a');const done=L.steps.slice(0,S.next).map(s=>s[0]).join(' → ')||'(start with the very first stage)';card(15,28,W-30,46,'#0006');wrapC(done,W/2,51,W-50,14,'#cfe',2);
+  this.rects().forEach((r,k)=>{const d=r.c<S.next;card(r.x,r.y,r.w,r.h,d?'#2a8a3a':'#fdf6e3');if(L.icon&&!d)L.icon(r.c,r.x+22,r.y+r.h/2);wrapC((d?(r.c+1)+'. ':'')+L.steps[r.c][0],r.x+r.w/2+(L.icon&&!d?14:0),r.y+r.h/2,r.w-(L.icon?50:14),15,d?'#fff':'#2b1d0e',2);if(!d)btns.push({x:r.x,y:r.y,w:r.w,h:r.h,f:()=>this.pick(r.c)})});
+  if(msg)wrapC(msg,W/2,H-34,W-40,13,msgCol,3)},
+ pick(c){if(lock)return;const L=LV[cur];if(c===S.next){S.next++;sfx.ok();say('✔ '+L.steps[c][0]+': '+L.steps[c][1],1);if(S.next>=L.steps.length){lock=true;draw();later(()=>finishLevel(byMiss(0,2)),1800);return}}else{sfx.bad();miss++;say('✘ Not yet — '+L.steps[c][0]+' comes later. What happens before it?',0)}draw()},
+ key(k){const n=+k;const left=this.rects().filter(r=>r.c>=S.next);if(n>=1&&left[n-1])this.pick(left[n-1].c)}};
+
+const BG=['#3a2a10','#1a2438'];
+const fmt=v=>(v<-0.004?'−$':'$')+Math.abs(v).toFixed(2);
+const WEA={hot:{n:'Hot & sunny',e:'☀️',t:32,c:60,m:2.0,th:3},warm:{n:'Warm',e:'🌤️',t:24,c:44,m:1.6,th:2},cloudy:{n:'Cloudy',e:'☁️',t:17,c:28,m:1.2,th:1},rain:{n:'Rainy',e:'🌧️',t:12,c:12,m:1.0,th:0}};
+const SUP=[['lem','🍋 Lemons',1.80],['sug','🍚 Sugar',1.20],['cup','🥤 Cups',0.60],['ice','🧊 Ice',1.00]];
+function wIcon(k,x,y,r){cx.save();if(k==='hot'||k==='warm'){cx.fillStyle='#ffd23a';cx.beginPath();cx.arc(x,y,r*.5,0,7);cx.fill();cx.strokeStyle='#ffd23a';cx.lineWidth=3;for(let a=0;a<6.28;a+=.785){cx.beginPath();cx.moveTo(x+Math.cos(a)*r*.65,y+Math.sin(a)*r*.65);cx.lineTo(x+Math.cos(a)*r*.9,y+Math.sin(a)*r*.9);cx.stroke()}}
+ if(k!=='hot'){cx.fillStyle=k==='rain'?'#8a96a8':'#e8eef6';const ox=k==='warm'?r*.3:0,oy=k==='warm'?r*.3:0;[[-.35,.05,.35],[0,-.15,.45],[.4,.05,.33]].forEach(c=>{cx.beginPath();cx.arc(x+ox+c[0]*r,y+oy+c[1]*r,c[2]*r,0,7);cx.fill()});cx.fillRect(x+ox-.6*r,y+oy,1.2*r,.35*r)}
+ if(k==='rain'){cx.strokeStyle='#5ab0ff';cx.lineWidth=2.5;for(let i=-1;i<=1;i++){cx.beginPath();cx.moveTo(x+i*r*.35,y+r*.5);cx.lineTo(x+i*r*.35-4,y+r*.85);cx.stroke()}}cx.restore()}
+function drawStand(x,y,n){cx.fillStyle='#c98a4a';cx.fillRect(x-70,y-48,140,48);cx.fillStyle='#8a5a2a';cx.fillRect(x-74,y-52,148,8);for(let i=0;i<7;i++){cx.fillStyle=i%2?'#fff':'#f5c400';cx.fillRect(x-74+i*148/7,y-100,148/7+.5,18)}cx.fillStyle='#8a5a2a';cx.fillRect(x-72,y-82,5,32);cx.fillRect(x+67,y-82,5,32);txt('LEMONADE',x,y-26,14,'#fff');cx.fillStyle='#fff7a0cc';cx.fillRect(x-40,y-76,18,22);for(let i=0;i<Math.min(8,Math.ceil(n/4));i++){cx.fillStyle='#ffe96a';cx.fillRect(x-10+i*10,y-66,7,12)}}
+function campStart(L){if(L.camp===1||!L.camp)return{cash:L.cash||20,inv:{lem:0,sug:0,cup:0,ice:0},rep:1};const p=save.camp&&save.camp[L.camp-1];return p?{cash:p.cash,inv:{...p.inv,ice:0},rep:p.rep}:{cash:L.camp===2?60:120,inv:{lem:0,sug:0,cup:0,ice:0},rep:1}}
+MODES.day={init(L){const st=campStart(L);Object.assign(S,st);S.price=1.0;S.d=0;S.log=[];S.phase='plan';S.spent=0;S.jar=0;S.res=null},
+ W(){return WEA[LV[cur].days[S.d]]},cost(k){const L=LV[cur];const s=SUP.find(s=>s[0]===k);return +(s[2]*(k==='lem'&&L.lemonX?L.lemonX:1)).toFixed(2)},
+ make(){return Math.min(S.inv.lem,S.inv.sug,S.inv.cup)},
+ st(){const L=LV[cur];return 'Day '+((L.off||0)+S.d+1)+' · '+fmt(S.cash)},
+ draw(L){const w=this.W();txt(L.name,W/2,12,13,'#ffcf5a');
+  const lx=8,lw=W*.32;if(S.phase==='plan'){card(lx,24,lw,70,'#1d3a5a');wIcon(L.days[S.d],lx+36,59,30);txt('Day '+((L.off||0)+S.d+1)+' forecast: '+w.n,lx+76,42,fit('Day '+((L.off||0)+S.d+1)+' forecast: '+w.n,lw-82,14),'#fff','left');txt(w.t+'°C · thirst '+(w.th?'🔥'.repeat(w.th):'💧 low'),lx+76,62,13,'#cde','left');txt((L.crowd?'Big fair: huge crowds! ':'')+(L.rival?'Rival sells at '+fmt(L.rival)+'. ':'')+(L.lemonX?'Lemon shortage: ×'+L.lemonX+' price!':''),lx+76,81,fit('x',10,11)&&11,'#fc9','left');
+   SUP.forEach((s,i)=>{const y=100+i*40,c=this.cost(s[0]),dis=S.cash<c-1e-9;card(lx,y,lw,35,'#0006');txt(s[1],lx+8,y+11,13,'#fff','left');txt('have '+S.inv[s[0]]+' cups'+(s[0]==='ice'?' (melts!)':''),lx+8,y+26,11,'#bcd','left');button(lx+lw-112,y+3,108,29,(i+1)+') +12 for '+fmt(c),()=>this.buy(s[0]),'#2a7a3a',12,dis)});
+   const mx=lx+lw+8,mw=W*.3;card(mx,24,mw,H-30,'#0006');txt('Price per cup',mx+mw/2,38,13,'#cde');button(mx+8,48,44,40,'−',()=>this.setP(-.1),'#a33',22);txt(fmt(S.price),mx+mw/2,68,26,'#ffcf5a');button(mx+mw-52,48,44,40,'+',()=>this.setP(.1),'#2a7a3a',22);
+   const mk=this.make(),cpc=(this.cost('lem')+this.cost('sug')+this.cost('cup'))/12+((w.th>=2)?1/12:0);txt('You can make: '+mk+' cups',mx+mw/2,102,14,mk?'#fff':'#f99');txt('Cost per cup ≈ '+fmt(cpc),mx+mw/2,120,12,'#bcd');txt('Spent today: '+fmt(S.spent),mx+mw/2,137,12,'#bcd');txt('Cash: '+fmt(S.cash),mx+mw/2,157,16,'#7f7');
+   if(L.jar){txt('🫙 Savings jar: '+fmt(S.jar)+' / goal '+fmt(L.goal[0]),mx+mw/2,178,12,'#ffcf5a');button(mx+8,188,mw-16,30,'S) Put $5 in the jar',()=>this.saveJar(),'#7a4ab0',12,S.cash<5)}
+   if(!L.jar)drawStand(mx+mw/2,H-62,Math.min(mk,30));
+   button(mx+8,H-52,mw-16,42,'⏎ Open the stand!',()=>this.open(),'#e07a10',16)}
+  else{const r=S.res,mx=lx,mw=W*.62;card(mx,24,mw,H-30,'#fdf6e3');wIcon(L.days[S.d],mx+34,56,26);txt('Day '+((L.off||0)+S.d+1)+' — '+w.n,mx+70,44,16,'#5a2e00','left');txt(r.cust+' people walked by · '+r.want+' wanted lemonade · you sold '+r.sold,mx+70,66,fit(r.cust+' people walked by · '+r.want+' wanted lemonade · you sold '+r.sold,mw-80,13),'#333','left');
+   txt('Revenue = '+r.sold+' cups × '+fmt(r.price)+' = '+fmt(r.rev),mx+20,98,15,'#1a5a2a','left');txt('Costs (supplies bought today) = '+fmt(r.cost),mx+20,122,15,'#8a2a1a','left');txt('Profit = '+fmt(r.rev)+' − '+fmt(r.cost)+' = '+fmt(r.profit),mx+20,148,17,r.profit>=0?'#1a7a2a':'#b02020','left');
+   if(r.melt)txt('🧊 '+r.melt+' cups of ice melted overnight.',mx+20,170,12,'#557','left');wrapC('💡 '+r.lesson,mx+mw/2,212,mw-30,13,'#2b1d0e',4);
+   button(mx+mw/2-90,H-50,180,38,S.d+1<L.days.length?'⏎ Next day ▶':'⏎ See results',()=>this.next(),'#e07a10',15)}
+  // ledger + chart
+  const rx=W*.635,rw=W-rx-8;card(rx,24,rw,H*.5,'#0b1626','#2e4a6a',8);txt('📒 Ledger',rx+rw/2,36,12,'#ffcf5a');const cols=[['Day',.08],['Wx',.2],['Sold',.34],['Price',.5],['Profit',.8]];cols.forEach(c=>txt(c[0],rx+rw*c[1],52,11,'#9bc'));
+  S.log.slice(-5).forEach((g,i)=>{const y=68+i*16;txt(g.day,rx+rw*.08,y,11);txt(WEA[g.w].e,rx+rw*.2,y,11);txt(g.sold,rx+rw*.34,y,11);txt(fmt(g.price),rx+rw*.5,y,11);txt(fmt(g.profit),rx+rw*.8,y,11,g.profit>=0?'#7f7':'#f88')});
+  const tot=S.log.reduce((a,g)=>a+g.profit,0);txt('Total profit: '+fmt(tot),rx+rw/2,H*.5+14,12,tot>=0?'#7f7':'#f88');
+  const cy=H*.5+30,ch=H-cy-8;card(rx,cy,rw,ch,'#0b1626','#2e4a6a',8);const n=L.days.length,bw=(rw-30)/n,mxp=Math.max(20,...S.log.map(g=>Math.abs(g.profit))),zy=cy+ch*.62;cx.strokeStyle='#567';cx.beginPath();cx.moveTo(rx+20,zy);cx.lineTo(rx+rw-6,zy);cx.stroke();txt('profit/day',rx+rw/2,cy+9,10,'#9bc');
+  S.log.forEach((g,i)=>{const hh=g.profit/mxp*(ch*.5);cx.fillStyle=g.profit>=0?'#4ac05a':'#e05050';cx.fillRect(rx+22+i*bw+2,hh>=0?zy-hh:zy,bw-4,Math.abs(hh));});for(let i=0;i<n;i++)txt(String((L.off||0)+i+1),rx+22+i*bw+bw/2,cy+ch-8,9,'#9bc')},
+ buy(k){if(S.phase!=='plan')return;const c=this.cost(k);if(S.cash<c-1e-9){sfx.bad();return}S.cash=+(S.cash-c).toFixed(2);S.spent=+(S.spent+c).toFixed(2);S.inv[k]+=12;sfx.tap();draw()},
+ setP(d){if(S.phase!=='plan')return;S.price=Math.max(.1,Math.min(5,Math.round((S.price+d)*10)/10));sfx.tap();draw()},
+ saveJar(){if(S.cash<5||S.phase!=='plan')return;S.cash=+(S.cash-5).toFixed(2);S.jar+=5;tone(880,.1,'triangle');draw()},
+ open(){if(S.phase!=='plan')return;const L=LV[cur],w=this.W(),mk=this.make();
+  const cust=Math.round(w.c*S.rep*(L.crowd||1)*(.92+Math.random()*.16));let frac=Math.max(0,Math.min(1,1.5-S.price/w.m));if(L.rival&&S.price>L.rival)frac*=Math.max(.15,1-(S.price-L.rival)*1.6);const iceF=w.th>=2&&mk>0?.6+.4*Math.min(1,S.inv.ice/mk):1;
+  const want=Math.round(cust*frac*iceF),sold=Math.min(mk,want),rev=+(sold*S.price).toFixed(2),cost=S.spent,profit=+(rev-cost).toFixed(2);
+  const iceUsed=Math.min(sold,S.inv.ice),melt=S.inv.ice-iceUsed;['lem','sug','cup'].forEach(k=>S.inv[k]-=sold);S.inv.ice=0;S.cash=+(S.cash+rev).toFixed(2);
+  if(S.price>w.m)S.rep=Math.max(.75,S.rep-.06);else if(S.price<=w.m*.85)S.rep=Math.min(1.25,S.rep+.03);
+  let lesson;if(mk===0)lesson='You had nothing to sell! You need lemons, sugar AND cups to make lemonade — one of each 12-cup pack makes 12 cups.';else if(want>mk&&want-mk>=5)lesson='Sold out! '+(want-mk)+' thirsty customers went home. Demand was bigger than your supply: buy more stock or raise the price a little.';else if(frac<.45)lesson='Most people walked away — your price was higher than they would pay '+(L.rival&&S.price>L.rival?'with a cheaper rival nearby. ':'on a '+w.n.toLowerCase()+' day. ')+'Higher price → lower demand.';else if(w.th>=2&&S.inv.ice===0&&iceUsed<sold)lesson='On warm days people want ice-cold lemonade. Without enough ice, fewer customers bought.';else if(frac>=.95&&sold>0&&S.price<w.m*.6)lesson='Everyone wanted a cup at that price — you might earn more by charging a little more.';else if(mk-sold>=12)lesson='You had '+(mk-sold)+' cups left over. Leftover lemons, sugar and cups keep for tomorrow, but money spent on extra stock lowers today\'s profit.';else if(w.th===0)lesson='Rainy days bring fewer customers (lower demand). Buy less stock so you don\'t lose money.';else lesson='Nice balance of price and stock! Profit is what\'s left after paying for supplies.';
+  S.res={cust,want,sold,rev,cost,profit,price:S.price,melt,lesson};S.log.push({day:(L.off||0)+S.d+1,w:L.days[S.d],sold,price:S.price,rev,cost,profit});S.phase='result';profit>=0?sfx.ok():sfx.bad();draw()},
+ next(){const L=LV[cur];if(S.phase!=='result')return;if(S.d+1<L.days.length){S.d++;S.spent=0;S.res=null;S.phase='plan';draw();return}
+  const tot=S.log.reduce((a,g)=>a+g.profit,0),score=L.jar?S.jar:tot,gl=L.goal;lock=true;draw();
+  if(score>=gl[0]-1e-9){if(L.camp){save.camp=save.camp||{};save.camp[L.camp]={cash:S.cash,inv:{...S.inv},rep:S.rep};persist()}finishLevel(score>=gl[2]?3:score>=gl[1]?2:1);lock=false}
+  else{lock=false;sfx.bad();ov('<h2>Goal not reached</h2><p>'+(L.jar?'Savings jar: '+fmt(S.jar):'Total profit: '+fmt(tot))+' — you needed '+fmt(gl[0])+'.</p><p>Tip: match your price to the weather and buy just enough stock.</p><button class="btn" onclick="restart()">↻ Try again</button> <button class="btn" onclick="showLevels()">Levels</button>')}},
+ key(k){if(S.phase==='plan'){const n=+k;if(n>=1&&n<=4)this.buy(SUP[n-1][0]);else if(k==='ArrowLeft'||k==='-')this.setP(-.1);else if(k==='ArrowRight'||k==='+'||k==='=')this.setP(.1);else if(k==='s'||k==='S')this.saveJar();else if(k==='Enter')this.open()}else if(k==='Enter'||k===' ')this.next()}};
+function wrong(c,step){const s=new Set([c.toFixed(2)]);const out=[];let t=0;while(out.length<3&&t<50){t++;const v=+(c+pick([-3,-2,-1,1,2,3,4])*step).toFixed(2);if(v>=0&&!s.has(v.toFixed(2))){s.add(v.toFixed(2));out.push(v)}}return out}
+function moneyQ(){const k=pick(['rev','profit','loss','cpc','save','change']);
+ if(k==='rev'){const n=ri(8,40),p=pick([.5,.75,1,1.25,1.5,2]);const c=n*p;return['You sold '+n+' cups at '+fmt(p)+' each. What is your revenue?',[c,...wrong(c,p)].map(fmt),'Revenue = cups sold × price = '+n+' × '+fmt(p)+' = '+fmt(c)+'.']}
+ if(k==='profit'){const R=ri(20,80),C=ri(5,R-5);return['Revenue was '+fmt(R)+' and supplies cost '+fmt(C)+'. What is your profit?',[R-C,R+C,C,R].map(fmt),'Profit = revenue − costs = '+fmt(R)+' − '+fmt(C)+' = '+fmt(R-C)+'.']}
+ if(k==='loss'){const R=ri(5,20),C=R+ri(2,10);return['On a rainy day you took in '+fmt(R)+' but spent '+fmt(C)+' on supplies. What was your profit?',[fmt(R-C)+' (a loss)',fmt(C-R)+' profit',fmt(R),fmt(R+C)],'Profit = '+fmt(R)+' − '+fmt(C)+' = '+fmt(R-C)+'. A negative profit is called a loss.']}
+ if(k==='cpc'){const n=pick([10,12,20]),c=pick([2.4,3.6,4.8,6]);const v=c/n;return['A '+fmt(c)+' bag of lemons makes '+n+' cups. What does the lemon in each cup cost?',[v,...wrong(v,.05)].map(fmt),'Cost per cup = '+fmt(c)+' ÷ '+n+' = '+fmt(v)+'.']}
+ if(k==='save'){const s=pick([2,3,4,5]),G=ri(4,12)*5;const d=Math.ceil(G/s);return['You save '+fmt(s)+' a day for a '+fmt(G)+' goal. How many days until you reach it?',[d,d+1,d-1,d+3].map(String),fmt(G)+' ÷ '+fmt(s)+' = '+(G/s).toFixed(1)+', so you need '+d+' days.']}
+ const p=pick([.75,1.25,1.5,1.75,2.25]),n=pick([1,2,3]),pay=n*p<5?5:10;const c=pay-n*p;return['A customer buys '+n+' cup'+(n>1?'s':'')+' at '+fmt(p)+' and pays with '+fmt(pay)+'. How much change?',[c,...wrong(c,.25)].map(fmt),fmt(pay)+' − '+fmt(n*p)+' = '+fmt(c)+'.']}
+const SD=[['On a hot day, demand for lemonade usually…',['Goes up','Goes down','Stays exactly the same','Disappears'],'Hot weather makes more people thirsty: more demand.'],['If you raise your price a lot, the number of cups people want usually…',['Goes down','Goes up','Doubles','Stays the same'],'Higher price → lower quantity demanded.'],['You sold out early and people were still queuing. That means…',['Demand was greater than your supply','You charged too much','It was raining','You made too many cups'],'When demand > supply you can make more or raise the price.'],['What is “supply”?',['How much of something is available to sell','How much people want to buy','The price of a cup','Money you saved'],'Your supply is the lemonade you can actually make.'],['What is “demand”?',['How much of something people want to buy','How many lemons you own','Your total costs','The weather'],'Demand changes with price, weather and competition.'],['A rival stand sells lemonade for $1.00 next door. If you charge $2.00…',['Many customers buy from the rival instead','Everyone pays you $2.00','Nothing changes','The rival must close'],'Competition keeps prices in check.'],['Lemons suddenly cost three times as much. A sensible move is to…',['Raise your price a little to cover the cost','Give lemonade away free','Buy ten times more lemons','Close forever'],'When costs rise, businesses often raise prices.'],['Why buy ice fresh every day?',['It melts — it doesn\'t keep','It\'s cheaper tomorrow','Customers hate old ice','You don\'t need to'],'Stock that spoils quickly is called perishable.'],['When something is rare and lots of people want it, its price tends to…',['Rise','Fall','Become zero','Stay fixed by law'],'High demand + low supply → higher prices.']];
+const BIZ=[['Profit means…',['Revenue minus costs','All the money customers paid','The price of one cup','Money you borrowed'],'Profit = revenue − costs.'],['Revenue means…',['All the money taken in from sales','Money left after costs','What you spent on lemons','Your savings'],'Revenue is before costs are taken away.'],['A written record of money coming in and going out is a…',['Ledger','Recipe','Receipt for a toy','Forecast'],'Businesses keep a ledger so they know where money went.'],['Money set aside for a future goal is called…',['Savings','Revenue','A loss','A cost'],'Saving a bit every day adds up.'],['If your costs are bigger than your revenue you make a…',['Loss','Profit','Bonus','Discount'],'Negative profit is a loss.'],['Renting the stand costs the same whether you sell 0 or 100 cups. This is a…',['Fixed cost','Variable cost','Profit','Revenue'],'Cups and lemons are variable costs: they rise with every cup you make.'],['Which is a good savings habit?',['Save a little from every profit before spending','Spend everything first','Only save when it rains','Never count your money'],'“Pay yourself first” — put savings aside right away.'],['A budget is…',['A plan for how you will spend and save money','A type of lemon','A loan from a bank','The weather report'],'Budgets help you avoid running out of money.']];
+const CAMP_INTRO='You have '+fmt(20)+' of pretend money. Each morning: check the forecast, buy supplies (each pack = 12 cups), set your price, and open! Profit = revenue − costs.';
+const LV=[
+{name:'Money basics',m:'quiz',qs:moneyQ,n:6,intro:'Revenue = cups sold × price. Profit = revenue − costs. Let\'s practise the maths (all money here is pretend!).'},
+{name:'Campaign: Days 1–5',m:'day',camp:1,off:0,cash:20,days:['warm','hot','cloudy','warm','rain'],goal:[40,70,95],intro:CAMP_INTRO+' Goal: earn '+fmt(40)+' profit over 5 days (★★★ at '+fmt(95)+').'},
+{name:'Supply & demand',m:'quiz',qs:SD,n:6},
+{name:'Campaign: Days 6–10',m:'day',camp:2,off:5,days:['cloudy','hot','hot','rain','warm'],goal:[55,90,120],intro:'Your money and leftover stock carry over from Days 1–5. A heatwave is coming! Goal: '+fmt(55)+' profit (★★★ at '+fmt(120)+').'},
+{name:'Profit maths',m:'quiz',qs:moneyQ,n:8},
+{name:'Campaign: Days 11–15 — save for a bike',m:'day',camp:3,off:10,days:['warm','cloudy','hot','warm','hot'],jar:1,goal:[60,90,120],intro:'You want a new bike! Put money in your savings jar (S) — jar money can\'t be spent. Goal: '+fmt(60)+' in the jar by day 15 (★★★ at '+fmt(120)+'). Keep enough cash to buy supplies!'},
+{name:'Challenge: Heatwave',m:'day',cash:15,days:['hot','hot','hot'],goal:[50,90,120],intro:'Three scorching days and only '+fmt(15)+' to start. Ice matters! Goal: '+fmt(50)+' profit.'},
+{name:'Challenge: Rainy week',m:'day',cash:20,days:['rain','cloudy','rain'],goal:[3,8,12],intro:'Bad weather means low demand. Don\'t over-buy! Goal: end with any profit of at least '+fmt(3)+'.'},
+{name:'Challenge: Lemon shortage',m:'day',cash:30,lemonX:3,days:['warm','hot','warm'],goal:[25,45,60],intro:'Lemons cost 3× the usual price. Rethink your price to keep a profit. Goal: '+fmt(25)+'.'},
+{name:'Challenge: Rival stand',m:'day',cash:25,rival:1,days:['warm','warm','hot'],goal:[25,45,60],intro:'A rival next door charges '+fmt(1)+' a cup. Charge too much and customers walk over to them. Goal: '+fmt(25)+'.'},
+{name:'Challenge: Big fair day',m:'day',cash:40,crowd:4,days:['warm'],goal:[50,85,105],intro:'One day, four times the crowd, and '+fmt(40)+' to spend. You can\'t serve everyone — so what price is best? Goal: '+fmt(50)+'.'},
+{name:'Business master quiz',m:'quiz',qs:()=>Math.random()<.4?moneyQ():pick(Math.random()<.5?SD:BIZ),n:10}];
+window.G={get S(){return S},get Q(){return Q},LV,MODES,WEA};
+
+resize();cur=0;M().init(LV[0]);draw();showLevels();requestAnimationFrame(loop);
+</script></body></html>

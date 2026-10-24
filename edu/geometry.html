@@ -1,0 +1,169 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Shape Lab</title><style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;height:100%;background:#0b1a2e;color:#eef;font-family:system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden;user-select:none}
+#top{position:absolute;top:0;left:0;right:0;height:40px;display:flex;align-items:center;gap:6px;padding:0 8px;background:#12304fcc;z-index:3}
+#top a,#top button{color:#fff;background:#1f4f7a;border:0;border-radius:8px;padding:6px 10px;font-size:13px;text-decoration:none;cursor:pointer;white-space:nowrap}
+#title{flex:1;font-weight:800;white-space:nowrap;overflow:hidden}#title b{color:#5ee0c0}
+#st{font-size:13px;white-space:nowrap}
+canvas{position:absolute;top:40px;left:0;touch-action:none}
+#q{position:absolute;left:0;right:0;top:44px;text-align:center;z-index:3;pointer-events:none;font-size:16px;padding:0 8px;text-shadow:0 2px 3px #000}
+#q b{color:#ffd54a}
+#opts{position:absolute;left:0;right:0;bottom:8px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;z-index:3;padding:0 6px}
+.btn{background:linear-gradient(#3fd3b0,#169a7e);color:#fff;border:0;border-radius:12px;padding:9px 14px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 #0a5a48;min-width:64px}
+.btn:active{transform:translateY(2px)}.btn.bad{background:linear-gradient(#f66,#b22);box-shadow:0 3px 0 #700}.btn.good{background:linear-gradient(#8f6,#3a2)}
+#ov{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;z-index:9}
+#ov>div{background:#12304f;border:2px solid #5ee0c0;border-radius:16px;padding:14px;text-align:center;max-width:96%;max-height:94%;overflow:auto}
+.lv{display:inline-block;margin:3px;padding:6px 9px;border-radius:8px;background:#1f4f7a;font-size:13px;cursor:pointer;min-width:120px}
+.lv:hover{background:#169a7e}.stars{font-size:32px;color:#ffd54a}.lv small{color:#ffd54a}
+</style></head><body>
+<div id="top"><a href="./index.html">◀ Learning Lab</a><a href="../index.html">🏠 Arcade</a><div id="title">📐 Shape <b>Lab</b></div><span id="st"></span><button id="mB">Levels</button><button id="pB">⏸</button><button id="mu">🔊</button></div>
+<canvas id="c"></canvas><div id="q"></div><div id="opts"></div>
+<div id="ov"><div id="ovc"></div></div>
+<script>
+"use strict";
+const $=id=>document.getElementById(id),cv=$("c"),cx=cv.getContext("2d");
+let W=800,H=400,dpr=1;
+let save={stars:{},mute:false,best:{}};try{const s=JSON.parse(localStorage.getItem("shapeLabSave"));if(s)save=Object.assign(save,s)}catch(e){}
+function store(){try{localStorage.setItem("shapeLabSave",JSON.stringify(save))}catch(e){}}
+const LV=[
+{n:"Angle Types",t:"angType",k:6,tip:"Acute < 90°, right = 90°, obtuse 90°–180°, straight = 180°, reflex > 180°."},
+{n:"Estimate Angles",t:"angEst",k:6,tip:"Compare with a right angle (90°) and a straight line (180°)."},
+{n:"Read the Protractor",t:"prot",k:6,tip:"Start at 0° on the base line and count up to the second arm."},
+{n:"Build Angles",t:"build",k:5,tip:"Drag the yellow handle until the arm sits on the target angle, then press Check."},
+{n:"Rectangle Area",t:"rectA",k:6,tip:"Area = length × width (count the squares!)."},
+{n:"Rectangle Perimeter",t:"rectP",k:6,tip:"Perimeter = 2 × (length + width), the distance all the way around."},
+{n:"Triangle Area",t:"tri",k:6,tip:"Area = ½ × base × height. The height is the dashed line at a right angle to the base."},
+{n:"Circles",t:"circ",k:6,tip:"Circumference = 2πr, Area = πr². Use π ≈ 3.14. Diameter = 2r."},
+{n:"Mirror Symmetry",t:"symV",k:3,tip:"Tap squares to make the right side a mirror image of the left."},
+{n:"Flip It Over",t:"symH",k:3,tip:"Make the bottom half a mirror image of the top across the line."},
+{n:"Name the Polygon",t:"poly",k:7,tip:"Count the straight sides: 3 tri, 4 quad, 5 penta, 6 hexa, 7 hepta, 8 octa, 9 nona, 10 deca."},
+{n:"3D Shape Nets",t:"net",k:7,tip:"A net is a 3D shape unfolded flat. Count the faces and their shapes."},
+{n:"Faces, Edges, Vertices",t:"fev",k:6,tip:"Faces are flat surfaces, edges are where faces meet, vertices are corners."},
+{n:"Geometry Master",t:"mix",k:10,tip:"A bit of everything!"}];
+const S={screen:"menu",lv:0,qi:0,miss:0,paused:false,time:0,task:null,locked:false,flash:0,drag:false,msg:""};
+// ---------- audio
+let AC=null;function snd(f,d=.12,ty="sine",v=.15){if(save.mute)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=ty;o.frequency.value=f;g.gain.setValueAtTime(v,AC.currentTime);g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.connect(g).connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
+const good=()=>{snd(660,.1);setTimeout(()=>snd(880,.15),90)},bad=()=>snd(160,.25,"square",.08);
+function muteUI(){$("mu").textContent=save.mute?"🔇":"🔊"}
+// ---------- helpers
+const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1)),pick=a=>a[Math.floor(Math.random()*a.length)],shuf=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const fmt=x=>(Math.round(x*100)/100).toString();
+function numOpts(ans,cands,unit){const set=[ans];for(const c of cands){const v=Math.round(c*100)/100;if(v>0&&!set.includes(v))set.push(v);if(set.length>=4)break}let k=1;while(set.length<4){const v=Math.round((ans+k*(ans>20?5:1))*100)/100;if(!set.includes(v))set.push(v);k=k>0?-k:-k+1}return shuf(set).map(v=>({l:fmt(v)+(unit||""),ok:v===ans}))}
+const PN=["","","","Triangle","Quadrilateral","Pentagon","Hexagon","Heptagon","Octagon","Nonagon","Decagon"];
+const SOL={cube:{n:"Cube",F:6,E:12,V:8},cuboid:{n:"Rectangular prism",F:6,E:12,V:8},tprism:{n:"Triangular prism",F:5,E:9,V:6},spyr:{n:"Square pyramid",F:5,E:8,V:5},tet:{n:"Tetrahedron",F:4,E:6,V:4},cyl:{n:"Cylinder"},cone:{n:"Cone"}};
+function angName(a){return a<90?"Acute":a===90?"Right":a<180?"Obtuse":a===180?"Straight":"Reflex"}
+// ---------- task generation
+function makeTask(t){
+ if(t==="mix")t=pick(["angType","angEst","prot","rectA","rectP","tri","circ","poly","net","fev","build"]);
+ const T={t};
+ if(t==="angType"){const ty=pick(["Acute","Right","Obtuse","Straight","Reflex"]);T.a=ty==="Acute"?R(2,17)*5:ty==="Right"?90:ty==="Obtuse"?R(19,35)*5:ty==="Straight"?180:R(39,69)*5;T.rot=R(0,359);T.q="What type of angle is this?";T.opts=["Acute","Right","Obtuse","Straight","Reflex"].map(l=>({l,ok:l===ty}))}
+ else if(t==="angEst"){T.a=R(2,34)*5;T.rot=R(0,359);T.q="Estimate the size of this angle.";const o=[T.a];const c=shuf([-60,-45,-30,30,45,60,90]);for(const d of c){const v=T.a+d;if(v>0&&v<360&&o.every(x=>Math.abs(x-v)>=25))o.push(v);if(o.length===4)break}T.opts=shuf(o).map(v=>({l:v+"°",ok:v===T.a}))}
+ else if(t==="prot"){T.a=R(2,34)*5;T.rot=0;T.pro=true;T.q="Use the protractor: how big is the angle?";T.opts=numOpts(T.a,shuf([T.a+10,T.a-10,180-T.a,T.a+5,T.a-5]),"°")}
+ else if(t==="build"){T.target=R(3,33)*5;T.cur=pick([20,160,100]);T.pro=true;T.q="Drag the arm to make an angle of <b>"+T.target+"°</b>";T.opts=[{l:"✔ Check",check:true}]}
+ else if(t==="rectA"||t==="rectP"){T.w=R(2,11);T.h=R(2,7);const A=T.w*T.h,P=2*(T.w+T.h);if(t==="rectA"){T.q="What is the <b>area</b>? (each square = 1 cm²)";T.opts=numOpts(A,shuf([P,A+T.w,A-T.h,T.w+T.h,A+2]),"cm²")}else{T.q="What is the <b>perimeter</b>? (each square side = 1 cm)";T.opts=numOpts(P,shuf([A,T.w+T.h,P+2,P-2,P+4]),"cm")}}
+ else if(t==="tri"){T.b=R(2,6)*2;T.h=R(2,7);T.off=R(0,T.b);const A=T.b*T.h/2;T.q="What is the <b>area</b> of the triangle?";T.opts=numOpts(A,shuf([T.b*T.h,T.b+T.h,A+T.h,A-T.b/2,A+2]),"cm²")}
+ else if(t==="circ"){T.r=R(1,9);T.ask=pick(["area","circ"]);const A=3.14*T.r*T.r,C=2*3.14*T.r;T.q=T.ask==="area"?"Area of the circle? (π ≈ 3.14)":"Circumference of the circle? (π ≈ 3.14)";const ans=Math.round((T.ask==="area"?A:C)*100)/100;T.opts=numOpts(ans,shuf(T.ask==="area"?[C,3.14*T.r,3.14*4*T.r*T.r,A+3.14]:[A,3.14*T.r,4*3.14*T.r,C+3.14]),T.ask==="area"?" cm²":" cm")}
+ else if(t==="symV"||t==="symH"){T.N=8;T.cells=[];T.need=[];for(let i=0;i<64;i++){T.cells.push(0)}const half=[];for(let y=0;y<8;y++)for(let x=0;x<8;x++){const inA=t==="symV"?x<4:y<4;if(inA&&Math.random()<.38)T.cells[y*8+x]=1}
+  if(T.cells.every(v=>!v))T.cells[t==="symV"?3*8+2:2*8+3]=1;T.q=t==="symV"?"Tap squares to mirror the shape across the line":"Tap squares to mirror the top across the line";T.opts=[{l:"✔ Check",check:true},{l:"↺ Clear",clear:true}]}
+ else if(t==="poly"){T.n=R(3,10);T.reg=Math.random()<.5;T.rot=Math.random()*6.28;T.pts=[];const base=[];for(let i=0;i<T.n;i++)base.push((i+(T.reg?0:(Math.random()-.5)*.5))/T.n*6.283);for(let i=0;i<T.n;i++){const r=T.reg?1:.72+Math.random()*.28;T.pts.push([Math.cos(base[i]+T.rot)*r,Math.sin(base[i]+T.rot)*r])}T.q="Name this polygon"+(T.reg?" (regular)":"");const o=new Set([T.n]);while(o.size<4)o.add((o.size<3?Math.max(3,Math.min(10,T.n+pick([-2,-1,1,2]))):R(3,10)));T.opts=shuf([...o]).map(n=>({l:PN[n],ok:n===T.n}))}
+ else if(t==="net"){T.s=pick(Object.keys(SOL));T.q="This net folds into which 3D shape?";const ks=shuf(Object.keys(SOL).filter(k=>k!==T.s)).slice(0,3);ks.push(T.s);T.opts=shuf(ks).map(k=>({l:SOL[k].n,ok:k===T.s}))}
+ else if(t==="fev"){T.s=pick(["cube","cuboid","tprism","spyr","tet"]);T.p=pick(["F","E","V"]);const nm={F:"faces",E:"edges",V:"vertices (corners)"}[T.p];T.q="How many <b>"+nm+"</b> does a "+SOL[T.s].n.toLowerCase()+" have?";T.net=false;T.opts=numOpts(SOL[T.s][T.p],shuf([SOL[T.s].F,SOL[T.s].E,SOL[T.s].V,SOL[T.s][T.p]+1,SOL[T.s][T.p]-1,SOL[T.s][T.p]+2]),"")}
+ return T}
+// ---------- flow
+function startLevel(i){S.screen="play";S.lv=i;S.qi=0;S.miss=0;S.time=0;S.paused=false;$("ov").style.display="none";nextTask()}
+function nextTask(){S.task=makeTask(LV[S.lv].t);S.locked=false;S.msg="";renderUI()}
+function renderUI(){const T=S.task;$("q").innerHTML=T?T.q:"";const o=$("opts");o.innerHTML="";if(!T)return;T.opts.forEach((op,i)=>{const b=document.createElement("button");b.className="btn";b.textContent=op.l;b.dataset.i=i;b.onclick=()=>choose(i,b);o.appendChild(b)});hud()}
+function hud(){$("st").textContent=S.screen==="play"?`L${S.lv+1} • ${Math.min(S.qi+1,LV[S.lv].k)}/${LV[S.lv].k} • ❌${S.miss} • ${S.time.toFixed(0)}s`:"⭐ "+totalStars()+"/"+LV.length*3}
+function totalStars(){return Object.values(save.stars).reduce((a,b)=>a+b,0)}
+function right(b){S.locked=true;good();if(b)b.classList.add("good");S.flash=1;S.msg="✔ Correct!";setTimeout(()=>{S.qi++;if(S.qi>=LV[S.lv].k)finish();else nextTask()},650)}
+function wrong(b,txt){S.miss++;bad();if(b){b.classList.add("bad");b.disabled=true}S.msg=txt||"Not quite – "+LV[S.lv].tip;hud()}
+function choose(i,b){if(S.paused||S.locked||S.screen!=="play")return;const T=S.task,op=T.opts[i];
+ if(op.clear){if(T.t.startsWith("sym")){const hA=T.t==="symV";for(let y=0;y<8;y++)for(let x=0;x<8;x++)if(hA?x>=4:y>=4)T.cells[y*8+x]=0}return}
+ if(op.check){if(T.t==="build"){const d=Math.abs(T.cur-T.target);if(d<=3)right(b);else wrong(null,"Your angle is "+Math.round(T.cur)+"°. Try again!")}
+  else{const bad2=symWrong(T);if(!bad2.length)right(b);else{T.badCells=bad2;setTimeout(()=>{T.badCells=null},900);wrong(null,bad2.length+" square"+(bad2.length>1?"s are":" is")+" not mirrored yet.")}}return}
+ if(op.ok)right(b);else wrong(b)}
+function symWrong(T){const out=[];for(let y=0;y<8;y++)for(let x=0;x<8;x++){if(T.t==="symV"&&x>=4){if(T.cells[y*8+x]!==T.cells[y*8+(7-x)])out.push(y*8+x)}if(T.t==="symH"&&y>=4){if(T.cells[y*8+x]!==T.cells[(7-y)*8+x])out.push(y*8+x)}}return out}
+function finish(){const st=S.miss===0?3:S.miss<=2?2:1;const k=S.lv;save.stars[k]=Math.max(save.stars[k]||0,st);if(!save.best[k]||S.time<save.best[k])save.best[k]=Math.round(S.time);store();S.screen="done";snd(523,.12);setTimeout(()=>snd(659,.12),120);setTimeout(()=>snd(784,.25),240);
+ $("opts").innerHTML="";$("q").innerHTML="";showOv(`<h2>Level ${k+1} complete!</h2><div class="stars">${"★".repeat(st)}${"☆".repeat(3-st)}</div><p>${S.miss} mistake${S.miss===1?"":"s"} • ${Math.round(S.time)}s</p><p style="font-size:13px;opacity:.8">💡 ${LV[k].tip}</p>`+(k<LV.length-1?`<button class="btn" id="nx">Next level ▶</button> `:"")+`<button class="btn" id="again">↺ Replay</button> <button class="btn" id="lvl">Levels</button>`);
+ if($("nx"))$("nx").onclick=()=>startLevel(k+1);$("again").onclick=()=>startLevel(k);$("lvl").onclick=menu}
+function showOv(h){$("ovc").innerHTML=h;$("ov").style.display="flex"}
+function menu(){S.screen="menu";S.task=null;S.paused=false;$("opts").innerHTML="";$("q").innerHTML="";
+ showOv(`<h2 style="margin:4px">📐 Shape Lab</h2><div style="font-size:13px;margin-bottom:6px">Angles • Area & perimeter • Symmetry • Polygons • 3D nets &nbsp; ⭐ ${totalStars()}/${LV.length*3}</div>`+LV.map((l,i)=>`<span class="lv" data-i="${i}">${i+1}. ${l.n}<br><small>${"★".repeat(save.stars[i]||0)}${"☆".repeat(3-(save.stars[i]||0))}</small></span>`).join("")+`<p style="font-size:12px;opacity:.7">Keys: 1–5 answer • Enter check • P pause • R restart • M mute</p>`);
+ document.querySelectorAll(".lv").forEach(e=>e.onclick=()=>startLevel(+e.dataset.i));hud()}
+function pause(on){if(S.screen!=="play")return;S.paused=on===undefined?!S.paused:on;if(S.paused){showOv(`<h2>⏸ Paused</h2><button class="btn" id="rs">▶ Resume</button> <button class="btn" id="rt">↺ Restart level</button> <button class="btn" id="lv2">Levels</button>`);$("rs").onclick=()=>pause(false);$("rt").onclick=()=>startLevel(S.lv);$("lv2").onclick=menu}else $("ov").style.display="none"}
+// ---------- input
+function area(){const top=S.task&&S.task.q?78:50,bot=56;return{x:10,y:top-40,w:W-20,h:H-(top-40)-bot}}
+function angleGeom(){const a=area(),r=Math.min(a.w*.42,a.h*.88);return{vx:a.x+a.w/2-r*0.0,vy:a.y+a.h*.5+r*.42,r,cx:a.x+a.w/2,cy:a.y+a.h/2}}
+function symGeom(){const a=area(),c=Math.floor(Math.min(a.h/8,a.w/8));return{x:a.x+(a.w-c*8)/2,y:a.y+(a.h-c*8)/2,c}}
+function ptr(e){const r=cv.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
+cv.addEventListener("pointerdown",e=>{if(S.paused||S.screen!=="play"||S.locked)return;const[x,y]=ptr(e),T=S.task;
+ if(T.t==="build"){S.drag=true;setAng(x,y)}
+ if(T.t==="symV"||T.t==="symH"){const g=symGeom(),gx=Math.floor((x-g.x)/g.c),gy=Math.floor((y-g.y)/g.c);if(gx<0||gy<0||gx>7||gy>7)return;if(T.t==="symV"?gx<4:gy<4){S.msg="Draw on the other side of the line!";return}T.cells[gy*8+gx]^=1;snd(T.cells[gy*8+gx]?520:390,.06)}});
+cv.addEventListener("pointermove",e=>{if(S.drag&&!S.paused){const[x,y]=ptr(e);setAng(x,y)}});
+addEventListener("pointerup",()=>S.drag=false);addEventListener("pointercancel",()=>S.drag=false);
+function setAng(x,y){const g=angleGeom();let a=Math.atan2(g.vy-y,x-g.vx)*180/Math.PI;if(a<0)a=a<-90?180:0;S.task.cur=Math.max(0,Math.min(180,a))}
+addEventListener("keydown",e=>{const k=e.key.toLowerCase();if(k==="p"){pause();return}if(k==="m"){$("mu").click();return}if(k==="r"&&S.screen==="play"){startLevel(S.lv);return}if(k==="escape"){if(S.paused)pause(false);else if(S.screen==="play")pause(true);return}
+ if(S.screen!=="play"||S.paused)return;const T=S.task;if(k>="1"&&k<="9"){const i=+k-1;const b=$("opts").children[i];if(b&&!b.disabled)choose(i,b)}
+ if(k==="enter"){const i=T.opts.findIndex(o=>o.check);if(i>=0)choose(i,$("opts").children[i])}
+ if(T.t==="build"&&(k==="arrowleft"||k==="arrowright"||k==="arrowup"||k==="arrowdown")){T.cur=Math.max(0,Math.min(180,T.cur+((k==="arrowleft"||k==="arrowup")?1:-1)*(e.shiftKey?5:1)));e.preventDefault()}});
+$("pB").onclick=()=>pause();$("mB").onclick=menu;$("mu").onclick=()=>{save.mute=!save.mute;store();muteUI()};
+// ---------- drawing
+function resize(){dpr=window.devicePixelRatio||1;W=innerWidth;H=innerHeight-40;cv.width=W*dpr|0;cv.height=H*dpr|0;cv.style.width=W+"px";cv.style.height=H+"px";cx.setTransform(dpr,0,0,dpr,0,0)}
+addEventListener("resize",resize);
+function grid(x0,y0,c,cols,rows){cx.strokeStyle="#2b4d70";cx.lineWidth=1;cx.beginPath();for(let i=0;i<=cols;i++){cx.moveTo(x0+i*c,y0);cx.lineTo(x0+i*c,y0+rows*c)}for(let j=0;j<=rows;j++){cx.moveTo(x0,y0+j*c);cx.lineTo(x0+cols*c,y0+j*c)}cx.stroke()}
+function label(t,x,y,col="#ffd54a",sz=15){cx.font="bold "+sz+"px system-ui";cx.fillStyle="#0b1a2ecc";const w=cx.measureText(t).width;cx.fillRect(x-w/2-3,y-sz/2-3,w+6,sz+6);cx.fillStyle=col;cx.textAlign="center";cx.textBaseline="middle";cx.fillText(t,x,y)}
+function drawAngle(T){const g=angleGeom();let vx,vy,r=g.r;const deg=T.t==="build"?T.cur:T.a;const rot=(T.rot||0)*Math.PI/180;
+ if(T.pro){vx=g.vx;vy=g.vy;drawProt(vx,vy,r)}else{vx=g.cx;vy=g.cy;r=Math.min(g.r,area().h*.45)}
+ const a1=-rot,a2=-rot-deg*Math.PI/180;cx.lineCap="round";
+ cx.fillStyle="#5ee0c055";cx.beginPath();cx.moveTo(vx,vy);cx.arc(vx,vy,r*.22,a1,a2,true);cx.closePath();cx.fill();
+ cx.strokeStyle="#5ee0c0";cx.lineWidth=4;cx.beginPath();cx.moveTo(vx+Math.cos(a1)*r,vy+Math.sin(a1)*r);cx.lineTo(vx,vy);cx.lineTo(vx+Math.cos(a2)*r,vy+Math.sin(a2)*r);cx.stroke();
+ if(deg===90){cx.strokeStyle="#fff";cx.lineWidth=2;const s=r*.1;cx.beginPath();cx.moveTo(vx+Math.cos(a1)*s,vy+Math.sin(a1)*s);cx.lineTo(vx+Math.cos(a1)*s+Math.cos(a2)*s,vy+Math.sin(a1)*s+Math.sin(a2)*s);cx.lineTo(vx+Math.cos(a2)*s,vy+Math.sin(a2)*s);cx.stroke()}
+ cx.fillStyle="#fff";cx.beginPath();cx.arc(vx,vy,4,0,7);cx.fill();
+ if(T.t==="build"){cx.fillStyle="#ffd54a";cx.beginPath();cx.arc(vx+Math.cos(a2)*r,vy+Math.sin(a2)*r,13,0,7);cx.fill();cx.strokeStyle="#000";cx.lineWidth=2;cx.stroke();
+  cx.setLineDash([5,5]);cx.strokeStyle="#ffd54a88";cx.beginPath();const ta=-T.target*Math.PI/180;cx.moveTo(vx,vy);cx.lineTo(vx+Math.cos(ta)*r*.3,vy+Math.sin(ta)*r*.3);cx.stroke();cx.setLineDash([])}}
+function drawProt(vx,vy,r){cx.fillStyle="#ffffff14";cx.strokeStyle="#9fd";cx.lineWidth=1.5;cx.beginPath();cx.arc(vx,vy,r*1.02,Math.PI,0);cx.closePath();cx.fill();cx.stroke();
+ for(let d=0;d<=180;d++){const a=-d*Math.PI/180,l=d%10===0?r*.1:d%5===0?r*.065:r*.035;cx.strokeStyle=d%10===0?"#dff":"#9cc";cx.lineWidth=d%10===0?1.6:1;cx.beginPath();cx.moveTo(vx+Math.cos(a)*r*1.02,vy+Math.sin(a)*r*1.02);cx.lineTo(vx+Math.cos(a)*(r*1.02-l),vy+Math.sin(a)*(r*1.02-l));cx.stroke();
+  if(d%10===0){cx.fillStyle="#dff";cx.font=Math.max(9,r*.065)+"px system-ui";cx.textAlign="center";cx.textBaseline="middle";cx.fillText(d,vx+Math.cos(a)*r*.84,vy+Math.sin(a)*r*.84)}}}
+function drawRect(T){const a=area(),cols=T.w+2,rows=T.h+2,c=Math.floor(Math.min(a.w/cols,a.h/rows,40)),x0=a.x+(a.w-cols*c)/2,y0=a.y+(a.h-rows*c)/2;grid(x0,y0,c,cols,rows);
+ cx.fillStyle="#5ee0c044";cx.strokeStyle="#5ee0c0";cx.lineWidth=3;cx.fillRect(x0+c,y0+c,T.w*c,T.h*c);cx.strokeRect(x0+c,y0+c,T.w*c,T.h*c);label(T.w+" cm",x0+c+T.w*c/2,y0+c*.5);label(T.h+" cm",x0+c*(T.w+1.6),y0+c+T.h*c/2)}
+function drawTri(T){const a=area(),cols=T.b+2,rows=T.h+2,c=Math.floor(Math.min(a.w/cols,a.h/rows,40)),x0=a.x+(a.w-cols*c)/2,y0=a.y+(a.h-rows*c)/2;grid(x0,y0,c,cols,rows);
+ const bx=x0+c,by=y0+c*(T.h+1),ax=bx+T.off*c,ay=y0+c;cx.fillStyle="#5ee0c044";cx.strokeStyle="#5ee0c0";cx.lineWidth=3;cx.beginPath();cx.moveTo(bx,by);cx.lineTo(bx+T.b*c,by);cx.lineTo(ax,ay);cx.closePath();cx.fill();cx.stroke();
+ cx.setLineDash([6,5]);cx.strokeStyle="#ffd54a";cx.lineWidth=2;cx.beginPath();cx.moveTo(ax,ay);cx.lineTo(ax,by);cx.stroke();cx.setLineDash([]);cx.strokeRect(ax+(T.off===T.b?-10:0),by-10,10,10);
+ label("base "+T.b+" cm",bx+T.b*c/2,by+c*.5);label("h = "+T.h+" cm",ax+(T.off>T.b/2?-c*1.2:c*1.2),(ay+by)/2)}
+function drawCirc(T){const a=area(),r=Math.min(a.w,a.h)*.42,x=a.x+a.w/2,y=a.y+a.h/2;cx.fillStyle="#5ee0c033";cx.strokeStyle="#5ee0c0";cx.lineWidth=3;cx.beginPath();cx.arc(x,y,r,0,7);cx.fill();cx.stroke();cx.fillStyle="#fff";cx.beginPath();cx.arc(x,y,4,0,7);cx.fill();cx.strokeStyle="#ffd54a";cx.lineWidth=2.5;cx.beginPath();cx.moveTo(x,y);cx.lineTo(x+r,y);cx.stroke();label("r = "+T.r+" cm",x+r/2,y-14)}
+function drawSym(T){const g=symGeom();for(let y=0;y<8;y++)for(let x=0;x<8;x++){const v=T.cells[y*8+x],given=T.t==="symV"?x<4:y<4;cx.fillStyle=v?(given?"#5ee0c0":"#ffd54a"):(given?"#18324e":"#203f60");cx.fillRect(g.x+x*g.c+1,g.y+y*g.c+1,g.c-2,g.c-2);if(T.badCells&&T.badCells.includes(y*8+x)){cx.strokeStyle="#f55";cx.lineWidth=3;cx.strokeRect(g.x+x*g.c+3,g.y+y*g.c+3,g.c-6,g.c-6)}}
+ cx.strokeStyle="#f5f";cx.lineWidth=3;cx.setLineDash([8,6]);cx.beginPath();if(T.t==="symV"){cx.moveTo(g.x+4*g.c,g.y-8);cx.lineTo(g.x+4*g.c,g.y+8*g.c+8)}else{cx.moveTo(g.x-8,g.y+4*g.c);cx.lineTo(g.x+8*g.c+8,g.y+4*g.c)}cx.stroke();cx.setLineDash([])}
+function drawPoly(T){const a=area(),r=Math.min(a.w,a.h)*.44,x=a.x+a.w/2,y=a.y+a.h/2;cx.fillStyle="#5ee0c044";cx.strokeStyle="#5ee0c0";cx.lineWidth=3;cx.beginPath();T.pts.forEach((p,i)=>i?cx.lineTo(x+p[0]*r,y+p[1]*r):cx.moveTo(x+p[0]*r,y+p[1]*r));cx.closePath();cx.fill();cx.stroke();cx.fillStyle="#fff";T.pts.forEach(p=>{cx.beginPath();cx.arc(x+p[0]*r,y+p[1]*r,3.5,0,7);cx.fill()})}
+const S3=Math.sqrt(3)/2;
+function netShapes(s){// unit coords
+ const P=[];const rect=(x,y,w,h)=>P.push([[x,y],[x+w,y],[x+w,y+h],[x,y+h]]);
+ if(s==="cube"||s==="cuboid"){const L=s==="cube"?1:1.6,D=s==="cube"?1:1,h=s==="cube"?1:.55;let y=0;rect(h,y,L,h);y+=h;rect(h,y,L,D);rect(0,y,h,D);rect(h+L,y,h,D);y+=D;rect(h,y,L,h);y+=h;rect(h,y,L,D)}
+ else if(s==="tprism"){const w=1,l=1.5;for(let i=0;i<3;i++)rect(i*w,S3,w,l);P.push([[w,S3],[2*w,S3],[1.5*w,0]]);P.push([[w,S3+l],[2*w,S3+l],[1.5*w,S3*2+l]])}
+ else if(s==="spyr"){const t=1.1;rect(t,t,1,1);P.push([[t,t],[t+1,t],[t+.5,0]]);P.push([[t,t+1],[t+1,t+1],[t+.5,2*t+1]]);P.push([[t,t],[t,t+1],[0,t+.5]]);P.push([[t+1,t],[t+1,t+1],[2*t+1,t+.5]])}
+ else if(s==="tet"){const A=[0,2*S3],B=[2,2*S3],C=[1,0],ab=[1,2*S3],bc=[1.5,S3],ca=[.5,S3];P.push([A,ab,ca],[ab,B,bc],[ca,bc,C],[ab,bc,ca])}
+ else if(s==="cyl"){rect(0,.7,2.2,1.3);P.push({c:[1.1,.35],r:.35},{c:[1.1,2.35],r:.35})}
+ else if(s==="cone"){const cr=1.6*1.6/(2*Math.PI);P.push({sec:[0,0],r:1.6,a0:.05,a1:1.65});P.push({c:[(1.6+cr)*Math.cos(.85),(1.6+cr)*Math.sin(.85)],r:cr})}
+ return P}
+function drawNet(s){const P=netShapes(s);let mnx=1e9,mny=1e9,mxx=-1e9,mxy=-1e9;const ext=(x,y)=>{mnx=Math.min(mnx,x);mny=Math.min(mny,y);mxx=Math.max(mxx,x);mxy=Math.max(mxy,y)};
+ P.forEach(p=>{if(Array.isArray(p))p.forEach(q=>ext(q[0],q[1]));else if(p.sec){ext(0,0);for(let a=p.a0;a<=p.a1;a+=.05)ext(Math.cos(a)*p.r,Math.sin(a)*p.r)}else{ext(p.c[0]-p.r,p.c[1]-p.r);ext(p.c[0]+p.r,p.c[1]+p.r)}});
+ const a=area(),sc=Math.min(a.w*.8/(mxx-mnx),a.h*.92/(mxy-mny)),ox=a.x+a.w/2-(mnx+mxx)/2*sc,oy=a.y+a.h/2-(mny+mxy)/2*sc;
+ cx.lineWidth=2.5;cx.strokeStyle="#5ee0c0";P.forEach((p,i)=>{cx.fillStyle=["#5ee0c055","#4fb3e055","#e0c05e55"][i%3];cx.beginPath();if(Array.isArray(p)){p.forEach((q,j)=>j?cx.lineTo(ox+q[0]*sc,oy+q[1]*sc):cx.moveTo(ox+q[0]*sc,oy+q[1]*sc));cx.closePath()}else if(p.sec){cx.moveTo(ox,oy);cx.arc(ox,oy,p.r*sc,p.a0,p.a1);cx.closePath()}else cx.arc(ox+p.c[0]*sc,oy+p.c[1]*sc,p.r*sc,0,7);cx.fill();cx.stroke()})}
+function drawSolid(s){// simple wireframe 3D sketch
+ const a=area(),x=a.x+a.w/2,y=a.y+a.h/2,u=Math.min(a.w,a.h)*.28;cx.strokeStyle="#5ee0c0";cx.lineWidth=2.5;cx.fillStyle="#5ee0c022";const L=(p)=>{cx.beginPath();p.forEach((q,i)=>i?cx.lineTo(x+q[0]*u,y+q[1]*u):cx.moveTo(x+q[0]*u,y+q[1]*u));cx.closePath();cx.fill();cx.stroke()};
+ const dx=.5,dy=-.4;if(s==="cube"||s==="cuboid"){const w=s==="cube"?1:1.6,h=s==="cube"?1:.7,X=-w/2-.25,Y=-h/2+.2;L([[X,Y],[X+w,Y],[X+w,Y+h],[X,Y+h]]);L([[X,Y],[X+dx,Y+dy],[X+w+dx,Y+dy],[X+w,Y]]);L([[X+w,Y],[X+w+dx,Y+dy],[X+w+dx,Y+h+dy],[X+w,Y+h]])}
+ else if(s==="tprism"){const A=[-1,.6],B=[0,.6],C=[-.5,-.3],k=[1,-.3];L([A,B,C]);L([B,[B[0]+k[0],B[1]+k[1]],[C[0]+k[0],C[1]+k[1]],C]);}
+ else if(s==="spyr"){const A=[-1,.6],B=[.4,.6],C=[1,.2],D=[-.4,.2],T=[0,-1];L([A,B,T]);L([B,C,T]);cx.setLineDash([4,4]);L([A,D,T]);L([D,C,T]);cx.setLineDash([])}
+ else if(s==="tet"){const A=[-1,.7],B=[1,.7],C=[.2,.25],T=[0,-1];L([A,B,T]);L([B,C,T]);cx.setLineDash([4,4]);L([A,C,T]);cx.setLineDash([])}}
+let last=performance.now();
+function frame(now){const dt=Math.min(.1,(now-last)/1000);last=now;if(S.screen==="play"&&!S.paused){S.time+=dt;if(Math.floor(S.time*4)!==Math.floor((S.time-dt)*4))hud()}S.flash=Math.max(0,S.flash-dt*2);draw();requestAnimationFrame(frame)}
+function draw(){cx.clearRect(0,0,W,H);const g=cx.createLinearGradient(0,0,0,H);g.addColorStop(0,"#0f2540");g.addColorStop(1,"#081322");cx.fillStyle=g;cx.fillRect(0,0,W,H);
+ cx.strokeStyle="#ffffff08";for(let x=0;x<W;x+=24){cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,H);cx.stroke()}
+ const T=S.task;if(S.screen==="play"&&T){if(["angType","angEst","prot","build"].includes(T.t))drawAngle(T);else if(T.t.startsWith("rect"))drawRect(T);else if(T.t==="tri")drawTri(T);else if(T.t==="circ")drawCirc(T);else if(T.t.startsWith("sym"))drawSym(T);else if(T.t==="poly")drawPoly(T);else if(T.t==="net")drawNet(T.s);else if(T.t==="fev")drawSolid(T.s);
+  // progress dots
+  const k=LV[S.lv].k;for(let i=0;i<k;i++){cx.fillStyle=i<S.qi?"#5ee0c0":i===S.qi?"#ffd54a":"#ffffff33";cx.beginPath();cx.arc(W-14,52+i*12- (k*12)/2+H/2-52,4,0,7);cx.fill()}
+  if(S.msg){cx.font="13px system-ui";cx.textAlign="left";cx.textBaseline="bottom";cx.fillStyle=S.msg[0]==="✔"?"#8f6":"#fbb";wrapText(S.msg,12,H-54,Math.min(W*.4,330))}
+  if(S.flash){cx.fillStyle="rgba(100,255,160,"+S.flash*.15+")";cx.fillRect(0,0,W,H)}}
+ else{cx.font="bold 40px system-ui";cx.textAlign="center";cx.fillStyle="#5ee0c022";cx.fillText("△ ▢ ◯ ⬠",W/2,H/2)}}
+function wrapText(t,x,y,mw){const w=t.split(" ");let line="",lines=[];for(const s of w){if(cx.measureText(line+s).width>mw){lines.push(line);line=""}line+=s+" "}lines.push(line);lines.reverse().forEach((l,i)=>cx.fillText(l,x,y-i*16))}
+resize();muteUI();menu();requestAnimationFrame(frame);
+</script></body></html>

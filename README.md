@@ -26,6 +26,9 @@ Open `edu/index.html`. The lab includes the original eight, plus more games adde
 - World Landmarks
 - Sign Language ABC
 - Feelings Friends
+- Citizen Squad
+- Ancient China
+- First Aid Heroes
 
 Each game has Easy, Medium, and Hard, keeps a best score on this device, and links back to the Learning Lab home. That home links back to the arcade.
 

@@ -1,0 +1,25 @@
+.scene {
+  max-width: 460px;
+  margin: 0 auto 10px;
+}
+
+.scene svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  background: #d7ecff;
+}
+
+.senses-page .choices,
+.float-page .choices,
+.heat-page .choices {
+  grid-template-columns: 1fr;
+}
+
+.senses-page .choice,
+.float-page .choice,
+.heat-page .choice {
+  line-height: 1.3;
+}

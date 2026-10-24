@@ -1,0 +1,203 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>Ocean Zones</title>
+<style>
+:root{--bg:#0f1530;--card:#1b2350;--ink:#f4f6ff;--mut:#9aa6d8;--acc:#4dd2ff;--good:#3ddc84;--bad:#ff5c7a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:"Trebuchet MS",system-ui,sans-serif;background:radial-gradient(circle at 20% 0%,#2a3480,var(--bg) 60%);color:var(--ink);min-height:100vh;user-select:none;-webkit-user-select:none;overflow-x:hidden}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0008;position:sticky;top:0;z-index:5;backdrop-filter:blur(4px)}
+header a{color:var(--ink);text-decoration:none;background:#fff1;padding:6px 12px;border-radius:20px;font-weight:bold}
+header h1{font-size:20px;margin:0;flex:1;color:var(--acc);text-shadow:0 2px 0 #0006}
+.pill{background:#fff1;padding:5px 10px;border-radius:14px;font-size:14px}
+main{max-width:980px;margin:0 auto;padding:14px}
+.btn{font:inherit;font-weight:bold;border:0;border-radius:14px;padding:10px 16px;background:var(--acc);color:#111;cursor:pointer;box-shadow:0 4px 0 #0007;transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #0007}.btn.alt{background:#2c3770;color:var(--ink)}.btn.sel{outline:3px solid #fff}
+.btn:disabled{opacity:.4}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border-radius:18px;padding:14px;box-shadow:0 6px 18px #0005;border:2px solid #ffffff10}
+.tile{cursor:pointer;transition:transform .15s}.tile:hover{transform:translateY(-4px) rotate(-1deg)}
+.tile .em{font-size:40px}.tile h3{margin:6px 0}.tile p{margin:0;color:var(--mut);font-size:14px}
+.stars{color:#ffd34d;letter-spacing:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fb{min-height:28px;font-weight:bold;font-size:18px;margin:8px 0}
+.opt{display:block;width:100%;margin:6px 0;text-align:left;background:#2c3770;color:var(--ink)}
+.opt.ok{background:var(--good);color:#111}.opt.no{background:var(--bad)}
+.pop{animation:pop .35s}@keyframes pop{50%{transform:scale(1.12)}}
+.shake{animation:shk .35s}@keyframes shk{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:9}
+.bar{height:10px;background:#fff2;border-radius:6px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--acc);transition:width .3s}
+.fact{background:#ffd34d22;border-left:4px solid #ffd34d;padding:8px 12px;border-radius:8px;margin:8px 0}
+svg text{font-family:inherit}
+</style></head><body>
+<header><a href="./index.html">← Learning Lab</a><h1>Ocean Zones</h1><span class="pill" id="starTotal">⭐ 0</span><button class="btn alt" id="snd" style="padding:6px 10px">🔊</button></header>
+<main id="app"></main><canvas id="fx"></canvas>
+<script>
+// ---- shared helpers ----
+const $=s=>document.querySelector(s),app=$('#app');
+const SAVEKEY='oceanZonesSave';let SAVE=JSON.parse(localStorage.getItem(SAVEKEY)||'{}');SAVE.stars=SAVE.stars||{};SAVE.best=SAVE.best||{};
+function save(){localStorage.setItem(SAVEKEY,JSON.stringify(SAVE));$('#starTotal').textContent='⭐ '+Object.values(SAVE.stars).reduce((a,b)=>a+b,0)}
+let AC=null,muted=!!SAVE.muted;$('#snd').textContent=muted?'🔇':'🔊';
+$('#snd').onclick=()=>{muted=!muted;SAVE.muted=muted;save();$('#snd').textContent=muted?'🔇':'🔊'};
+function tone(f,d=.12,type='sine',v=.15,slide=0,delay=0){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.02)}catch(e){}}
+function noise(d=.4,v=.2,lp=800){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const n=AC.sampleRate*d,b=AC.createBuffer(1,n,AC.sampleRate),c=b.getChannelData(0);for(let i=0;i<n;i++)c[i]=(Math.random()*2-1)*(1-i/n);const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();f.type='lowpass';f.frequency.value=lp;g.gain.value=v;s.buffer=b;s.connect(f);f.connect(g);g.connect(AC.destination);s.start()}catch(e){}}
+const SFX={click:()=>tone(660,.05,'square',.06),good:()=>{tone(523,.1,'triangle');tone(784,.15,'triangle',.15,0,.08)},bad:()=>tone(200,.25,'sawtooth',.08,-80),
+win:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.15,0,i*.1)),pick:()=>tone(440,.06,'sine',.1,200),drop:()=>tone(330,.08,'sine',.12,-100)};
+// confetti
+const cv=$('#fx'),cx=cv.getContext('2d');let fxp=[];function rs(){cv.width=innerWidth;cv.height=innerHeight}rs();addEventListener('resize',rs);
+function confetti(x=innerWidth/2,y=innerHeight/3,n=60){for(let i=0;i<n;i++)fxp.push({x,y,vx:(Math.random()-.5)*10,vy:-Math.random()*9-2,c:`hsl(${Math.random()*360},90%,60%)`,l:90});}
+(function loop(){cx.clearRect(0,0,cv.width,cv.height);fxp=fxp.filter(p=>p.l-->0);for(const p of fxp){p.vy+=.3;p.x+=p.vx;p.y+=p.vy;cx.fillStyle=p.c;cx.fillRect(p.x,p.y,7,7)}requestAnimationFrame(loop)})();
+function flash(el,ok){el.classList.remove('pop','shake');void el.offsetWidth;el.classList.add(ok?'pop':'shake')}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function award(id,n){if((SAVE.stars[id]||0)<n)SAVE.stars[id]=n;save()}
+// generic timed quiz: qs=[{q,opts,a,fact}] ; a is correct string
+function runQuiz(id,title,qs,secs,back){let i=0,score=0,t=secs,timer;qs=shuffle(qs).slice(0,10);
+ function end(){clearInterval(timer);const st=score>=9?3:score>=7?2:score>=5?1:0;award(id,st);if(score>(SAVE.best[id]||0))SAVE.best[id]=score;save();if(st)SFX.win(),confetti();
+  app.innerHTML=`<div class="card" style="text-align:center"><h2>${title} — done!</h2><div style="font-size:48px" class="stars">${starStr(st)}</div><p>You got <b>${score}/${qs.length}</b>. Best: ${SAVE.best[id]}</p><div class="row" style="justify-content:center"><button class="btn" id="ag">Play again</button><button class="btn alt" id="bk">Back</button></div></div>`;$('#ag').onclick=()=>runQuiz(id,title,qs,secs,back);$('#bk').onclick=back}
+ function show(){if(i>=qs.length)return end();const q=qs[i];app.innerHTML=`<div class="card"><div class="row"><b style="flex:1">${title} · Q${i+1}/${qs.length}</b>${secs?`<span class="pill">⏱ <span id="tm">${t}</span>s</span>`:''}<span class="pill">✅ ${score}</span></div><div class="bar" style="margin:8px 0"><i style="width:${i/qs.length*100}%"></i></div>${q.svg||''}<h2>${q.q}</h2><div id="os"></div><div class="fb" id="fb"></div></div>`;
+  shuffle(q.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.innerHTML=o;b.onclick=()=>{if(b.parentNode.dataset.done)return;b.parentNode.dataset.done=1;const ok=o==q.a;if(ok){score++;SFX.good();confetti(innerWidth/2,innerHeight/2,20)}else SFX.bad();[...$('#os').children].forEach(x=>{if(x.innerHTML==q.a)x.classList.add('ok')});if(!ok)b.classList.add('no');flash(b,ok);$('#fb').innerHTML=(ok?'✅ Correct! ':'❌ Not quite. ')+(q.fact?`<div class="fact">💡 ${q.fact}</div>`:'');setTimeout(()=>{i++;show()},q.fact?2200:1100)};$('#os').appendChild(b)})}
+ if(secs)timer=setInterval(()=>{t--;const e=$('#tm');if(e)e.textContent=t;if(t<=5&&t>0)tone(880,.05);if(t<=0)end()},1000);show()}
+save();
+</script>
+<script>
+const ZONES=[
+{n:'Sunlight Zone',s:'Epipelagic',a:0,b:200,c1:[60,170,230],c2:[20,110,190],f:'Enough sunlight for plants and algae to photosynthesize. About 90% of all ocean life lives here!'},
+{n:'Twilight Zone',s:'Mesopelagic',a:200,b:1000,c1:[20,110,190],c2:[8,30,80],f:'Only faint blue light reaches here, not enough for plants. Many animals glow (bioluminescence).'},
+{n:'Midnight Zone',s:'Bathypelagic',a:1000,b:4000,c1:[8,30,80],c2:[3,6,22],f:'No sunlight at all! The only light comes from glowing animals. Water is about 4 °C.'},
+{n:'Abyss',s:'Abyssopelagic',a:4000,b:6000,c1:[3,6,22],c2:[2,3,12],f:'Near-freezing water (about 2–3 °C) and crushing pressure. Covers huge flat sea floors called abyssal plains.'},
+{n:'Hadal Zone (Trenches)',s:'Hadalpelagic',a:6000,b:11000,c1:[2,3,12],c2:[0,0,0],f:'The deepest trenches. The Challenger Deep in the Mariana Trench is about 10,935 m deep — deeper than Mount Everest is tall!'}];
+const ZH=1000,WORLD=ZH*5;
+function depthOf(y){const z=Math.min(4,Math.max(0,Math.floor(y/ZH))),Z=ZONES[z];return Z.a+(Z.b-Z.a)*Math.min(1,(y-z*ZH)/ZH)}
+function yOf(d){const z=ZONES.findIndex(Z=>d<=Z.b);const Z=ZONES[z<0?4:z];return (z<0?4:z)*ZH+(d-Z.a)/(Z.b-Z.a)*ZH}
+function tempAt(d){return d<200?24-d*.05:d<1000?14-(d-200)*.0125:d<4000?4-(d-1000)*.0005:d<6000?2.5-(d-4000)*.00025:2-(d-6000)*.0001}
+function lightAt(d){return Math.max(0,100*Math.exp(-d/45))}
+const SP=[
+{id:'turtle',n:'Green sea turtle',d:[5,120],sh:'turtle',c:'#5fbf6f',sz:34,f:'Green sea turtles can hold their breath for hours while resting, and they eat mostly seagrass and algae.'},
+{id:'dolphin',n:'Bottlenose dolphin',d:[5,150],sh:'dolphin',c:'#8ea6c4',sz:44,f:'Dolphins are mammals that breathe air. They find food with echolocation — clicks that bounce off objects.'},
+{id:'mantaray',n:'Manta ray',d:[10,180],sh:'ray',c:'#2d3a52',sz:50,f:'Giant manta rays can be 7 m wide and have one of the biggest brains of any fish.'},
+{id:'moonjelly',n:'Moon jellyfish',d:[0,190],sh:'jelly',c:'#d8e8ff',sz:24,f:'Jellyfish have no brain, heart or bones. They are about 95% water!'},
+{id:'whaleshark',n:'Whale shark',d:[20,190],sh:'fish',c:'#4a6a8a',sz:70,spots:1,f:'The biggest fish in the world (up to about 18 m), but it eats tiny plankton.'},
+{id:'lanternfish',n:'Lanternfish',d:[300,950],sh:'fish',c:'#7a8cb0',sz:16,glow:'#7fe8ff',f:'Lanternfish are among the most common fish on Earth. They swim up to the surface at night to feed — the biggest daily migration on the planet!'},
+{id:'hatchet',n:'Hatchetfish',d:[250,900],sh:'fish',c:'#c8d0e0',sz:16,glow:'#9fd8ff',f:'Hatchetfish have glowing belly lights that hide their shadow from predators looking up (counter-illumination).'},
+{id:'swordfish',n:'Swordfish',d:[200,600],sh:'sword',c:'#6c7fa6',sz:46,f:'Swordfish dive into the twilight zone to hunt and can warm their eyes and brain to see better in cold water.'},
+{id:'giantsquid',n:'Giant squid',d:[400,1000],sh:'squid',c:'#c0504a',sz:60,f:'Giant squid have the largest eyes in the animal kingdom — about the size of a dinner plate!'},
+{id:'vampire',n:'Vampire squid',d:[600,1200],sh:'octo',c:'#7a1f3a',sz:30,glow:'#6fd0ff',f:'Despite its name it eats "marine snow" — drifting bits of dead plankton. It lives about 600–1,200 m down, where oxygen is very low.'},
+{id:'angler',n:'Anglerfish',d:[1200,3500],sh:'angler',c:'#3a2c2c',sz:30,glow:'#b6ff6a',f:'Female anglerfish dangle a glowing lure full of bacteria to attract prey in the dark.'},
+{id:'gulper',n:'Gulper eel',d:[1500,3000],sh:'eel',c:'#222838',sz:50,glow:'#ff6ad0',f:'A gulper eel\'s huge mouth can swallow prey bigger than itself, like a pelican\'s pouch.'},
+{id:'spermwhale',n:'Sperm whale',d:[1000,2200],sh:'whale',c:'#555e70',sz:90,f:'Sperm whales dive over 1,000 m deep to hunt squid and can hold their breath for over an hour.'},
+{id:'dumbo',n:'Dumbo octopus',d:[4000,5800],sh:'octo',c:'#ff9db0',sz:26,ears:1,f:'Dumbo octopuses flap ear-like fins to "fly" through the water. Some live deeper than 7,000 m.'},
+{id:'tripod',n:'Tripod fish',d:[4100,5800],sh:'tripod',c:'#9aa0b0',sz:30,f:'Tripod fish stand on three long fins on the sea floor, facing the current, waiting for food to drift by.'},
+{id:'seapig',n:'Sea pig',d:[4200,5900],sh:'cuke',c:'#f0b0c0',sz:24,f:'Sea pigs are a kind of sea cucumber that walk on the sea floor on tube feet, eating mud for food.'},
+{id:'snailfish',n:'Hadal snailfish',d:[6500,8300],sh:'fish',c:'#f2d8e0',sz:22,f:'Snailfish are the deepest fish ever filmed — around 8,300 m down. Their soft, jelly-like bodies handle the pressure.'},
+{id:'amphipod',n:'Giant amphipod',d:[8000,10800],sh:'shrimp',c:'#f4f0e0',sz:22,f:'These shrimp-like scavengers live at the bottom of the Mariana Trench, nearly 11 km down.'},
+{id:'xeno',n:'Xenophyophore',d:[7000,10600],sh:'blob',c:'#d0b890',sz:22,f:'A giant single-celled living thing — as big as a softball! Found even in the deepest trenches.'}];
+const MIS=[
+{id:'m1',n:'Sunny start',need:['turtle','dolphin'],bat:60,desc:'Find a sea turtle and a dolphin in the Sunlight Zone.'},
+{id:'m2',n:'Gentle giant',need:['whaleshark','mantaray','moonjelly'],bat:70,desc:'Spot the whale shark, a manta ray and a moon jelly.'},
+{id:'m3',n:'Into the twilight',need:['lanternfish','hatchet'],bat:80,desc:'Dive below 200 m and find two glowing fish.'},
+{id:'m4',n:'Hunters of the dim',need:['swordfish','giantsquid'],bat:90,desc:'Find a swordfish and the legendary giant squid.'},
+{id:'m5',n:'Midnight glow',need:['angler','vampire'],bat:100,desc:'Find a vampire squid and an anglerfish down in the dark deep sea.'},
+{id:'m6',n:'Whale dive',need:['spermwhale','gulper'],bat:110,desc:'Follow a sperm whale on its deep hunt. Spot a gulper eel too.'},
+{id:'m7',n:'Abyssal plain',need:['dumbo','tripod','seapig'],bat:140,desc:'Explore the abyss floor creatures.'},
+{id:'m8',n:'Challenger Deep',need:['snailfish','amphipod','xeno'],bat:170,desc:'Reach the trenches below 6,000 m!'}];
+SAVE.journal=SAVE.journal||{};
+function menu(){const tot=MIS.length*3,got=MIS.reduce((a,m)=>a+(SAVE.stars[m.id]||0),0),jn=Object.keys(SAVE.journal).length;
+ app.innerHTML=`<div class="card" style="text-align:center"><div style="font-size:54px">🌊🚢🐙</div><h2 style="margin:4px">Ocean Zones</h2><p style="color:var(--mut)">Pilot your submarine from the sunny surface to the deepest trench on Earth. Discover real creatures and learn how pressure, light and temperature change.</p><div class="bar"><i style="width:${got/tot*100}%"></i></div><p><span class="stars">${got}/${tot} ★</span> · 📘 ${jn}/${SP.length} creatures</p></div>
+ <div class="grid" style="margin-top:12px"><div class="card tile" id="mM"><div class="em">🎯</div><h3>Missions</h3><p>${MIS.length} dives with battery limits.</p></div>
+ <div class="card tile" id="mF"><div class="em">🤿</div><h3>Free dive</h3><p>Explore all the way down. No battery limit.</p></div>
+ <div class="card tile" id="mJ"><div class="em">📘</div><h3>Field guide</h3><p>Zones & creatures you've found.</p></div>
+ <div class="card tile" id="mQ"><div class="em">❓</div><h3>Quiz</h3><p>${starStr(SAVE.stars.quiz||0)}</p></div>
+ <div class="card tile" id="mT"><div class="em">⏱️</div><h3>Timed quiz</h3><p>60 s! ${starStr(SAVE.stars.timed||0)}</p></div></div>`;
+ $('#mM').onclick=()=>{SFX.click();missions()};$('#mF').onclick=()=>{SFX.click();dive(null)};$('#mJ').onclick=()=>{SFX.click();guide()};$('#mQ').onclick=()=>{SFX.click();runQuiz('quiz','Ocean Quiz',QS,0,menu)};$('#mT').onclick=()=>{SFX.click();runQuiz('timed','Timed Quiz',QS,60,menu)}}
+function guide(){app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">📘 Field guide</h2><button class="btn alt" id="bk">Menu</button></div>${ZONES.map((Z,zi)=>`<h3 style="margin:14px 0 4px;color:rgb(${Z.c1})">${Z.n} <small style="color:var(--mut)">(${Z.s}) ${Z.a.toLocaleString()}–${Z.b.toLocaleString()} m</small></h3><div class="fact">${Z.f}</div><div class="grid">${SP.filter(s=>s.d[0]>=Z.a&&s.d[0]<Z.b).map(s=>SAVE.journal[s.id]?`<div class="card"><canvas data-s="${s.id}" width="160" height="80" style="width:100%"></canvas><b>${s.n}</b><p style="font-size:13px;color:var(--mut);margin:4px 0">${s.f}</p></div>`:`<div class="card" style="opacity:.5"><div style="font-size:40px;text-align:center">❔</div><b>Undiscovered</b><p style="font-size:13px;color:var(--mut)">Dive to ${s.d[0].toLocaleString()}–${s.d[1].toLocaleString()} m</p></div>`).join('')}</div>`).join('')}</div>`;
+ $('#bk').onclick=menu;document.querySelectorAll('canvas[data-s]').forEach(c=>{const g=c.getContext('2d'),s=SP.find(s=>s.id==c.dataset.s);g.fillStyle='#03122a';g.fillRect(0,0,160,80);drawSp(g,s,80,40,1,0,Math.min(1,50/s.sz),true)})}
+function missions(){app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">🎯 Missions</h2><button class="btn alt" id="bk">Menu</button></div><p style="color:var(--mut)">Save battery for more ★.</p><div class="grid" id="lg"></div></div>`;$('#bk').onclick=menu;
+ MIS.forEach((m,i)=>{const lock=i>0&&!SAVE.stars[MIS[i-1].id];const d=document.createElement('div');d.className='card tile';d.style.opacity=lock?.45:1;d.innerHTML=`<div class="em">${lock?'🔒':'🚢'}</div><h3>${i+1}. ${m.n}</h3><p>${m.desc}</p><div class="stars">${starStr(SAVE.stars[m.id]||0)}</div>`;d.onclick=()=>{if(lock){SFX.bad();flash(d,0);return}SFX.click();dive(m)};$('#lg').appendChild(d)})}
+function drawSp(g,s,x,y,dir,t,k=1,lit=true){g.save();g.translate(x,y);g.scale(dir*k,k);const z=s.sz,c=lit?s.c:'#0a1020';g.fillStyle=c;g.strokeStyle=c;
+ if(s.glow){g.shadowColor=s.glow;g.shadowBlur=18}
+ const fish=(w,h)=>{g.beginPath();g.ellipse(0,0,w,h,0,0,7);g.fill();g.beginPath();g.moveTo(-w*.8,0);g.lineTo(-w*1.4,-h*(1+.3*Math.sin(t*8)));g.lineTo(-w*1.4,h*(1+.3*Math.sin(t*8)));g.fill()};
+ const eye=(ex,ey,r=3)=>{g.shadowBlur=0;g.fillStyle='#fff';g.beginPath();g.arc(ex,ey,r,0,7);g.fill();g.fillStyle='#000';g.beginPath();g.arc(ex+1,ey,r*.5,0,7);g.fill()};
+ switch(s.sh){case'fish':fish(z,z*.4);if(s.spots&&lit){g.fillStyle='#fff8';for(let i=0;i<8;i++){g.beginPath();g.arc(-z*.6+i*z*.17,(i%3-1)*z*.12,2.5,0,7);g.fill()}}if(s.glow){g.fillStyle=s.glow;for(let i=0;i<4;i++){g.beginPath();g.arc(-z*.5+i*z*.3,z*.28,2,0,7);g.fill()}}eye(z*.6,-z*.1,Math.max(2,z*.1));break;
+  case'sword':fish(z*.7,z*.22);g.beginPath();g.moveTo(z*.6,-3);g.lineTo(z*1.6,0);g.lineTo(z*.6,3);g.fill();eye(z*.45,-4);break;
+  case'dolphin':fish(z,z*.3);g.beginPath();g.moveTo(-z*.1,-z*.25);g.lineTo(-z*.4,-z*.6);g.lineTo(-z*.4,-z*.2);g.fill();g.beginPath();g.ellipse(z*1.05,z*.05,z*.25,z*.1,0,0,7);g.fill();eye(z*.65,-z*.08);break;
+  case'whale':g.beginPath();g.roundRect?g.roundRect(-z,-z*.3,z*1.9,z*.6,z*.3):g.rect(-z,-z*.3,z*1.9,z*.6);g.fill();g.beginPath();g.moveTo(-z,0);g.lineTo(-z*1.5,-z*.3*(1+Math.sin(t*3)));g.lineTo(-z*1.5,z*.3*(1-Math.sin(t*3)));g.fill();eye(z*.5,0);break;
+  case'turtle':g.fillStyle=lit?'#8a6a3a':c;g.beginPath();g.ellipse(0,0,z*.7,z*.45,0,0,7);g.fill();g.fillStyle=c;g.beginPath();g.ellipse(z*.85,0,z*.25,z*.18,0,0,7);g.fill();[[-1,1],[1,1],[-1,-1],[1,-1]].forEach(([a,b])=>{g.beginPath();g.ellipse(a*z*.4,b*z*.5,z*.3,z*.1,b*a*(.5+Math.sin(t*4)*.3),0,7);g.fill()});eye(z*.95,-4);break;
+  case'ray':g.beginPath();g.moveTo(z*.6,0);g.quadraticCurveTo(0,-z*(1+Math.sin(t*3)*.2),-z*.5,0);g.quadraticCurveTo(0,z*(1+Math.sin(t*3)*.2),z*.6,0);g.fill();g.lineWidth=2;g.beginPath();g.moveTo(-z*.5,0);g.lineTo(-z*1.3,0);g.stroke();break;
+  case'jelly':g.globalAlpha=.8;g.beginPath();g.arc(0,0,z,Math.PI,0);g.fill();g.lineWidth=2;for(let i=-3;i<=3;i++){g.beginPath();g.moveTo(i*z*.28,0);g.quadraticCurveTo(i*z*.28+Math.sin(t*3+i)*6,z,i*z*.28,z*1.8);g.stroke()}g.globalAlpha=1;break;
+  case'squid':g.beginPath();g.ellipse(-z*.3,0,z*.7,z*.22,0,0,7);g.fill();g.beginPath();g.moveTo(-z,0);g.lineTo(-z*1.3,-z*.3);g.lineTo(-z*1.3,z*.3);g.fill();g.lineWidth=3;for(let i=-3;i<=3;i++){g.beginPath();g.moveTo(z*.35,i*3);g.quadraticCurveTo(z*.8,i*6+Math.sin(t*4+i)*6,z*1.3,i*8);g.stroke()}eye(z*.25,-4,5);break;
+  case'octo':g.beginPath();g.ellipse(0,-z*.2,z*.6,z*.55,0,0,7);g.fill();if(s.ears){g.beginPath();g.ellipse(-z*.6,-z*.5,z*.3,z*.15,-.6+Math.sin(t*5)*.4,0,7);g.ellipse(z*.6,-z*.5,z*.3,z*.15,.6-Math.sin(t*5)*.4,0,7);g.fill()}g.lineWidth=4;for(let i=-3;i<=3;i++){g.beginPath();g.moveTo(i*z*.15,z*.2);g.quadraticCurveTo(i*z*.3+Math.sin(t*3+i)*5,z*.7,i*z*.35,z);g.stroke()}if(s.glow){g.fillStyle=s.glow;g.beginPath();g.arc(-z*.3,-z*.5,3,0,7);g.arc(z*.3,-z*.5,3,0,7);g.fill()}eye(-z*.2,-z*.2);eye(z*.2,-z*.2);break;
+  case'angler':g.shadowBlur=0;g.beginPath();g.arc(0,0,z*.6,0,7);g.fill();g.beginPath();g.moveTo(-z*.5,0);g.lineTo(-z,-z*.4);g.lineTo(-z,z*.4);g.fill();g.fillStyle='#fff';for(let i=0;i<5;i++){g.beginPath();g.moveTo(z*.2+i*5,z*.2);g.lineTo(z*.22+i*5,z*.35);g.lineTo(z*.26+i*5,z*.2);g.fill()}g.strokeStyle=c;g.lineWidth=2;g.beginPath();g.moveTo(z*.1,-z*.5);g.quadraticCurveTo(z*.6,-z*1.2,z*.9,-z*.6);g.stroke();g.fillStyle=s.glow;g.shadowColor=s.glow;g.shadowBlur=25+Math.sin(t*5)*10;g.beginPath();g.arc(z*.9,-z*.6,5,0,7);g.fill();eye(z*.3,-z*.15,3);break;
+  case'eel':g.lineWidth=z*.12;g.shadowBlur=0;g.beginPath();g.moveTo(0,0);for(let i=0;i<=20;i++)g.lineTo(-i*z*.08,Math.sin(t*4+i*.5)*6);g.stroke();g.beginPath();g.moveTo(0,0);g.lineTo(z*.6,-z*.3);g.lineTo(z*.6,z*.35);g.fill();g.fillStyle=s.glow;g.shadowColor=s.glow;g.shadowBlur=20;g.beginPath();g.arc(-z*1.6,Math.sin(t*4+10)*6,4,0,7);g.fill();break;
+  case'tripod':fish(z*.7,z*.2);g.lineWidth=2;[[-z*.2,z*.15],[z*.2,z*.15],[-z*.7,0]].forEach(([a,b])=>{g.beginPath();g.moveTo(a,b);g.lineTo(a+z*.1,z*1.2);g.stroke()});eye(z*.45,-3);break;
+  case'cuke':g.beginPath();g.ellipse(0,0,z,z*.45,0,0,7);g.fill();g.lineWidth=2;for(let i=-2;i<=2;i++){g.beginPath();g.moveTo(i*z*.35,z*.4);g.lineTo(i*z*.35,z*.75);g.stroke();g.beginPath();g.moveTo(i*z*.3,-z*.4);g.lineTo(i*z*.3+Math.sin(t*2+i)*4,-z*.85);g.stroke()}break;
+  case'shrimp':for(let i=0;i<6;i++){g.beginPath();g.ellipse(-i*z*.22,Math.sin(i*.6)*z*.2,z*.25,z*.2,0,0,7);g.fill()}g.lineWidth=1.5;g.beginPath();g.moveTo(z*.2,0);g.lineTo(z*1.1,-z*.5+Math.sin(t*5)*3);g.stroke();break;
+  case'blob':for(let i=0;i<7;i++){g.beginPath();g.arc(Math.cos(i)*z*.5,Math.sin(i*1.7)*z*.4,z*.4,0,7);g.fill()}break}
+ g.restore()}
+let DV=null;
+function dive(m){const W=Math.min(940,innerWidth-28),Hh=Math.max(300,Math.min(520,innerHeight-230));
+ app.innerHTML=`<div class="card" style="padding:10px"><div class="row"><b style="flex:1">${m?'🎯 '+m.n:'🤿 Free dive'}</b><button class="btn alt" id="bk">Exit</button></div>
+ ${m?`<div class="row" id="need" style="margin:6px 0"></div>`:''}
+ <div style="position:relative"><canvas id="oc" style="width:100%;height:${Hh}px;border-radius:14px;touch-action:none;display:block"></canvas>
+ <div id="toast" style="position:absolute;left:8px;right:8px;bottom:8px;background:#000b;border-radius:12px;padding:8px 12px;font-size:14px;display:none"></div></div>
+ <div class="row" style="justify-content:center;margin-top:8px"><button class="btn alt" id="cl">◀</button><button class="btn alt" id="cu">▲</button><button class="btn alt" id="cd">▼</button><button class="btn alt" id="cr">▶</button><span style="color:var(--mut);font-size:13px">or hold/drag on the water · arrow keys</span></div></div>`;
+ const c=$('#oc'),dpr=Math.min(2,devicePixelRatio||1);c.width=W*dpr;c.height=Hh*dpr;const g=c.getContext('2d');g.scale(dpr,dpr);
+ const sub={x:W/2,y:40,vx:0,vy:0,dir:1};let bat=m?m.bat:Infinity,found=new Set(),done=false,ptr=null,keys={},maxD=0;
+ const pop=[];SP.forEach(s=>{const n=s.sz>60?1:s.sz>40?2:3;for(let i=0;i<n;i++)pop.push({s,x:Math.random()*W,y:yOf(s.d[0]+Math.random()*(s.d[1]-s.d[0])),vx:(Math.random()<.5?-1:1)*(.3+Math.random()*.6),ph:Math.random()*9})});
+ const snow=Array.from({length:70},()=>({x:Math.random()*W,y:Math.random()*Hh}));
+ const needUI=()=>{if(!m)return;$('#need').innerHTML=m.need.map(id=>{const s=SP.find(s=>s.id==id);return`<span class="pill" style="${found.has(id)?'background:var(--good);color:#111':''}">${found.has(id)?'✅':'🔍'} ${s.n}</span>`}).join('')+`<span class="pill">🔋 <b id="bt"></b></span>`};needUI();
+ const toast=(h)=>{const e=$('#toast');e.innerHTML=h;e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',5000)};
+ toast(m?m.desc+' Get close to a creature to scan it.':'Dive as deep as you like! Get close to creatures to scan them.');
+ $('#bk').onclick=()=>{done=true;m?missions():menu()};
+ const hold=(id,k)=>{const b=$('#'+id);b.onpointerdown=e=>{e.preventDefault();keys[k]=1};b.onpointerup=b.onpointerleave=b.onpointercancel=()=>keys[k]=0};hold('cl','l');hold('cr','r');hold('cu','u');hold('cd','d');
+ onkeydown=e=>{const k={ArrowLeft:'l',ArrowRight:'r',ArrowUp:'u',ArrowDown:'d',a:'l',d:'r',w:'u',s:'d'}[e.key];if(k){keys[k]=1;e.preventDefault()}};onkeyup=e=>{const k={ArrowLeft:'l',ArrowRight:'r',ArrowUp:'u',ArrowDown:'d',a:'l',d:'r',w:'u',s:'d'}[e.key];if(k)keys[k]=0};
+ const pp=e=>{const r=c.getBoundingClientRect();ptr={x:e.clientX-r.left,y:e.clientY-r.top}};c.onpointerdown=e=>{pp(e);c.setPointerCapture&&c.setPointerCapture(e.pointerId)};c.onpointermove=e=>{if(ptr)pp(e)};c.onpointerup=c.onpointercancel=()=>ptr=null;
+ let last=performance.now(),ping=0,lastZone=0;DV={sub,pop,found,get bat(){return bat}};
+ function finish(ok){done=true;const st=ok?(bat/m.bat>.5?3:bat/m.bat>.25?2:1):0;if(ok){award(m.id,st);SFX.win();confetti()}else SFX.bad();
+  setTimeout(()=>{if(!c.isConnected)return;app.innerHTML=`<div class="card" style="text-align:center"><h2>${ok?'🎉 Mission complete!':'🔋 Battery empty!'}</h2><div style="font-size:48px" class="stars">${starStr(st)}</div><p>${ok?`Battery left: ${Math.round(bat)} s. Deepest point: ${Math.round(maxD).toLocaleString()} m.`:'Your sub was hauled back to the surface. Try a more direct route!'}</p><div class="row" style="justify-content:center"><button class="btn" id="ag">${ok?'Replay':'Try again'}</button><button class="btn alt" id="bk2">Missions</button></div></div>`;$('#ag').onclick=()=>dive(m);$('#bk2').onclick=missions},ok?900:300)}
+ (function loop(now){if(done||!c.isConnected)return;const dt=Math.min(.05,(now-last)/1000);last=now;const t=now/1000;
+  let ax=(keys.r?1:0)-(keys.l?1:0),ay=(keys.d?1:0)-(keys.u?1:0);const camY=Math.max(0,Math.min(WORLD-Hh,sub.y-Hh/2));
+  if(ptr){const dx=ptr.x-sub.x,dy=ptr.y-(sub.y-camY),L=Math.hypot(dx,dy);if(L>12){ax=dx/L;ay=dy/L}}
+  const sp=260;sub.vx+=(ax*sp-sub.vx)*dt*3;sub.vy+=(ay*sp-sub.vy)*dt*3;sub.x=Math.max(30,Math.min(W-30,sub.x+sub.vx*dt));sub.y=Math.max(20,Math.min(WORLD-30,sub.y+sub.vy*dt));if(Math.abs(sub.vx)>10)sub.dir=Math.sign(sub.vx);
+  const d=depthOf(sub.y);maxD=Math.max(maxD,d);const z=Math.min(4,Math.floor(sub.y/ZH));if(z!=lastZone){lastZone=z;tone(220+z*-30,.6,'sine',.12);toast(`<b>Entering the ${ZONES[z].n}</b> — ${ZONES[z].f}`)}
+  if(m){bat-=dt;const be=$('#bt');if(be)be.textContent=Math.max(0,Math.ceil(bat))+'s';if(bat<=0)return finish(false)}
+  // bg gradient for visible part
+  const cy=camY;const grd=g.createLinearGradient(0,0,0,Hh);for(let k=0;k<=4;k++){const yy=cy+k*Hh/4,zz=Math.min(4,Math.floor(yy/ZH)),fr=(yy-zz*ZH)/ZH,Z=ZONES[zz];const col=Z.c1.map((v,j)=>Math.round(v+(Z.c2[j]-v)*fr));grd.addColorStop(k/4,`rgb(${col})`)}g.fillStyle=grd;g.fillRect(0,0,W,Hh);
+  if(cy<10){g.fillStyle='#bfe8ff';g.fillRect(0,0,W,4-cy)}
+  if(d<250){g.globalAlpha=Math.max(0,.25-d/1000);g.fillStyle='#fff';for(let i=0;i<6;i++){g.beginPath();const x=(i*170+t*20)%(W+200)-100;g.moveTo(x,-cy);g.lineTo(x+60,-cy);g.lineTo(x+200,Hh);g.lineTo(x+120,Hh);g.fill()}g.globalAlpha=1}
+  g.fillStyle='#ffffff30';snow.forEach(p=>{p.y-=dt*(sub.vy*.3-8);p.y=(p.y+Hh)%Hh;g.fillRect(p.x,p.y,2,2)});
+  if(sub.y>WORLD-Hh){const fy=WORLD-cy;g.fillStyle='#1a1410';g.beginPath();g.moveTo(0,fy-10);for(let x=0;x<=W;x+=40)g.lineTo(x,fy-14-Math.sin(x*.05)*8);g.lineTo(W,Hh);g.lineTo(0,Hh);g.fill()}
+  // zone label lines
+  for(let k=1;k<5;k++){const ly=k*ZH-cy;if(ly>0&&ly<Hh){g.setLineDash([6,6]);g.strokeStyle='#ffffff40';g.beginPath();g.moveTo(0,ly);g.lineTo(W,ly);g.stroke();g.setLineDash([]);g.fillStyle='#ffffffa0';g.font='bold 13px Trebuchet MS';g.textAlign='left';g.fillText(`${ZONES[k].n} · ${ZONES[k].a.toLocaleString()} m`,8,ly-6)}}
+  const amb=lightAt(d)/100;
+  // headlight
+  const sy=sub.y-cy;g.save();g.globalCompositeOperation='lighter';const hl=g.createRadialGradient(sub.x+sub.dir*30,sy,10,sub.x+sub.dir*120,sy,170);hl.addColorStop(0,'#fff6c040');hl.addColorStop(1,'#fff6c000');g.fillStyle=hl;g.beginPath();g.moveTo(sub.x+sub.dir*30,sy);g.lineTo(sub.x+sub.dir*300,sy-110);g.lineTo(sub.x+sub.dir*300,sy+110);g.fill();g.restore();
+  pop.forEach(p=>{p.x+=p.vx*dt*30;if(p.x<-80)p.x=W+80;if(p.x>W+80)p.x=-80;const py=p.y-cy+Math.sin(t+p.ph)*6;if(py<-120||py>Hh+120)return;
+   const dx=p.x-sub.x,dy=p.y-sub.y,dist=Math.hypot(dx,dy),inBeam=Math.sign(dx)==sub.dir&&Math.abs(dy)<Math.abs(dx)*.4+30&&dist<300;const lit=amb>.15||inBeam||dist<90;
+   drawSp(g,p.s,p.x,py,Math.sign(p.vx),t+p.ph,1,lit);
+   if(dist<90+p.s.sz*.5&&!found.has(p.s.id)){found.add(p.s.id);const nw=!SAVE.journal[p.s.id];SAVE.journal[p.s.id]=1;save();SFX.good();ping=1;confetti(p.x+c.getBoundingClientRect().left,py+c.getBoundingClientRect().top,nw?30:10);
+    toast(`📸 <b>${p.s.name||p.s.n}</b>${nw?' — NEW in your field guide!':''} <i>(${p.s.d[0].toLocaleString()}–${p.s.d[1].toLocaleString()} m)</i><br>${p.s.f}`);needUI();if(m&&m.need.every(id=>found.has(id)))finish(true)}});
+  // sub
+  g.save();g.translate(sub.x,sy);g.scale(sub.dir,1);g.rotate(Math.max(-.3,Math.min(.3,sub.vy/900)));g.fillStyle='#ffc23d';g.beginPath();g.ellipse(0,0,34,17,0,0,7);g.fill();g.fillStyle='#e0a020';g.fillRect(-8,-26,20,12);g.fillStyle='#9fe4ff';g.beginPath();g.arc(14,-3,8,0,7);g.fill();g.strokeStyle='#7a5a10';g.lineWidth=3;g.beginPath();g.arc(14,-3,8,0,7);g.stroke();
+   g.save();g.translate(-36,0);g.rotate(t*20);g.fillStyle='#7a5a10';g.fillRect(-2,-9,4,18);g.restore();g.restore();
+  if(ping>0){g.strokeStyle=`rgba(120,255,200,${ping})`;g.lineWidth=2;g.beginPath();g.arc(sub.x,sy,(1-ping)*120+20,0,7);g.stroke();ping-=dt*1.5}
+  // HUD
+  const P=1+d/10,T=tempAt(d),Lp=lightAt(d);g.fillStyle='#000a';g.fillRect(W-178,8,170,92);g.fillStyle='#fff';g.font='bold 14px Trebuchet MS';g.textAlign='left';
+  g.fillText(`⬇ ${Math.round(d).toLocaleString()} m`,W-168,28);g.fillText(`🗜 ${P.toFixed(0)} atm pressure`,W-168,47);g.fillText(`🌡 ${T.toFixed(1)} °C`,W-168,66);g.fillText(`☀ light ${Lp<.01?'none':Lp<1?'<1%':Lp.toFixed(0)+'%'}`,W-168,85);
+  g.fillStyle='#000a';g.fillRect(8,8,14,Hh-16);ZONES.forEach((Z,k)=>{g.fillStyle=`rgb(${Z.c1})`;g.fillRect(10,10+k*(Hh-20)/5,10,(Hh-20)/5)});g.fillStyle='#ffc23d';g.fillRect(6,10+sub.y/WORLD*(Hh-20)-3,18,6);
+  requestAnimationFrame(loop)})(last)}
+const QS=[
+{q:'Which ocean zone gets enough sunlight for plants to grow?',opts:['Sunlight Zone','Twilight Zone','Midnight Zone','Abyss'],a:'Sunlight Zone'},
+{q:'About how deep does the Sunlight Zone go?',opts:['200 m','20 m','2,000 m','11,000 m'],a:'200 m'},
+{q:'Below about what depth is there no sunlight at all?',opts:['1,000 m','50 m','200 m','10 m'],a:'1,000 m'},
+{q:'Water pressure goes up by about 1 atmosphere every…',opts:['10 m','100 m','1 m','1,000 m'],a:'10 m',fact:'At 4,000 m the pressure is about 400 times what you feel at the surface!'},
+{q:'What is the deepest known point in the ocean?',opts:['Challenger Deep','Grand Canyon','Great Barrier Reef','Dead Sea'],a:'Challenger Deep',fact:'It is in the Mariana Trench in the Pacific, about 10,935 m deep.'},
+{q:'Animals making their own light is called…',opts:['Bioluminescence','Photosynthesis','Echolocation','Migration'],a:'Bioluminescence'},
+{q:'How does an anglerfish catch prey?',opts:['A glowing lure','Speed','Electric shocks','Spitting water'],a:'A glowing lure'},
+{q:'What is the water temperature like in the Midnight Zone?',opts:['About 4 °C','About 25 °C','Boiling','Below −20 °C'],a:'About 4 °C'},
+{q:'What does a whale shark eat?',opts:['Tiny plankton','Whales','Seals','Sharks'],a:'Tiny plankton'},
+{q:'Which animal has the largest eyes in the animal kingdom?',opts:['Giant squid','Blue whale','Owl','Anglerfish'],a:'Giant squid'},
+{q:'What is the ocean zone in deep trenches called?',opts:['Hadal zone','Coral zone','Tidal zone','Arctic zone'],a:'Hadal zone'},
+{q:'Lanternfish swim up toward the surface at…',opts:['Night','Noon','Only in winter','Never'],a:'Night',fact:'This daily vertical migration is the largest animal migration on Earth.'},
+{q:'Which animal is a mammal that must breathe air?',opts:['Sperm whale','Anglerfish','Lanternfish','Gulper eel'],a:'Sperm whale'},
+{q:'What do sea pigs (a kind of sea cucumber) eat?',opts:['Food in the mud of the sea floor','Fish','Seaweed at the surface','Coral'],a:'Food in the mud of the sea floor'},
+{q:'Why are many deep-sea animals red or black?',opts:['Those colors look invisible without red light','To stay warm','Because of pressure','They are sunburned'],a:'Those colors look invisible without red light',fact:'Red light is absorbed first in water, so red animals look black in the deep.'}];
+menu();
+</script></body></html>

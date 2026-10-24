@@ -436,6 +436,15 @@ h1 span{color:#ff6b6b}
 .org{background:#120a28}
 .org i{position:absolute;left:16%;top:32%;width:26px;height:26px;border-radius:50%;background:#5fb3ff;box-shadow:40px 10px 0 4px #ffd23f}
 .org b{position:absolute;right:16%;top:24%;width:3px;height:16px;background:#eee}
+.scn{background:#0c4a6e}
+.scn i{position:absolute;left:10%;top:62%;width:80%;height:12px;background:#38bdf8;border-radius:2px}
+.scn b{position:absolute;left:24%;top:42%;width:34px;height:12px;background:#dc2626;border-radius:2px 8px 2px 2px;box-shadow:0 -7px 0 #a16207}
+.grn{background:#1a1030}
+.grn i{position:absolute;left:16%;top:34%;width:46%;height:3px;background:#ffcf6e;transform:rotate(22deg)}
+.grn b{position:absolute;left:56%;top:48%;width:12px;height:20px;background:#ff5d73;border-radius:3px}
+.kkr{background:#141826}
+.kkr i{position:absolute;left:30%;top:28%;width:18px;height:18px;background:#eef2ff;box-shadow:22px 0 0 #2a3148,0 22px 0 #2a3148,22px 22px 0 #eef2ff}
+.kkr b{position:absolute;left:52%;top:32%;width:10px;height:10px;background:#ffd166}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -501,7 +510,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">One hundred eight browser games. Best scores stay on this device.</p>
+<p class="lede">One hundred eleven browser games. Best scores stay on this device.</p>
 <p class="edu-link"><a href="./edu/index.html">Learning Lab · educational games</a></p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
@@ -959,6 +968,18 @@ a.card[hidden]{display:none}
 <a class="card" href="./orbitgolf.html" data-cat="Sports" data-key="arcade-orbit-best" data-name="Orbit Golf">
 <div class="thumb org" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Sports</p><h2>Orbit Golf</h2><p>Bend shots around planets across 32 holes. Best is your total stars.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./seacannons.html" data-cat="Action" data-key="arcade-sea-best" data-name="Sea Cannons">
+<div class="thumb scn" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Action</p><h2>Sea Cannons</h2><p>Pirate battles: hoist the sails and fire the broadsides.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./grapple.html" data-cat="Action" data-key="arcade-grapple-best" data-name="Grapple Ninja">
+<div class="thumb grn" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Action</p><h2>Grapple Ninja</h2><p>Swing the hook over spikes and lava, and grab the shuriken.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./kakuro.html" data-cat="Puzzle" data-key="arcade-kakuro-best" data-name="Kakuro">
+<div class="thumb kkr" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Puzzle</p><h2>Kakuro</h2><p>Fill each run so the digits add up to its clue.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

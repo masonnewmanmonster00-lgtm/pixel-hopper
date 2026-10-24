@@ -1,0 +1,154 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>Circuit Builder</title>
+<style>
+:root{--bg:#0f1530;--card:#1b2350;--ink:#f4f6ff;--mut:#9aa6d8;--acc:#ffd34d;--good:#3ddc84;--bad:#ff5c7a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:"Trebuchet MS",system-ui,sans-serif;background:radial-gradient(circle at 20% 0%,#2a3480,var(--bg) 60%);color:var(--ink);min-height:100vh;user-select:none;-webkit-user-select:none;overflow-x:hidden}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0008;position:sticky;top:0;z-index:5;backdrop-filter:blur(4px)}
+header a{color:var(--ink);text-decoration:none;background:#fff1;padding:6px 12px;border-radius:20px;font-weight:bold}
+header h1{font-size:20px;margin:0;flex:1;color:var(--acc);text-shadow:0 2px 0 #0006}
+.pill{background:#fff1;padding:5px 10px;border-radius:14px;font-size:14px}
+main{max-width:980px;margin:0 auto;padding:14px}
+.btn{font:inherit;font-weight:bold;border:0;border-radius:14px;padding:10px 16px;background:var(--acc);color:#111;cursor:pointer;box-shadow:0 4px 0 #0007;transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #0007}.btn.alt{background:#2c3770;color:var(--ink)}.btn.sel{outline:3px solid #fff}
+.btn:disabled{opacity:.4}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border-radius:18px;padding:14px;box-shadow:0 6px 18px #0005;border:2px solid #ffffff10}
+.tile{cursor:pointer;transition:transform .15s}.tile:hover{transform:translateY(-4px) rotate(-1deg)}
+.tile .em{font-size:40px}.tile h3{margin:6px 0}.tile p{margin:0;color:var(--mut);font-size:14px}
+.stars{color:#ffd34d;letter-spacing:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fb{min-height:28px;font-weight:bold;font-size:18px;margin:8px 0}
+.opt{display:block;width:100%;margin:6px 0;text-align:left;background:#2c3770;color:var(--ink)}
+.opt.ok{background:var(--good);color:#111}.opt.no{background:var(--bad)}
+.pop{animation:pop .35s}@keyframes pop{50%{transform:scale(1.12)}}
+.shake{animation:shk .35s}@keyframes shk{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:9}
+.bar{height:10px;background:#fff2;border-radius:6px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--acc);transition:width .3s}
+.fact{background:#ffd34d22;border-left:4px solid #ffd34d;padding:8px 12px;border-radius:8px;margin:8px 0}
+svg text{font-family:inherit}
+</style></head><body>
+<header><a href="./index.html">← Learning Lab</a><h1>Circuit Builder</h1><span class="pill" id="starTotal">⭐ 0</span><button class="btn alt" id="snd" style="padding:6px 10px">🔊</button></header>
+<main id="app"></main><canvas id="fx"></canvas>
+<script>
+// ---- shared helpers ----
+const $=s=>document.querySelector(s),app=$('#app');
+const SAVEKEY='__KEY__';let SAVE=JSON.parse(localStorage.getItem(SAVEKEY)||'{}');SAVE.stars=SAVE.stars||{};SAVE.best=SAVE.best||{};
+function save(){localStorage.setItem(SAVEKEY,JSON.stringify(SAVE));$('#starTotal').textContent='⭐ '+Object.values(SAVE.stars).reduce((a,b)=>a+b,0)}
+let AC=null,muted=!!SAVE.muted;$('#snd').textContent=muted?'🔇':'🔊';
+$('#snd').onclick=()=>{muted=!muted;SAVE.muted=muted;save();$('#snd').textContent=muted?'🔇':'🔊'};
+function tone(f,d=.12,type='sine',v=.15,slide=0,delay=0){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.02)}catch(e){}}
+function noise(d=.4,v=.2,lp=800){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const n=AC.sampleRate*d,b=AC.createBuffer(1,n,AC.sampleRate),c=b.getChannelData(0);for(let i=0;i<n;i++)c[i]=(Math.random()*2-1)*(1-i/n);const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();f.type='lowpass';f.frequency.value=lp;g.gain.value=v;s.buffer=b;s.connect(f);f.connect(g);g.connect(AC.destination);s.start()}catch(e){}}
+const SFX={click:()=>tone(660,.05,'square',.06),good:()=>{tone(523,.1,'triangle');tone(784,.15,'triangle',.15,0,.08)},bad:()=>tone(200,.25,'sawtooth',.08,-80),
+win:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.15,0,i*.1)),pick:()=>tone(440,.06,'sine',.1,200),drop:()=>tone(330,.08,'sine',.12,-100)};
+// confetti
+const cv=$('#fx'),cx=cv.getContext('2d');let fxp=[];function rs(){cv.width=innerWidth;cv.height=innerHeight}rs();addEventListener('resize',rs);
+function confetti(x=innerWidth/2,y=innerHeight/3,n=60){for(let i=0;i<n;i++)fxp.push({x,y,vx:(Math.random()-.5)*10,vy:-Math.random()*9-2,c:`hsl(${Math.random()*360},90%,60%)`,l:90});}
+(function loop(){cx.clearRect(0,0,cv.width,cv.height);fxp=fxp.filter(p=>p.l-->0);for(const p of fxp){p.vy+=.3;p.x+=p.vx;p.y+=p.vy;cx.fillStyle=p.c;cx.fillRect(p.x,p.y,7,7)}requestAnimationFrame(loop)})();
+function flash(el,ok){el.classList.remove('pop','shake');void el.offsetWidth;el.classList.add(ok?'pop':'shake')}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function award(id,n){if((SAVE.stars[id]||0)<n)SAVE.stars[id]=n;save()}
+// generic timed quiz: qs=[{q,opts,a,fact}] ; a is correct string
+function runQuiz(id,title,qs,secs,back){let i=0,score=0,t=secs,timer;qs=shuffle(qs).slice(0,10);
+ function end(){clearInterval(timer);const st=score>=9?3:score>=7?2:score>=5?1:0;award(id,st);if(score>(SAVE.best[id]||0))SAVE.best[id]=score;save();if(st)SFX.win(),confetti();
+  app.innerHTML=`<div class="card" style="text-align:center"><h2>${title} — done!</h2><div style="font-size:48px" class="stars">${starStr(st)}</div><p>You got <b>${score}/${qs.length}</b>. Best: ${SAVE.best[id]}</p><div class="row" style="justify-content:center"><button class="btn" id="ag">Play again</button><button class="btn alt" id="bk">Back</button></div></div>`;$('#ag').onclick=()=>runQuiz(id,title,qs,secs,back);$('#bk').onclick=back}
+ function show(){if(i>=qs.length)return end();const q=qs[i];app.innerHTML=`<div class="card"><div class="row"><b style="flex:1">${title} · Q${i+1}/${qs.length}</b>${secs?`<span class="pill">⏱ <span id="tm">${t}</span>s</span>`:''}<span class="pill">✅ ${score}</span></div><div class="bar" style="margin:8px 0"><i style="width:${i/qs.length*100}%"></i></div>${q.svg||''}<h2>${q.q}</h2><div id="os"></div><div class="fb" id="fb"></div></div>`;
+  shuffle(q.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.innerHTML=o;b.onclick=()=>{if(b.parentNode.dataset.done)return;b.parentNode.dataset.done=1;const ok=o==q.a;if(ok){score++;SFX.good();confetti(innerWidth/2,innerHeight/2,20)}else SFX.bad();[...$('#os').children].forEach(x=>{if(x.innerHTML==q.a)x.classList.add('ok')});if(!ok)b.classList.add('no');flash(b,ok);$('#fb').innerHTML=(ok?'✅ Correct! ':'❌ Not quite. ')+(q.fact?`<div class="fact">💡 ${q.fact}</div>`:'');setTimeout(()=>{i++;show()},q.fact?2200:1100)};$('#os').appendChild(b)})}
+ if(secs)timer=setInterval(()=>{t--;const e=$('#tm');if(e)e.textContent=t;if(t<=5&&t>0)tone(880,.05);if(t<=0)end()},1000);show()}
+save();
+</script>
+<script>
+const CS=72;let tool='wire';
+const LV=[
+{n:'First Light',w:3,h:2,fix:{'v:0:0':'bat','v:2:0':'bulb'},inv:{wire:4},goal:'all',par:4,learn:'Electricity flows in a <b>closed loop</b> called a circuit: out of the battery, through the bulb, and back. Tap the empty gaps to add wires and close the loop!',fact:'Electric current is a flow of tiny particles called electrons.'},
+{n:'Bulb Builder',w:3,h:3,fix:{'v:0:0':'bat'},inv:{wire:5,bulb:1},goal:'all',par:3,learn:'Now place the bulb yourself. Any closed loop through the bulb and battery will light it.',fact:'Thomas Edison\'s team made a long-lasting light bulb in 1879. Today LED bulbs use far less energy.'},
+{n:'Flip the Switch',w:4,h:2,fix:{'v:0:0':'bat','v:3:0':'bulb'},inv:{wire:5,sw:1},goal:'switch',par:6,learn:'A <b>switch</b> opens a gap in the circuit. Open = gap = no flow. Put one switch in the loop so it turns the bulb on and off. Tap a switch to flip it.',fact:'Light switches in your home work the same way: they open or close a gap in the wire.'},
+{n:'Series Pair',w:4,h:2,fix:{'v:0:0':'bat'},inv:{wire:5,bulb:2},goal:'series',par:7,learn:'In a <b>series</b> circuit, parts are in ONE loop, one after another. The bulbs share the battery\'s push, so each one glows dimmer.',fact:'In a series circuit, if one bulb breaks, the whole loop is broken and every bulb goes out.'},
+{n:'Parallel Power',w:3,h:2,fix:{'v:0:0':'bat'},inv:{wire:6,bulb:2},goal:'bright',par:6,learn:'In a <b>parallel</b> circuit each bulb gets its own path to the battery, so every bulb glows at full brightness. Make both bulbs FULL bright!',fact:'The plugs in your house are wired in parallel, so each device gets the full voltage.'},
+{n:'Watch for Shorts',w:3,h:3,fix:{'v:0:0':'bat','v:2:1':'bulb'},inv:{wire:7},goal:'all',par:6,learn:'A <b>short circuit</b> is a path with only wire and no bulb. Current rushes through it, heating the wire and draining the battery. Light the bulb WITHOUT making a short!',fact:'Short circuits can get hot enough to start fires. Fuses and breakers stop them.'},
+{n:'Triple Series',w:4,h:2,fix:{'v:0:0':'bat'},inv:{wire:5,bulb:3},goal:'series',par:7,learn:'Three bulbs in series: the more bulbs in one loop, the dimmer each one glows.',fact:'Adding bulbs in series adds <b>resistance</b>, which makes it harder for current to flow.'},
+{n:'Master Switch',w:4,h:2,fix:{'v:0:0':'bat'},inv:{wire:6,bulb:2,sw:1},goal:'masterPar',par:6,learn:'Two bulbs in parallel, both full bright, and ONE switch that turns them both off. Where does a master switch go?',fact:'A switch placed next to the battery, before the circuit splits, controls everything.'},
+{n:'Own Switches',w:3,h:3,fix:{'v:0:0':'bat'},inv:{wire:6,bulb:2,sw:2},goal:'indep',par:9,learn:'Give each bulb its OWN switch, so turning one off leaves the other glowing. Hint: put each switch on a bulb\'s own branch.',fact:'Every room in a house has its own switch because rooms are wired on separate branches.'},
+{n:'Super Parallel',w:4,h:2,fix:{'v:0:0':'bat'},inv:{wire:7,bulb:3},goal:'bright',par:9,learn:'Three bulbs, all at full brightness. Every bulb needs its own path!',fact:'More bulbs in parallel means the battery gives out more current, so it runs out faster.'},
+{n:'Mix It Up',w:4,h:2,fix:{'v:0:0':'bat'},inv:{wire:6,bulb:3},goal:'mixed',par:7,learn:'Challenge: make ONE bulb full bright and TWO bulbs dim. Combine series and parallel!',fact:'Real electronics mix series and parallel to give each part just the right amount of current.'},
+{n:'Light Panel',w:4,h:3,fix:{'v:0:0':'bat'},inv:{wire:9,bulb:3,sw:3},goal:'indep',par:13,learn:'Three bulbs, three switches, and each switch controls only its own bulb. Build the light panel!',fact:'Engineers draw circuit diagrams with symbols so anyone in the world can read them.'}];
+const GOALTXT={all:'Light every bulb 💡',switch:'Make the switch turn the bulb on AND off',series:'Light all bulbs in ONE series loop (dim glow)',bright:'Make every bulb FULL bright',masterPar:'Both bulbs full bright and one switch turns them both off',indep:'Each switch turns off only its own bulb',mixed:'1 bulb full bright and 2 bulbs dim'};
+let L,parts,lvIdx,sandbox=false,won=false;
+function inv(){const u={wire:0,bulb:0,sw:0};for(const k in parts)if(!L.fix[k])u[parts[k].t]++;return u}
+function ends(k){let[d,x,y]=k.split(':');x=+x;y=+y;return d=='h'?[[x,y],[x+1,y]]:[[x,y],[x,y+1]]}
+function solve(P,swOverride){const W=L.w,N=W*L.h,par=[...Array(N).keys()],f=i=>par[i]==i?i:(par[i]=f(par[i]));const id=([x,y])=>y*W+x;let bat=null;const bulbs=[];
+ for(const k in P){const p=P[k],[a,b]=ends(k).map(id);const closed=p.t=='sw'&&(swOverride?swOverride(k):p.on);if(p.t=='wire'||closed)par[f(a)]=f(b);else if(p.t=='bat')bat=[a,b];else if(p.t=='bulb')bulbs.push([k,a,b])}
+ const res={bulb:{},short:false,live:new Set};if(!bat)return res;const P0=f(bat[0]),M0=f(bat[1]);if(P0==M0){res.short=true;bulbs.forEach(b=>res.bulb[b[0]]=0);return res}
+ const g=[...new Set([...Array(N).keys()].map(f))].filter(r=>r!=P0&&r!=M0),ix={};g.forEach((r,i)=>ix[r]=i);const n=g.length,A=g.map(()=>Array(n+1).fill(0));g.forEach((r,i)=>A[i][i]=1e-9);
+ const V=r=>r==P0?1:r==M0?0:null;
+ for(const[,a,b]of bulbs){const ra=f(a),rb=f(b);if(ra==rb)continue;for(const[p,q]of[[ra,rb],[rb,ra]]){if(V(p)!==null)continue;const i=ix[p];A[i][i]+=1;if(V(q)!==null)A[i][n]+=V(q);else A[i][ix[q]]-=1}}
+ for(let c=0;c<n;c++){let m=c;for(let r=c+1;r<n;r++)if(Math.abs(A[r][c])>Math.abs(A[m][c]))m=r;[A[c],A[m]]=[A[m],A[c]];for(let r=0;r<n;r++)if(r!=c){const k=A[r][c]/A[c][c];for(let j=c;j<=n;j++)A[r][j]-=k*A[c][j]}}
+ const vol=r=>V(r)!==null?V(r):A[ix[r]][n]/A[ix[r]][ix[r]];
+ for(const[k,a,b]of bulbs){const I=Math.abs(vol(f(a))-vol(f(b)));res.bulb[k]=I<1e-4?0:I;if(I>.05){res.live.add(f(a));res.live.add(f(b))}}
+ res.isLive=k=>{const[a]=ends(k).map(id);return res.live.has(f(a))};return res}
+function check(){const bl=Object.keys(parts).filter(k=>parts[k].t=='bulb'),sws=Object.keys(parts).filter(k=>parts[k].t=='sw');if(!bl.length)return false;
+ const on=solve(parts,()=>true),off=solve(parts,()=>false);if(on.short)return false;const B=on.bulb,lit=k=>B[k]>.05,full=k=>B[k]>.95;
+ switch(L.goal){case'all':return bl.every(lit);case'switch':return sws.length&&bl.every(lit)&&bl.every(k=>!(off.bulb[k]>.05));
+ case'series':return bl.every(k=>lit(k)&&Math.abs(B[k]-B[bl[0]])<.01&&B[k]<.6);case'bright':return bl.every(full);
+ case'masterPar':return sws.length==1&&bl.every(full)&&bl.every(k=>!(off.bulb[k]>.05));
+ case'mixed':{const fb=bl.filter(full),dim=bl.filter(k=>lit(k)&&!full(k));return fb.length==1&&dim.length==2}
+ case'indep':{if(!bl.every(full)||sws.length<bl.length)return false;const offs=new Set;for(const s of sws){const r=solve(parts,k=>k!=s);if(r.short)return false;const o=bl.filter(k=>!(r.bulb[k]>.05));if(o.length!=1||offs.has(o[0]))return false;offs.add(o[0])}return offs.size==bl.length}}return false}
+function menu(){sandbox=false;app.innerHTML=`<div class="card" style="text-align:center"><div style="font-size:54px">🔋💡⚡</div><h2 style="margin:4px">Circuit Builder</h2><p style="color:var(--mut)">Build real circuits, light bulbs and learn how electricity works!</p></div><h3>🧩 Puzzles</h3><div class="grid" id="lv"></div><h3>More modes</h3><div class="grid"><div class="card tile" id="sb"><div class="em">🛠️</div><h3>Sandbox</h3><p>Unlimited parts on a big board. Experiment freely!</p></div><div class="card tile" id="qz"><div class="em">⏱️</div><h3>Spark Quiz</h3><p>60 seconds of electricity questions. Best: ${SAVE.best.quiz||0}/10</p></div></div>`;
+ LV.forEach((l,i)=>{const lock=i>0&&!SAVE.stars['L'+(i-1)];const d=document.createElement('div');d.className='card tile';d.style.opacity=lock?.45:1;d.innerHTML=`<div class="em">${lock?'🔒':['💡','🔆','🔘','🔗','⚡','⚠️','🔗','🎛️','🏠','🌟','🔀','🎚️'][i]}</div><h3>${i+1}. ${l.n}</h3><p>${GOALTXT[l.goal]}</p><div class="stars">${starStr(SAVE.stars['L'+i]||0)}</div>`;d.onclick=()=>{if(lock){SFX.bad();flash(d)}else{SFX.click();start(i)}};$('#lv').appendChild(d)});
+ $('#sb').onclick=()=>{SFX.click();start(-1)};$('#qz').onclick=()=>{SFX.click();runQuiz('quiz','Spark Quiz',QZ,60,menu)}}
+function start(i){lvIdx=i;won=false;sandbox=i<0;L=sandbox?{n:'Sandbox',w:7,h:5,fix:{'v:0:1':'bat'},inv:{wire:99,bulb:99,sw:99},goal:'none',learn:'Build anything! Try a series loop, then a parallel one, and compare how bright the bulbs are. Tap a switch to flip it.'}:LV[i];
+ parts={};for(const k in L.fix)parts[k]={t:L.fix[k],on:true};tool=L.inv.wire?'wire':'bulb';render()}
+function edgesAll(){const e=[];for(let y=0;y<L.h;y++)for(let x=0;x<L.w;x++){if(x<L.w-1)e.push(`h:${x}:${y}`);if(y<L.h-1)e.push(`v:${x}:${y}`)}return e}
+function render(){const u=inv(),W=(L.w-1)*CS+80,H=(L.h-1)*CS+80;
+ app.innerHTML=`<div class="card"><div class="row"><b style="flex:1;font-size:18px">${sandbox?'🛠️ Sandbox':`Level ${lvIdx+1}: ${L.n}`}</b><button class="btn alt" id="bk">☰ Menu</button><button class="btn alt" id="rs">↺ Reset</button></div><p>${L.learn}</p>${sandbox?'':`<div class="pill" style="display:inline-block">🎯 ${GOALTXT[L.goal]}</div>`}</div>
+ <div class="row" style="margin:10px 0" id="tools"></div><div class="card" style="text-align:center;padding:6px;background:#0d1a2e"><svg id="bd" viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W*1.4}px;touch-action:none;overflow:visible"></svg></div><div class="fb" id="fb"></div><div id="meter" class="row"></div>`;
+ [['wire','〰️ Wire'],['bulb','💡 Bulb'],['sw','🔘 Switch'],['erase','🧽 Erase']].forEach(([t,lab])=>{if(t!='erase'&&!L.inv[t])return;const b=document.createElement('button');b.className='btn alt'+(tool==t?' sel':'');b.innerHTML=lab+(t!='erase'&&!sandbox?` ×${L.inv[t]-u[t]}`:'');b.onclick=()=>{tool=t;SFX.click();render()};$('#tools').appendChild(b)});
+ $('#bk').onclick=()=>{SFX.click();menu()};$('#rs').onclick=()=>{SFX.drop();start(lvIdx)};draw()}
+function draw(){const sv=$('#bd'),R=solve(parts),O=40;let s=`<defs><radialGradient id="gl"><stop offset="0" stop-color="#fff7b0"/><stop offset=".4" stop-color="#ffd34d" stop-opacity=".7"/><stop offset="1" stop-color="#ffd34d" stop-opacity="0"/></radialGradient></defs><style>.flow{stroke-dasharray:6 10;animation:fl .6s linear infinite}@keyframes fl{to{stroke-dashoffset:-16}}</style>`;
+ const P=([x,y])=>[O+x*CS,O+y*CS];
+ for(const k of edgesAll()){const[a,b]=ends(k).map(P),p=parts[k],mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2,vert=k[0]=='v',ang=vert?90:0;
+  if(!p){s+=`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="#ffffff22" stroke-width="3" stroke-dasharray="4 6"/>`}
+  else{const live=R.isLive&&R.isLive(k)&&!R.short;const wire=(x1,y1,x2,y2)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${R.short?'#ff5c7a':'#e08a3c'}" stroke-width="7" stroke-linecap="round"/>`+(live?`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#fff6" stroke-width="3" class="flow" stroke-linecap="round"/>`:'');
+   s+=`<g transform="translate(${mx} ${my}) rotate(${ang})">`;const h=CS/2;
+   if(p.t=='wire')s+=wire(-h,0,h,0);
+   else if(p.t=='bat')s+=wire(-h,0,-8,0)+wire(8,0,h,0)+`<rect x="-20" y="-16" width="40" height="32" rx="6" fill="#2b2b2b" stroke="#ffd34d" stroke-width="2"/><line x1="-6" y1="-11" x2="-6" y2="11" stroke="#ffd34d" stroke-width="4"/><line x1="5" y1="-6" x2="5" y2="6" stroke="#ffd34d" stroke-width="4"/><text x="-14" y="-20" fill="#ff8080" font-size="14" font-weight="bold" transform="rotate(${-ang} -14 -24)">+</text>`;
+   else if(p.t=='bulb'){const br=Math.min(1,R.bulb[k]||0);s+=wire(-h,0,-14,0)+wire(14,0,h,0)+(br>.05?`<circle r="${26+30*br}" fill="url(#gl)" opacity="${.35+.65*br}"/>`:'')+`<circle r="15" fill="${br>.05?`hsl(50,100%,${55+30*br}%)`:'#556'}" stroke="#ddd" stroke-width="2"/><path d="M-8 0 l4 -6 l4 6 l4 -6 l4 6" stroke="${br>.05?'#a60':'#999'}" stroke-width="2" fill="none"/>`}
+   else if(p.t=='sw')s+=wire(-h,0,-14,0)+wire(14,0,h,0)+`<circle cx="-14" r="4" fill="#ccc"/><circle cx="14" r="4" fill="#ccc"/><line x1="-14" y1="0" x2="14" y2="0" stroke="${p.on?'#3ddc84':'#ff5c7a'}" stroke-width="5" stroke-linecap="round" transform="rotate(${p.on?0:-35} -14 0)" style="transition:transform .2s"/>`;
+   s+=`</g>`}
+  s+=`<line data-k="${k}" x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="#000" stroke-opacity=".01" stroke-width="30" style="cursor:pointer"/>`}
+ for(let y=0;y<L.h;y++)for(let x=0;x<L.w;x++){const[px,py]=P([x,y]);s+=`<circle cx="${px}" cy="${py}" r="6" fill="#8fa0d8" pointer-events="none"/>`}
+ sv.innerHTML=s;
+ // status
+ const fb=$('#fb'),bl=Object.keys(parts).filter(k=>parts[k].t=='bulb');
+ $('#meter').innerHTML=bl.map((k,i)=>`<span class="pill">💡${i+1}: ${Math.round(Math.min(1,R.bulb[k]||0)*100)}%</span>`).join('');
+ if(R.short){fb.innerHTML='⚠️ Short circuit! Current is taking a path with no bulb. The battery is overheating!';fb.style.color='var(--bad)'}else{fb.style.color='';fb.innerHTML=''}
+ if(!sandbox&&!won&&check()){won=true;const used=Object.keys(parts).length-Object.keys(L.fix).length,st=used<=L.par?3:used<=L.par+2?2:1;award('L'+lvIdx,st);SFX.win();confetti();
+  fb.innerHTML=`🎉 Circuit complete! <span class="stars">${starStr(st)}</span> <span style="font-size:14px;color:var(--mut)">(${used} parts, best is ${L.par})</span><div class="fact">💡 ${L.fact}</div>`+(lvIdx<LV.length-1?`<button class="btn" id="nx">Next level →</button>`:`<button class="btn" id="nx">🏆 All done! Menu</button>`);$('#nx').onclick=()=>lvIdx<LV.length-1?start(lvIdx+1):menu()}}
+let painting=false,lastK=null;
+function act(k,first){if(!k||L.fix[k]&&parts[k].t!='sw')return;const p=parts[k],u=inv();
+ if(p&&p.t=='sw'&&tool!='erase'){if(first){p.on=!p.on;tone(p.on?900:500,.06,'square',.08);won=won&&check();draw()}return}
+ if(tool=='erase'){if(p&&!L.fix[k]){delete parts[k];SFX.drop();refresh()}return}
+ if(p)return;if(!sandbox&&u[tool]>=L.inv[tool]){if(first){SFX.bad();$('#tools').classList.add('shake');setTimeout(()=>$('#tools')&&$('#tools').classList.remove('shake'),400)}return}
+ parts[k]={t:tool,on:true};tone(tool=='wire'?520+Math.random()*80:700,.06,'triangle',.1);refresh()}
+function refresh(){render()}
+document.addEventListener('pointerdown',e=>{const k=e.target.dataset&&e.target.dataset.k;if(!k)return;e.preventDefault();painting=true;lastK=k;act(k,true)});
+document.addEventListener('pointermove',e=>{if(!painting||tool=='sw'||tool=='bulb')return;const el=document.elementFromPoint(e.clientX,e.clientY),k=el&&el.dataset&&el.dataset.k;if(k&&k!=lastK){lastK=k;act(k,false)}});
+addEventListener('pointerup',()=>painting=false);
+const QZ=[
+{q:'What does a circuit need to work?',opts:['A closed loop','An open gap','Only a bulb','A magnet'],a:'A closed loop',fact:'Current can only flow when the path is complete.'},
+{q:'What does an open switch do?',opts:['Stops the current','Makes bulbs brighter','Charges the battery','Nothing'],a:'Stops the current'},
+{q:'Two bulbs in series compared to one bulb glow…',opts:['Dimmer','Brighter','The same','Blue'],a:'Dimmer',fact:'They share the battery\'s voltage.'},
+{q:'In a parallel circuit, if one bulb breaks the others…',opts:['Stay lit','All go out','Explode','Get dimmer'],a:'Stay lit'},
+{q:'Which material is a good conductor?',opts:['Copper','Rubber','Plastic','Wood'],a:'Copper',fact:'Metals like copper let electrons move easily. That\'s why wires are made of copper.'},
+{q:'Which material is an insulator?',opts:['Rubber','Copper','Aluminum','Iron'],a:'Rubber',fact:'Wires are coated in plastic or rubber so the electricity can\'t reach your hands.'},
+{q:'What is a short circuit?',opts:['A path with no resistance, like a bare wire','A very small circuit','A circuit with a switch','A broken bulb'],a:'A path with no resistance, like a bare wire'},
+{q:'What unit measures voltage?',opts:['Volts','Amps','Watts','Meters'],a:'Volts',fact:'Named after Alessandro Volta, who invented the first battery around 1800.'},
+{q:'What unit measures current?',opts:['Amperes (amps)','Volts','Ohms','Grams'],a:'Amperes (amps)'},
+{q:'What unit measures resistance?',opts:['Ohms','Volts','Amps','Joules'],a:'Ohms'},
+{q:'What does a battery provide?',opts:['A push (voltage) for current','Light','Resistance','Magnetism only'],a:'A push (voltage) for current'},
+{q:'What do tiny particles moving in a wire make?',opts:['Electric current','Sound','Gravity','Heat only'],a:'Electric current',fact:'Those particles are electrons.'},
+{q:'Your home\'s outlets are wired in…',opts:['Parallel','Series','Neither','A single loop'],a:'Parallel'},
+{q:'Which energy change happens in a light bulb?',opts:['Electrical → light and heat','Light → electrical','Heat → sound','Chemical → nuclear'],a:'Electrical → light and heat'},
+{q:'Who flew a kite in a storm to study lightning (1752)?',opts:['Benjamin Franklin','Isaac Newton','Albert Einstein','Marie Curie'],a:'Benjamin Franklin',fact:'Don\'t try it! It was extremely dangerous.'}];
+menu();
+</script></body></html>

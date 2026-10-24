@@ -1,0 +1,279 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Food Chain Builder</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:"Trebuchet MS",system-ui,sans-serif;color:#13324a;min-height:100vh;background:var(--bg,linear-gradient(#bfe9ff,#e8f8ff));transition:background .5s;user-select:none;touch-action:manipulation}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(255,255,255,.7);box-shadow:0 2px 8px #0002;flex-wrap:wrap}
+header h1{font-size:20px;margin:0;flex:1}
+.pill{background:#fff;border-radius:20px;padding:5px 12px;font-weight:bold;box-shadow:0 1px 4px #0002}
+button{font:inherit;border:0;border-radius:12px;padding:10px 16px;font-weight:bold;cursor:pointer;background:#ffb703;color:#13324a;box-shadow:0 3px 0 #c58a00}
+button:active{transform:translateY(2px);box-shadow:0 1px 0 #c58a00}
+button.sec{background:#fff;box-shadow:0 3px 0 #aaa}
+main{max-width:1000px;margin:auto;padding:14px}
+.screen{display:none}.screen.on{display:block}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.hab{background:#fff;border-radius:16px;padding:14px;text-align:center;cursor:pointer;box-shadow:0 3px 10px #0002;transition:transform .15s}
+.hab:hover{transform:translateY(-3px)}.hab .e{font-size:46px}.hab.lock{opacity:.45;cursor:not-allowed}
+.stars{color:#f4a300;letter-spacing:2px}
+.panel{background:rgba(255,255,255,.85);border-radius:18px;padding:14px;box-shadow:0 3px 12px #0002;margin-bottom:12px}
+.chain{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:26px 4px;padding-bottom:22px;min-height:120px}
+.slot{width:96px;height:110px;border:3px dashed #7aa;border-radius:14px;display:flex;align-items:center;justify-content:center;background:#ffffff80;position:relative}
+.slot.over{background:#fff7c2;border-color:#f4a300}
+.slot .lbl{position:absolute;bottom:-20px;font-size:11px;color:#456;white-space:nowrap}
+.arrow{font-size:26px;color:#e76f51;font-weight:bold}
+.pool{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;min-height:120px;padding:8px;border-radius:14px;background:#0000000d}
+.card{width:90px;height:104px;background:#fff;border-radius:12px;box-shadow:0 3px 6px #0003;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:grab;touch-action:none;transition:box-shadow .15s}
+.card .e{font-size:40px;line-height:1}.card .n{font-size:12px;font-weight:bold;text-align:center;margin-top:4px}
+.card.sel{outline:4px solid #f4a300}.card.drag{position:fixed;z-index:99;pointer-events:none;transform:scale(1.1) rotate(-4deg);box-shadow:0 10px 20px #0005}
+.card.ok{background:#c8f7c5}.card.bad{background:#ffc9c9;animation:sh .4s}
+@keyframes sh{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.bins{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.bin{min-height:150px;border-radius:14px;padding:8px;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;border:3px dashed #0003}
+.bin h3{width:100%;margin:0 0 4px;font-size:15px;text-align:center}
+.bin.over{border-color:#f4a300;background-color:#fff7c2!important}
+.bin .card{width:64px;height:74px}.bin .card .e{font-size:28px}.bin .card .n{font-size:10px}
+.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.fact{background:#fff3c4;border-left:6px solid #f4a300;padding:10px 12px;border-radius:10px;margin-top:10px}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.opts button{background:#fff;box-shadow:0 3px 0 #aaa;font-size:17px;padding:14px}
+.opts button.ok{background:#8be28b}.opts button.bad{background:#ff9d9d}
+#toast{position:fixed;left:50%;top:80px;transform:translateX(-50%) scale(0);background:#13324a;color:#fff;padding:12px 20px;border-radius:14px;font-weight:bold;transition:transform .25s;z-index:200;text-align:center;max-width:90vw}
+#toast.on{transform:translateX(-50%) scale(1)}
+.modal{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:150}
+.modal.on{display:flex}.modal>div{background:#fff;border-radius:20px;padding:22px;max-width:440px;width:90%;text-align:center}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;justify-content:center}
+.timer{height:10px;background:#0002;border-radius:6px;overflow:hidden}.timer div{height:100%;background:#2a9d8f;transition:width .2s linear}
+h2{margin:6px 0}
+@media(max-width:560px){.slot{width:66px;height:80px}.card{width:64px;height:76px}.card .e{font-size:28px}.card .n{font-size:10px}.arrow{font-size:18px}.opts{grid-template-columns:1fr}header h1{font-size:16px}.slot .lbl{font-size:9px}}
+</style></head><body>
+<header><h1>🌿 Food Chain Builder</h1><span class="pill" id="hStars">⭐ 0</span><span class="pill" id="hXP">🏅 Lv 1</span><button class="sec" onclick="home()">🏠</button></header>
+<main>
+<section class="screen on" id="sHome">
+ <div class="panel"><h2>Pick a habitat!</h2><p>Drag living things into order to show <b>who eats whom</b>. Energy flows from the sun → producers → consumers. Decomposers recycle everything!</p>
+ <div class="legend"><span>🌱 Producer: makes its own food</span><span>🐛 Primary consumer: eats plants</span><span>🦊 Secondary/Tertiary consumer: eats animals</span><span>🍄 Decomposer: breaks down dead stuff</span></div></div>
+ <div class="grid" id="habGrid"></div>
+ <div class="panel" style="margin-top:12px"><h2>Challenge modes</h2><div class="row"><button onclick="startQuiz()">❓ Quiz (10 Qs)</button><button onclick="startTimed()">⏱️ Timed Sort (60s)</button><button class="sec" onclick="resetSave()">♻️ Reset progress</button></div>
+ <p id="bests" style="text-align:center"></p></div>
+</section>
+<section class="screen" id="sLevels"><div class="panel"><h2 id="lvTitle"></h2><p id="lvDesc"></p><div class="grid" id="lvGrid"></div></div></section>
+<section class="screen" id="sPlay">
+ <div class="panel"><h2 id="pTitle"></h2><p id="pHint"></p><div id="board"></div>
+ <div class="row"><button onclick="check()">✅ Check</button><button class="sec" onclick="resetLevel()">↺ Reset</button><button class="sec" onclick="hint()">💡 Hint</button></div>
+ <div class="fact" id="fact"></div></div>
+ <div class="panel"><b>Animal & plant cards</b> (drag or tap a card, then tap a spot)<div class="pool" id="pool"></div></div>
+</section>
+<section class="screen" id="sQuiz"><div class="panel"><div class="row" style="justify-content:space-between"><b id="qProg"></b><b id="qScore"></b></div><div class="timer" id="qTimerWrap" style="display:none"><div id="qTimer"></div></div>
+ <h2 id="qText" style="text-align:center;margin-top:14px"></h2><div class="opts" id="qOpts"></div><div class="fact" id="qFact" style="display:none"></div></div></section>
+<section class="screen" id="sTimed"><div class="panel"><div class="row" style="justify-content:space-between"><b id="tScore">Score 0</b><b id="tTime">60s</b></div><div class="timer"><div id="tBar"></div></div>
+ <p style="text-align:center">Sort each living thing into its role, fast!</p><div style="display:flex;justify-content:center;min-height:120px" id="tCard"></div><div class="bins" id="tBins"></div></div></section>
+</main>
+<div id="toast"></div>
+<div class="modal" id="modal"><div><h2 id="mT"></h2><div id="mB"></div><div class="row" id="mR"></div></div></div>
+<script>
+const O={ // organisms: e,n,role(P producer,H herbivore,C carnivore/omnivore,D decomposer),fact
+phyto:["🦠","Phytoplankton","P","Tiny ocean plants make about half of Earth's oxygen!"],
+kelp:["🌿","Kelp","P","Giant kelp can grow up to 60 cm in a single day."],
+zoo:["🦐","Krill","H","Krill swarms can be so big they're visible from space!"],
+fish:["🐟","Small Fish","C","Many small fish swim in schools to stay safe from predators."],
+urchin:["🟣","Sea Urchin","H","Sea urchins munch kelp; sea otters keep them in check."],
+otter:["🦦","Sea Otter","C","Sea otters hold hands while sleeping so they don't drift apart."],
+seal:["🦭","Seal","C","Seals can hold their breath for up to 2 hours (elephant seals)."],
+shark:["🦈","Shark","C","Sharks have existed for over 400 million years—older than trees!"],
+whale:["🐋","Blue Whale","C","A blue whale eats up to 4 tonnes of krill a day."],
+squid:["🦑","Squid","C","Squids have three hearts and blue blood."],
+bacteria:["🧫","Bacteria","D","Bacteria break down dead matter and return nutrients to soil and sea."],
+oak:["🌳","Oak Tree","P","One oak tree can produce 10 million acorns in its lifetime."],
+caterp:["🐛","Caterpillar","H","A caterpillar can eat thousands of times its body weight in leaves."],
+bird:["🐦","Songbird","C","Songbird parents may feed chicks hundreds of caterpillars a day."],
+hawk:["🦅","Hawk","C","Hawks can see 8 times better than humans."],
+acorn:["🌰","Acorns","P","Acorns feed squirrels, deer, jays and more."],
+squirrel:["🐿️","Squirrel","H","Squirrels forget many buried acorns—planting new trees!"],
+fox:["🦊","Fox","C","Foxes hear low-frequency sounds and can hear a mouse squeak 40 m away."],
+deer:["🦌","Deer","H","Deer have eyes on the sides of their head to spot danger."],
+wolf:["🐺","Wolf","C","Wolves hunt in packs to catch big animals like deer."],
+mushroom:["🍄","Mushroom","D","Fungi are decomposers—they 'eat' dead logs and leaves."],
+worm:["🪱","Earthworm","D","Earthworms turn dead leaves into rich soil."],
+grass:["🌾","Grass","P","Grass grows from the base, so it survives being grazed."],
+zebra:["🦓","Zebra","H","Every zebra has a unique stripe pattern, like a fingerprint."],
+lion:["🦁","Lion","C","A lion's roar can be heard 8 km away."],
+acacia:["🌲","Acacia Tree","P","Acacia trees grow long thorns to protect their leaves."],
+giraffe:["🦒","Giraffe","H","Giraffes' tongues are about 50 cm long and dark to avoid sunburn."],
+grasshop:["🦗","Grasshopper","H","Grasshoppers can jump 20 times their body length."],
+lizard:["🦎","Lizard","C","Some lizards can drop their tail to escape predators."],
+eagle:["🦅","Martial Eagle","C","Martial eagles are Africa's largest eagles."],
+vulture:["🪶","Vulture","D","Vultures are scavengers—nature's clean-up crew!"],
+algae:["🟢","Ice Algae","P","Algae grow under sea ice, feeding the whole Arctic food web."],
+cod:["🐠","Arctic Cod","C","Arctic cod have antifreeze proteins in their blood."],
+ringseal:["🦭","Ringed Seal","C","Ringed seals keep breathing holes open in thick ice."],
+bear:["🐻‍❄️","Polar Bear","C","Polar bears have black skin under clear, hollow fur."],
+lichen:["🪨","Lichen","P","Lichen is a team-up of fungus and algae."],
+lemming:["🐹","Lemming","H","Lemming numbers boom and crash every few years."],
+arcfox:["🦊","Arctic Fox","C","Arctic foxes' fur turns from brown in summer to white in winter."],
+owl:["🦉","Snowy Owl","C","A snowy owl can eat over 1,600 lemmings in a year."],
+pondalgae:["🟩","Pond Algae","P","Algae turn ponds green and feed tiny grazers."],
+duckweed:["☘️","Duckweed","P","Duckweed is one of the smallest flowering plants."],
+tadpole:["🐸","Tadpole","H","Tadpoles graze on algae before becoming frogs."],
+frog:["🐸","Frog","C","Frogs swallow with help from their eyeballs!"],
+dragonfly:["🪰","Dragonfly","C","Dragonflies catch 95% of the prey they chase."],
+mosq:["🦟","Mosquito Larva","H","Mosquito larvae filter tiny bits of algae from water."],
+snake:["🐍","Water Snake","C","Snakes smell with their tongues."],
+heron:["🦩","Heron","C","Herons stand perfectly still, then spear fish in a flash."],
+pike:["🐊","Pike","C","Pike are ambush hunters that lurk in weeds."],
+lily:["🪷","Water Lily","P","Water lily pads can be over 2 m wide (giant lilies)."],
+snail:["🐌","Pond Snail","H","Snails scrape algae with a tongue covered in tiny teeth."]
+};
+const ROLE={P:"Producer",H:"Primary consumer (herbivore)",C:"Consumer (eats animals)",D:"Decomposer"};
+// level types: chain {c:[ids], x:[distractors]} ; sort {s:[ids]} ; web {pairs}
+const HAB=[
+{id:"ocean",n:"Ocean",e:"🌊",bg:"linear-gradient(#5fc8ff,#0a5d8f)",lv:[
+ {t:"chain",c:["phyto","zoo","whale"],x:["oak"]},
+ {t:"chain",c:["kelp","urchin","otter"],x:["grass","lion"]},
+ {t:"chain",c:["phyto","zoo","fish","squid","shark"],x:["deer"]},
+ {t:"sort",s:["kelp","phyto","zoo","urchin","shark","seal","bacteria","otter"]},
+ {t:"chain",c:["phyto","zoo","fish","seal","shark"],x:["frog","bacteria"]}]},
+{id:"forest",n:"Forest",e:"🌲",bg:"linear-gradient(#b8f2a0,#2f7d32)",lv:[
+ {t:"chain",c:["oak","caterp","bird"],x:["shark"]},
+ {t:"chain",c:["acorn","squirrel","fox"],x:["kelp","zebra"]},
+ {t:"chain",c:["oak","caterp","bird","hawk"],x:["lion"]},
+ {t:"sort",s:["oak","acorn","deer","squirrel","wolf","fox","mushroom","worm"]},
+ {t:"web",w:{foods:["oak","acorn"],eaters:["deer","squirrel","caterp"],top:["wolf","fox","bird"]}}]},
+{id:"savanna",n:"Savanna",e:"🦁",bg:"linear-gradient(#ffe29a,#d08a2b)",lv:[
+ {t:"chain",c:["grass","zebra","lion"],x:["whale"]},
+ {t:"chain",c:["grass","grasshop","lizard","eagle"],x:["acacia"]},
+ {t:"sort",s:["grass","acacia","zebra","giraffe","grasshop","lion","lizard","vulture"]},
+ {t:"chain",c:["acacia","giraffe","lion","vulture"],x:["owl","kelp"]},
+ {t:"web",w:{foods:["grass","acacia"],eaters:["zebra","giraffe","grasshop"],top:["lion","lizard","eagle"]}}]},
+{id:"arctic",n:"Arctic",e:"❄️",bg:"linear-gradient(#e6f6ff,#8bb8d8)",lv:[
+ {t:"chain",c:["algae","zoo","cod","ringseal","bear"],x:["lion"]},
+ {t:"chain",c:["lichen","lemming","arcfox"],x:["fish"]},
+ {t:"chain",c:["lichen","lemming","owl"],x:["zebra","squid"]},
+ {t:"sort",s:["algae","lichen","zoo","lemming","cod","bear","owl","bacteria"]},
+ {t:"chain",c:["algae","zoo","cod","ringseal","bear"],x:["arcfox","lemming"]}]},
+{id:"pond",n:"Pond",e:"🐸",bg:"linear-gradient(#c6f1d6,#3f8f6a)",lv:[
+ {t:"chain",c:["duckweed","snail","fish"],x:["hawk"]},
+ {t:"chain",c:["pondalgae","tadpole","dragonfly","frog"],x:["deer"]},
+ {t:"chain",c:["pondalgae","mosq","dragonfly","frog","snake","heron"],x:["bear"]},
+ {t:"sort",s:["lily","duckweed","snail","tadpole","frog","heron","pike","bacteria"]},
+ {t:"web",w:{foods:["lily","duckweed"],eaters:["snail","tadpole","mosq"],top:["frog","fish","dragonfly"]}}]}
+];
+HAB.forEach(h=>h.lv.forEach(l=>{if(l.t=="chain")l.c.forEach(i=>{if(!O[i])console.error(i)})}));
+const POS=["Producer","Primary","Secondary","Tertiary","Quaternary","Apex predator"];
+// web eaters: who eats which - define valid links
+const WEB={ // eater: [foods it eats]
+deer:["oak","acorn"],squirrel:["acorn","oak"],caterp:["oak"],wolf:["deer","squirrel"],fox:["squirrel","caterp","bird"],bird:["caterp","squirrel"],
+zebra:["grass"],giraffe:["acacia"],grasshop:["grass"],lion:["zebra","giraffe"],lizard:["grasshop"],eagle:["lizard","grasshop"],
+snail:["lily","duckweed"],tadpole:["duckweed","lily"],mosq:["duckweed"],frog:["snail","mosq","tadpole"],fish:["tadpole","mosq","snail"],dragonfly:["mosq","tadpole"]};
+WEB.bird=["caterp"];
+// ---------- save ----------
+const KEY="foodChainSave";
+let S=load();
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.stars)return d}catch(e){}return{stars:{},xp:0,quizBest:0,timedBest:0,seen:[]}}
+function save(){localStorage.setItem(KEY,JSON.stringify(S))}
+function totalStars(){return Object.values(S.stars).reduce((a,b)=>a+b,0)}
+function level(){return 1+Math.floor(S.xp/100)}
+function hud(){hStars.textContent="⭐ "+totalStars();hXP.textContent="🏅 Lv "+level()+" ("+S.xp%100+"/100 XP)";}
+function addXP(n){const b=level();S.xp+=n;save();hud();if(level()>b)toast("🎉 Level up! You're now level "+level()+"!")}
+// ---------- UI helpers ----------
+const $=id=>document.getElementById(id);
+function show(id){document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("on",s.id==id));scrollTo(0,0)}
+let tt;function toast(m,ms=1800){$("toast").innerHTML=m;$("toast").classList.add("on");clearTimeout(tt);tt=setTimeout(()=>$("toast").classList.remove("on"),ms)}
+function modal(t,b,btns){$("mT").innerHTML=t;$("mB").innerHTML=b;const r=$("mR");r.innerHTML="";btns.forEach(([l,f,c])=>{const x=document.createElement("button");x.textContent=l;if(c)x.className=c;x.onclick=()=>{$("modal").classList.remove("on");f()};r.appendChild(x)});$("modal").classList.add("on")}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+let AC;function beep(f,d=.12,type="sine"){try{AC=AC||new AudioContext();const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;g.gain.setValueAtTime(.15,AC.currentTime);g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.connect(g).connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
+const good=()=>{beep(660);setTimeout(()=>beep(880),100)},bad=()=>beep(180,.25,"square");
+function mkCard(id){const o=O[id],d=document.createElement("div");d.className="card";d.dataset.id=id;d.innerHTML=`<div class="e">${o[0]}</div><div class="n">${o[1]}</div>`;d.title=o[1];return d}
+// ---------- home ----------
+function unlocked(i){return i==0||(S.stars[HAB[i-1].id+"-2"]||0)>0}
+function home(){stopTimers();document.body.style.setProperty("--bg","linear-gradient(#bfe9ff,#e8f8ff)");const g=$("habGrid");g.innerHTML="";
+ HAB.forEach((h,i)=>{const st=h.lv.reduce((a,_,j)=>a+(S.stars[h.id+"-"+j]||0),0),u=unlocked(i);const d=document.createElement("div");d.className="hab"+(u?"":" lock");
+  d.innerHTML=`<div class="e">${u?h.e:"🔒"}</div><b>${h.n}</b><div class="stars">${"★".repeat(Math.round(st/3))}${"☆".repeat(5-Math.round(st/3))}</div><small>${st}/${h.lv.length*3} stars</small>`;
+  d.onclick=()=>u?levels(i):toast("Earn a star on level 3 of "+HAB[i-1].n+" to unlock!");g.appendChild(d)});
+ $("bests").textContent=`Best quiz: ${S.quizBest}/10 · Best timed sort: ${S.timedBest}`;hud();show("sHome")}
+function levels(hi){const h=HAB[hi];document.body.style.setProperty("--bg",h.bg);$("lvTitle").textContent=h.e+" "+h.n+" levels";$("lvDesc").textContent="Each level unlocks after the one before it.";
+ const g=$("lvGrid");g.innerHTML="";h.lv.forEach((l,j)=>{const st=S.stars[h.id+"-"+j]||0,u=j==0||(S.stars[h.id+"-"+(j-1)]||0)>0;const d=document.createElement("div");d.className="hab"+(u?"":" lock");
+  d.innerHTML=`<div class="e">${u?{chain:"⛓️",sort:"🗂️",web:"🕸️"}[l.t]:"🔒"}</div><b>Level ${j+1}</b><div>${{chain:"Food chain",sort:"Sort the roles",web:"Food web"}[l.t]}</div><div class="stars">${"★".repeat(st)}${"☆".repeat(3-st)}</div>`;
+  d.onclick=()=>u?play(hi,j):toast("Finish the previous level first!");g.appendChild(d)});show("sLevels")}
+// ---------- play ----------
+let CUR,mistakes,hints,selCard=null;
+function play(hi,j){CUR={hi,j,h:HAB[hi],l:HAB[hi].lv[j]};mistakes=0;hints=0;build();show("sPlay")}
+function resetLevel(){build()}
+function build(){const {h,l,j}=CUR;$("pTitle").textContent=`${h.e} ${h.n} · Level ${j+1}`;const b=$("board"),p=$("pool");b.innerHTML="";p.innerHTML="";selCard=null;let ids=[];
+ if(l.t=="chain"){$("pHint").innerHTML="Put the living things in order. The arrow means <b>“is eaten by”</b> (energy flows that way). Watch out for things that don't belong here!";
+  const c=document.createElement("div");c.className="chain";c.innerHTML=`<div style="font-size:40px">☀️</div><span class="arrow">→</span>`;
+  l.c.forEach((id,i)=>{const s=document.createElement("div");s.className="slot drop";s.dataset.i=i;s.innerHTML=`<span class="lbl">${i==l.c.length-1&&i>1?"Top predator":POS[i]}</span>`;c.appendChild(s);if(i<l.c.length-1){const a=document.createElement("span");a.className="arrow";a.textContent="→";c.appendChild(a)}});
+  b.appendChild(c);ids=l.c.concat(l.x)}
+ else if(l.t=="sort"){$("pHint").innerHTML="Sort each living thing by its <b>role</b> in the ecosystem.";b.appendChild(bins(["P","H","C","D"]));ids=l.s}
+ else{$("pHint").innerHTML="Food web! Many animals eat more than one thing. Drag each <b>animal</b> onto a food it eats. (Plants are already placed.)";
+  const w=document.createElement("div");w.className="bins";
+  l.w.foods.concat(l.w.eaters).forEach(f=>{const d=document.createElement("div");d.className="bin drop";d.dataset.food=f;d.style.background=O[f][2]=="P"?"#d8f5d0":"#fde4c8";d.innerHTML=`<h3>${O[f][0]} ${O[f][1]} is eaten by…</h3>`;w.appendChild(d)});
+  b.appendChild(w);ids=l.w.eaters.concat(l.w.top)}
+ shuffle(ids).forEach(id=>p.appendChild(mkCard(id)));$("fact").innerHTML="💡 "+O[ids[0]][1]+": "+O[ids[0]][3]}
+function bins(roles){const w=document.createElement("div");w.className="bins";const col={P:"#d8f5d0",H:"#fff1b8",C:"#ffd6cc",D:"#e5d9f7"},em={P:"🌱",H:"🐛",C:"🦊",D:"🍄"};
+ roles.forEach(r=>{const d=document.createElement("div");d.className="bin drop";d.dataset.role=r;d.style.background=col[r];d.innerHTML=`<h3>${em[r]} ${ROLE[r]}</h3>`;w.appendChild(d)});return w}
+function placeInto(card,target){if(!target){$("pool").appendChild(card);return}
+ if(target.classList.contains("slot")){const ex=target.querySelector(".card");if(ex)$("pool").appendChild(ex);}
+ target.appendChild(card);card.classList.remove("ok","bad","sel");const o=O[card.dataset.id];$("fact").innerHTML=`💡 <b>${o[1]}</b>: ${o[3]}`;beep(520,.06)}
+function check(){const {l,h,j}=CUR;let ok=true,done=true;
+ if(l.t=="chain"){document.querySelectorAll("#board .slot").forEach(s=>{const c=s.querySelector(".card");if(!c){done=false;return}const r=c.dataset.id==l.c[s.dataset.i];c.classList.toggle("ok",r);c.classList.toggle("bad",!r);if(!r)ok=false})}
+ else if(l.t=="sort"){if($("pool").children.length)done=false;document.querySelectorAll("#board .bin .card").forEach(c=>{const r=O[c.dataset.id][2]==c.parentNode.dataset.role;c.classList.toggle("ok",r);c.classList.toggle("bad",!r);if(!r)ok=false})}
+ else{if($("pool").children.length)done=false;document.querySelectorAll("#board .bin .card").forEach(c=>{const r=(WEB[c.dataset.id]||[]).includes(c.parentNode.dataset.food);c.classList.toggle("ok",r);c.classList.toggle("bad",!r);if(!r)ok=false})}
+ if(!done){toast("Place every card first!");return}
+ if(!ok){mistakes++;bad();toast("Not quite! Red cards are in the wrong spot. Try again.");setTimeout(()=>document.querySelectorAll("#board .card.bad").forEach(c=>$("pool").appendChild(c)),900);return}
+ good();const st=Math.max(1,3-mistakes-(hints>1?1:0)),k=h.id+"-"+j,prev=S.stars[k]||0;S.stars[k]=Math.max(prev,st);save();addXP(20+10*st);
+ const ids=l.t=="chain"?l.c:l.t=="sort"?l.s:l.w.top;const f=O[ids[ids.length-1]];
+ const last=j==h.lv.length-1;
+ modal("🎉 Great job!",`<div class="stars" style="font-size:34px">${"★".repeat(st)}${"☆".repeat(3-st)}</div><p>${l.t=="chain"?l.c.map(i=>O[i][0]).join(" → "):"All correct!"}</p><div class="fact">🧠 <b>Fun fact:</b> ${f[3]}</div>`,
+  [["Levels",()=>levels(CUR.hi),"sec"],...(last?[["Home",home]]:[["Next ▶",()=>play(CUR.hi,j+1)]])])}
+function hint(){hints++;const {l}=CUR;
+ if(l.t=="chain"){const slots=[...document.querySelectorAll("#board .slot")];for(const s of slots){const c=s.querySelector(".card");if(!c||c.dataset.id!=l.c[s.dataset.i]){const want=document.querySelector(`.card[data-id="${l.c[s.dataset.i]}"]`);placeInto(want,s);toast("💡 Placed "+O[l.c[s.dataset.i]][1]+" for you.");return}}}
+ else{const c=$("pool").querySelector(".card");if(!c){toast("Everything's placed—press Check!");return}const id=c.dataset.id;
+  if(l.t=="sort")toast(`💡 ${O[id][1]} is a ${ROLE[O[id][2]]}.`,2600);else toast(`💡 ${O[id][1]} eats: ${(WEB[id]||[]).map(x=>O[x][1]).join(", ")}`,2600)}}
+// ---------- drag & tap (pointer events, mouse + touch) ----------
+let drag=null;
+document.addEventListener("pointerdown",e=>{const c=e.target.closest("#sPlay .card");if(!c)return;e.preventDefault();
+ const r=c.getBoundingClientRect();drag={c,ox:e.clientX-r.left,oy:e.clientY-r.top,sx:e.clientX,sy:e.clientY,moved:false,ghost:null}});
+document.addEventListener("pointermove",e=>{if(!drag)return;if(!drag.moved&&Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)<6)return;
+ if(!drag.moved){drag.moved=true;drag.ghost=drag.c.cloneNode(true);drag.ghost.classList.add("drag");drag.ghost.classList.remove("sel");document.body.appendChild(drag.ghost);drag.c.style.opacity=.3}
+ drag.ghost.style.left=(e.clientX-drag.ox)+"px";drag.ghost.style.top=(e.clientY-drag.oy)+"px";
+ document.querySelectorAll(".drop.over").forEach(d=>d.classList.remove("over"));const t=document.elementFromPoint(e.clientX,e.clientY);const d=t&&t.closest(".drop");if(d)d.classList.add("over")});
+document.addEventListener("pointerup",e=>{if(!drag)return;const {c,moved,ghost}=drag;drag=null;document.querySelectorAll(".drop.over").forEach(d=>d.classList.remove("over"));
+ if(moved){ghost.remove();c.style.opacity="";const t=document.elementFromPoint(e.clientX,e.clientY);const d=t&&t.closest(".drop,#pool");placeInto(c,d&&d.id!="pool"?d:null)}
+ else{if(selCard===c){c.classList.remove("sel");selCard=null}else{if(selCard)selCard.classList.remove("sel");selCard=c;c.classList.add("sel");const o=O[c.dataset.id];$("fact").innerHTML=`💡 <b>${o[1]}</b>: ${o[3]}`}}});
+document.addEventListener("click",e=>{if(!selCard)return;const d=e.target.closest(".drop");if(d&&!e.target.closest(".card")){placeInto(selCard,d);selCard=null}else if(e.target.closest("#pool")&&!e.target.closest(".card")){placeInto(selCard,null);selCard=null}});
+// ---------- quiz ----------
+let Q,qi,qs,qTimerId,tId;
+function stopTimers(){clearInterval(qTimerId);clearInterval(tId)}
+function genQ(){const ids=Object.keys(O),T=Math.random()*5|0,pick=a=>a[Math.random()*a.length|0];
+ if(T<2){const id=pick(ids),r=O[id][2];return{q:`What role does ${O[id][0]} <b>${O[id][1]}</b> play?`,a:ROLE[r],o:shuffle(Object.values(ROLE)),f:O[id][3]}}
+ if(T==2){const ch=pick(HAB.flatMap(h=>h.lv.filter(l=>l.t=="chain").map(l=>l.c)));const i=1+(Math.random()*(ch.length-1)|0);const a=ch[i-1];
+  const wrong=shuffle(ids.filter(x=>x!=a&&!ch.includes(x))).slice(0,3);return{q:`What does ${O[ch[i]][0]} <b>${O[ch[i]][1]}</b> eat in this chain: ${ch.map(x=>O[x][0]).join("→")}?`,a:O[a][1],o:shuffle([a,...wrong].map(x=>O[x][1])),f:O[a][3]}}
+ return pick([
+  {q:"Where does almost all energy in a food chain start?",a:"The Sun",o:["The Sun","The soil","Water","Predators"],f:"Plants capture sunlight through photosynthesis."},
+  {q:"Which of these is a decomposer?",a:"Mushroom",o:["Mushroom","Grass","Hawk","Zebra"],f:O.mushroom[3]},
+  {q:"What do the arrows in a food chain show?",a:"Which way energy flows",o:["Which way energy flows","Who is bigger","Who is faster","Where animals live"],f:"Arrows point from the food to the eater."},
+  {q:"A food web is…",a:"Many connected food chains",o:["Many connected food chains","A spider's home","One straight chain","Only plants"],f:"Food webs show that most animals eat more than one thing."},
+  {q:"Animals that eat only plants are called…",a:"Herbivores",o:["Herbivores","Carnivores","Decomposers","Producers"],f:"Herbivores are primary consumers."},
+  {q:"An animal that eats both plants and animals is an…",a:"Omnivore",o:["Omnivore","Herbivore","Producer","Decomposer"],f:"Bears, raccoons and humans are omnivores."},
+  {q:"About how much energy passes to the next level up a food chain?",a:"About 10%",o:["About 10%","About 50%","All of it","About 90%"],f:"Most energy is used for living or lost as heat—so chains are short!"},
+  {q:"If all the lions vanished, zebra numbers would probably…",a:"Go up",o:["Go up","Go down","Stay exactly the same","Turn into lions"],f:"Predators keep prey populations in balance."},
+  {q:"What do producers make using sunlight?",a:"Their own food (sugar)",o:["Their own food (sugar)","Meat","Rocks","Bones"],f:"This is called photosynthesis."},
+  {q:"Which animal is the apex predator of the Arctic?",a:"Polar Bear",o:["Polar Bear","Lemming","Arctic Cod","Krill"],f:O.bear[3]}])}
+function startQuiz(timed){stopTimers();Q=[];const seen=new Set();while(Q.length<10){const q=genQ();if(!seen.has(q.q)){seen.add(q.q);Q.push(q)}}qi=0;qs=0;show("sQuiz");nextQ()}
+function nextQ(){if(qi>=10){S.quizBest=Math.max(S.quizBest,qs);save();addXP(qs*5);modal("Quiz complete!",`<p style="font-size:30px">${qs}/10</p><p>${qs>=8?"🌟 Ecosystem expert!":qs>=5?"👍 Nice work!":"Keep exploring—you'll get it!"}</p>`,[["Home",home,"sec"],["Play again",startQuiz]]);return}
+ const q=Q[qi];$("qProg").textContent=`Question ${qi+1}/10`;$("qScore").textContent=`Score ${qs}`;$("qText").innerHTML=q.q;$("qFact").style.display="none";const o=$("qOpts");o.innerHTML="";
+ q.o.forEach(t=>{const b=document.createElement("button");b.textContent=t;b.onclick=()=>{if(o.dataset.lock)return;o.dataset.lock=1;const r=t==q.a;if(r){qs++;good()}else bad();
+  [...o.children].forEach(x=>{if(x.textContent==q.a)x.classList.add("ok");else if(x==b)x.classList.add("bad")});$("qScore").textContent=`Score ${qs}`;
+  $("qFact").style.display="block";$("qFact").innerHTML=(r?"✅ Correct! ":"❌ The answer is <b>"+q.a+"</b>. ")+"🧠 "+q.f;setTimeout(()=>{delete o.dataset.lock;qi++;nextQ()},2200)};o.appendChild(b)})}
+// ---------- timed sort ----------
+let tScore,tLeft,tCur;
+function startTimed(){stopTimers();tScore=0;tLeft=60;show("sTimed");const b=$("tBins");b.innerHTML="";b.appendChild(bins(["P","H","C","D"]));
+ b.querySelectorAll(".bin").forEach(x=>{x.style.cursor="pointer";x.onclick=()=>tAnswer(x.dataset.role)});tNext();upd();
+ tId=setInterval(()=>{tLeft-=.2;upd();if(tLeft<=0){clearInterval(tId);const nb=tScore>S.timedBest;S.timedBest=Math.max(S.timedBest,tScore);save();addXP(tScore*2);
+  modal("⏱️ Time's up!",`<p style="font-size:30px">${tScore} points</p><p>${nb?"🏆 New best!":"Best: "+S.timedBest}</p>`,[["Home",home,"sec"],["Again",startTimed]])}},200);
+ function upd(){$("tTime").textContent=Math.ceil(Math.max(0,tLeft))+"s";$("tBar").style.width=(tLeft/60*100)+"%";$("tScore").textContent="Score "+tScore}}
+function tNext(){const ids=Object.keys(O);let id;do{id=ids[Math.random()*ids.length|0]}while(id==tCur);tCur=id;const t=$("tCard");t.innerHTML="";const c=mkCard(id);c.style.transform="scale(1.3)";c.style.cursor="default";t.appendChild(c)}
+function tAnswer(r){if(tLeft<=0)return;if(O[tCur][2]==r){tScore++;good();toast("✅ +1",600)}else{tLeft=Math.max(0,tLeft-3);bad();toast(`❌ ${O[tCur][1]} is a ${ROLE[O[tCur][2]]} (−3s)`,1400)}tNext()}
+document.addEventListener("keydown",e=>{if($("sTimed").classList.contains("on")){const m={1:"P",2:"H",3:"C",4:"D"}[e.key];if(m)tAnswer(m)}});
+function resetSave(){modal("Reset progress?","All stars and XP will be erased.",[["Cancel",()=>{},"sec"],["Reset",()=>{localStorage.removeItem(KEY);S=load();home()}]])}
+home();
+</script></body></html>

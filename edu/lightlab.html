@@ -1,0 +1,176 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>Light Lab</title>
+<style>
+:root{--bg:#0f1530;--card:#1b2350;--ink:#f4f6ff;--mut:#9aa6d8;--acc:#ffd24d;--good:#3ddc84;--bad:#ff5c7a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:"Trebuchet MS",system-ui,sans-serif;background:radial-gradient(circle at 20% 0%,#2a3480,var(--bg) 60%);color:var(--ink);min-height:100vh;user-select:none;-webkit-user-select:none;overflow-x:hidden}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0008;position:sticky;top:0;z-index:5;backdrop-filter:blur(4px)}
+header a{color:var(--ink);text-decoration:none;background:#fff1;padding:6px 12px;border-radius:20px;font-weight:bold}
+header h1{font-size:20px;margin:0;flex:1;color:var(--acc);text-shadow:0 2px 0 #0006}
+.pill{background:#fff1;padding:5px 10px;border-radius:14px;font-size:14px}
+main{max-width:980px;margin:0 auto;padding:14px}
+.btn{font:inherit;font-weight:bold;border:0;border-radius:14px;padding:10px 16px;background:var(--acc);color:#111;cursor:pointer;box-shadow:0 4px 0 #0007;transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #0007}.btn.alt{background:#2c3770;color:var(--ink)}.btn.sel{outline:3px solid #fff}
+.btn:disabled{opacity:.4}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border-radius:18px;padding:14px;box-shadow:0 6px 18px #0005;border:2px solid #ffffff10}
+.tile{cursor:pointer;transition:transform .15s}.tile:hover{transform:translateY(-4px) rotate(-1deg)}
+.tile .em{font-size:40px}.tile h3{margin:6px 0}.tile p{margin:0;color:var(--mut);font-size:14px}
+.stars{color:#ffd34d;letter-spacing:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fb{min-height:28px;font-weight:bold;font-size:18px;margin:8px 0}
+.opt{display:block;width:100%;margin:6px 0;text-align:left;background:#2c3770;color:var(--ink)}
+.opt.ok{background:var(--good);color:#111}.opt.no{background:var(--bad)}
+.pop{animation:pop .35s}@keyframes pop{50%{transform:scale(1.12)}}
+.shake{animation:shk .35s}@keyframes shk{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:9}
+.bar{height:10px;background:#fff2;border-radius:6px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--acc);transition:width .3s}
+.fact{background:#ffd34d22;border-left:4px solid #ffd34d;padding:8px 12px;border-radius:8px;margin:8px 0}
+svg text{font-family:inherit}
+</style></head><body>
+<header><a href="./index.html">← Learning Lab</a><h1>Light Lab</h1><span class="pill" id="starTotal">⭐ 0</span><button class="btn alt" id="snd" style="padding:6px 10px">🔊</button></header>
+<main id="app"></main><canvas id="fx"></canvas>
+<script>
+// ---- shared helpers ----
+const $=s=>document.querySelector(s),app=$('#app');
+const SAVEKEY='lightLabSave';let SAVE=JSON.parse(localStorage.getItem(SAVEKEY)||'{}');SAVE.stars=SAVE.stars||{};SAVE.best=SAVE.best||{};
+function save(){localStorage.setItem(SAVEKEY,JSON.stringify(SAVE));$('#starTotal').textContent='⭐ '+Object.values(SAVE.stars).reduce((a,b)=>a+b,0)}
+let AC=null,muted=!!SAVE.muted;$('#snd').textContent=muted?'🔇':'🔊';
+$('#snd').onclick=()=>{muted=!muted;SAVE.muted=muted;save();$('#snd').textContent=muted?'🔇':'🔊'};
+function tone(f,d=.12,type='sine',v=.15,slide=0,delay=0){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.02)}catch(e){}}
+function noise(d=.4,v=.2,lp=800){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const n=AC.sampleRate*d,b=AC.createBuffer(1,n,AC.sampleRate),c=b.getChannelData(0);for(let i=0;i<n;i++)c[i]=(Math.random()*2-1)*(1-i/n);const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();f.type='lowpass';f.frequency.value=lp;g.gain.value=v;s.buffer=b;s.connect(f);f.connect(g);g.connect(AC.destination);s.start()}catch(e){}}
+const SFX={click:()=>tone(660,.05,'square',.06),good:()=>{tone(523,.1,'triangle');tone(784,.15,'triangle',.15,0,.08)},bad:()=>tone(200,.25,'sawtooth',.08,-80),
+win:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.15,0,i*.1)),pick:()=>tone(440,.06,'sine',.1,200),drop:()=>tone(330,.08,'sine',.12,-100)};
+// confetti
+const cv=$('#fx'),cx=cv.getContext('2d');let fxp=[];function rs(){cv.width=innerWidth;cv.height=innerHeight}rs();addEventListener('resize',rs);
+function confetti(x=innerWidth/2,y=innerHeight/3,n=60){for(let i=0;i<n;i++)fxp.push({x,y,vx:(Math.random()-.5)*10,vy:-Math.random()*9-2,c:`hsl(${Math.random()*360},90%,60%)`,l:90});}
+(function loop(){cx.clearRect(0,0,cv.width,cv.height);fxp=fxp.filter(p=>p.l-->0);for(const p of fxp){p.vy+=.3;p.x+=p.vx;p.y+=p.vy;cx.fillStyle=p.c;cx.fillRect(p.x,p.y,7,7)}requestAnimationFrame(loop)})();
+function flash(el,ok){el.classList.remove('pop','shake');void el.offsetWidth;el.classList.add(ok?'pop':'shake')}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function award(id,n){if((SAVE.stars[id]||0)<n)SAVE.stars[id]=n;save()}
+// generic timed quiz: qs=[{q,opts,a,fact}] ; a is correct string
+function runQuiz(id,title,qs,secs,back){let i=0,score=0,t=secs,timer;qs=shuffle(qs).slice(0,10);
+ function end(){clearInterval(timer);const st=score>=9?3:score>=7?2:score>=5?1:0;award(id,st);if(score>(SAVE.best[id]||0))SAVE.best[id]=score;save();if(st)SFX.win(),confetti();
+  app.innerHTML=`<div class="card" style="text-align:center"><h2>${title} — done!</h2><div style="font-size:48px" class="stars">${starStr(st)}</div><p>You got <b>${score}/${qs.length}</b>. Best: ${SAVE.best[id]}</p><div class="row" style="justify-content:center"><button class="btn" id="ag">Play again</button><button class="btn alt" id="bk">Back</button></div></div>`;$('#ag').onclick=()=>runQuiz(id,title,qs,secs,back);$('#bk').onclick=back}
+ function show(){if(i>=qs.length)return end();const q=qs[i];app.innerHTML=`<div class="card"><div class="row"><b style="flex:1">${title} · Q${i+1}/${qs.length}</b>${secs?`<span class="pill">⏱ <span id="tm">${t}</span>s</span>`:''}<span class="pill">✅ ${score}</span></div><div class="bar" style="margin:8px 0"><i style="width:${i/qs.length*100}%"></i></div>${q.svg||''}<h2>${q.q}</h2><div id="os"></div><div class="fb" id="fb"></div></div>`;
+  shuffle(q.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.innerHTML=o;b.onclick=()=>{if(b.parentNode.dataset.done)return;b.parentNode.dataset.done=1;const ok=o==q.a;if(ok){score++;SFX.good();confetti(innerWidth/2,innerHeight/2,20)}else SFX.bad();[...$('#os').children].forEach(x=>{if(x.innerHTML==q.a)x.classList.add('ok')});if(!ok)b.classList.add('no');flash(b,ok);$('#fb').innerHTML=(ok?'✅ Correct! ':'❌ Not quite. ')+(q.fact?`<div class="fact">💡 ${q.fact}</div>`:'');setTimeout(()=>{i++;show()},q.fact?2200:1100)};$('#os').appendChild(b)})}
+ if(secs)timer=setInterval(()=>{t--;const e=$('#tm');if(e)e.textContent=t;if(t<=5&&t>0)tone(880,.05);if(t<=0)end()},1000);show()}
+save();
+</script>
+<script>
+const W=9,H=7,DIRS={R:[1,0],L:[-1,0],U:[0,-1],D:[0,1]};const CN={1:'red',2:'green',4:'blue',3:'yellow',5:'magenta',6:'cyan',7:'white'};
+const CC={1:'#ff3b3b',2:'#3bff5a',4:'#3b7bff',3:'#ffe93b',5:'#ff3bf0',6:'#3bf6ff',7:'#ffffff'};
+// level: lasers [x,y,dir,color], targets [x,y,color] (color 0 = must stay DARK), walls [[x,y]], inv {mirror:n,...}
+const LV=[
+{n:'First reflection',l:[[0,3,'R',1]],t:[[4,0,1]],w:[],inv:{mirror:1},tip:'Tap a mirror below, then tap a square on the board. Tap a placed mirror to turn it (tap again to pick it up).'},
+{n:'Around the wall',l:[[0,1,'R',7]],t:[[8,5,7]],w:[[4,0],[4,1],[4,2],[4,3]],inv:{mirror:2},tip:'Angle of incidence = angle of reflection. A 45° mirror turns light 90°.'},
+{n:'Color filter',l:[[0,3,'R',7]],t:[[8,3,2]],w:[],inv:{fR:1,fG:1},tip:'White light is a mix of red, green and blue. A filter lets only its own color through.'},
+{n:'Make yellow',l:[[0,1,'R',1],[0,5,'R',2]],t:[[6,3,3]],w:[],inv:{mirror:2},tip:'Mixing LIGHT is different from mixing paint: red + green light = yellow!'},
+{n:'Rainbow prism',l:[[0,3,'R',7]],t:[[4,0,1],[8,3,2],[4,6,4]],w:[],inv:{prism:1},tip:'A prism bends each color a different amount (refraction), splitting white light apart.'},
+{n:'Cast a shadow',l:[[0,3,'R',7],[0,1,'R',7]],t:[[4,6,7],[8,3,0],[8,1,0]],w:[],inv:{mirror:1,block:1},tip:'Dark sensors (⚫) must stay in shadow. Light travels in straight lines, so a solid block makes a shadow behind it.'},
+{n:'Magenta mix',l:[[0,2,'R',1],[8,4,'L',4]],t:[[4,6,5]],w:[[6,6],[7,6]],inv:{mirror:3},tip:'Red + blue light = magenta.'},
+{n:'Split and rejoin',l:[[0,3,'R',7]],t:[[6,3,6]],w:[[2,0]],inv:{prism:1,mirror:2},tip:'Green + blue = cyan. Can you bring two colors back together?'},
+{n:'Half mirror',l:[[0,3,'R',1]],t:[[8,3,1],[4,0,1]],w:[],inv:{split:1},tip:'A beam splitter (half-silvered mirror) lets some light through and reflects the rest.'},
+{n:'Make white',l:[[0,1,'R',1],[0,3,'R',2],[0,5,'R',4]],t:[[6,3,7]],w:[],inv:{mirror:2},tip:'Red + green + blue light together make white light. Screens use this trick!'},
+{n:'Shadow maze',l:[[0,2,'R',1],[0,4,'R',2]],t:[[4,6,3],[8,2,0],[8,4,0]],w:[],inv:{mirror:3}},
+{n:'Red only',l:[[0,3,'R',7]],t:[[8,0,1],[8,3,0]],w:[[5,1],[6,1],[7,1],[8,1]],inv:{prism:1,mirror:1,block:1}},
+{n:'Double magenta',l:[[0,3,'R',1],[4,6,'U',4]],t:[[8,3,5],[4,0,5]],w:[],inv:{split:1}},
+{n:'Grand finale',l:[[0,3,'R',7]],t:[[8,3,2],[8,0,1],[8,6,4]],w:[[5,2],[5,4]],inv:{prism:1,mirror:2}}];
+LV.forEach((l,i)=>l.id='L'+i);
+const PIECES={mirror:{n:'Mirror',ic:'╱',rot:['/','\\']},split:{n:'Beam splitter',ic:'⧄',rot:['/','\\']},prism:{n:'Prism',ic:'△',rot:[0]},block:{n:'Block',ic:'⬛',rot:[0]},fR:{n:'Red filter',ic:'🟥',rot:[0],c:1},fG:{n:'Green filter',ic:'🟩',rot:[0],c:2},fB:{n:'Blue filter',ic:'🟦',rot:[0],c:4}};
+function trace(L,placed){// placed: map "x,y"->{k,o}
+ const segs=[],hit={},key=(x,y)=>x+','+y,walls=new Set(L.w.map(([x,y])=>key(x,y))),tg={};L.t.forEach(t=>tg[key(t[0],t[1])]=t);const lz=new Set(L.l.map(l=>key(l[0],l[1])));
+ const seen=new Set();const q=L.l.map(([x,y,d,c])=>({x,y,dx:DIRS[d][0],dy:DIRS[d][1],c}));let guard=0;
+ while(q.length&&guard++<500){let b=q.shift();let x=b.x,y=b.y;const pts=[[x,y]];let c=b.c,dx=b.dx,dy=b.dy;
+  while(true){x+=dx;y+=dy;if(x<0||y<0||x>=W||y>=H){pts.push([x-dx*.5,y-dy*.5]);break}
+   const k=key(x,y);const sk=k+dx+','+dy+c;if(seen.has(sk)){pts.push([x,y]);break}seen.add(sk);
+   if(walls.has(k)||lz.has(k)){pts.push([x-dx*.5,y-dy*.5]);break}
+   if(tg[k]){hit[k]=(hit[k]||0)|c;pts.push([x,y]);break}
+   const p=placed[k];if(!p)continue;pts.push([x,y]);
+   if(p.k=='block'){break}
+   if(p.k=='mirror'){[dx,dy]=p.o=='/'?[-dy,-dx]:[dy,dx];continue}
+   if(p.k=='split'){const[rx,ry]=p.o=='/'?[-dy,-dx]:[dy,dx];q.push({x,y,dx:rx,dy:ry,c});continue}
+   if(p.k[0]=='f'){c&=PIECES[p.k].c;if(!c)break;segs.push({pts:pts.slice(),c:b.c});pts.length=0;pts.push([x,y]);b={c};continue}
+   if(p.k=='prism'){if(c&1)q.push({x,y,dx:dy,dy:-dx,c:1});if(c&4)q.push({x,y,dx:-dy,dy:dx,c:4});if(c&2){c=2;segs.push({pts:pts.slice(),c:b.c});pts.length=0;pts.push([x,y]);b={c};continue}break}}
+  segs.push({pts,c:b.c})}
+ const win=L.t.every(t=>(hit[key(t[0],t[1])]||0)===t[2]);return{segs,hit,win}}
+function menu(){const tot=LV.length*3,got=LV.reduce((a,l)=>a+(SAVE.stars[l.id]||0),0);
+ app.innerHTML=`<div class="card" style="text-align:center"><div style="font-size:54px">🔦🌈🪞</div><h2 style="margin:4px">Light Lab</h2><p style="color:var(--mut)">Bend, bounce, split and mix laser beams to light up every target. Discover how light really works!</p><div class="bar"><i style="width:${got/tot*100}%"></i></div><p class="stars">${got}/${tot} ★</p></div>
+ <div class="grid" style="margin-top:12px"><div class="card tile" id="mL"><div class="em">📖</div><h3>Learn</h3><p>Reflection, refraction, color mixing, shadows, lenses.</p></div>
+ <div class="card tile" id="mP"><div class="em">🔦</div><h3>Laser puzzles</h3><p>${LV.length} optics puzzles.</p></div>
+ <div class="card tile" id="mQ"><div class="em">❓</div><h3>Quiz</h3><p>10 questions. ${starStr(SAVE.stars.quiz||0)}</p></div>
+ <div class="card tile" id="mT"><div class="em">⏱️</div><h3>Timed challenge</h3><p>60 seconds! ${starStr(SAVE.stars.timed||0)}</p></div></div>`;
+ $('#mL').onclick=()=>{SFX.click();learn(0)};$('#mP').onclick=()=>{SFX.click();levels()};$('#mQ').onclick=()=>{SFX.click();runQuiz('quiz','Light Quiz',QS,0,menu)};$('#mT').onclick=()=>{SFX.click();runQuiz('timed','Timed Challenge',QS,60,menu)}}
+const LEARN=[
+{h:'💡 Light travels in straight lines',p:'Light moves in straight lines called rays, at about 300,000 km every second — fast enough to circle Earth 7½ times in one second! Sunlight takes about 8 minutes to reach us.',k:'rays'},
+{h:'🪞 Reflection',p:'When light hits a mirror it bounces off. The <b>angle of incidence</b> (coming in) equals the <b>angle of reflection</b> (going out). That is why a mirror at 45° turns a beam by 90°.',k:'reflect'},
+{h:'🔍 Refraction',p:'Light slows down when it goes from air into water or glass, and that makes it bend. A straw in a glass of water looks broken because of refraction!',k:'refract'},
+{h:'🌈 Prisms and rainbows',p:'White light is a mix of all colors. A prism bends each color a different amount — violet and blue bend the most, red the least — so the colors spread out. Raindrops do the same to make rainbows: red, orange, yellow, green, blue, indigo, violet.',k:'prism'},
+{h:'🔴🟢🔵 Mixing light',p:'Light mixes differently from paint! The primary colors of light are <b>red, green and blue</b>. Red + green = yellow, red + blue = magenta, green + blue = cyan, and all three = white. Phone and TV screens make every color from tiny red, green and blue dots.',k:'mix'},
+{h:'🟥 Filters',p:'A colored filter only lets its own color through and absorbs the rest. A red filter turns white light red — but it blocks green light completely!',k:'filter'},
+{h:'⬛ Shadows',p:'An opaque object blocks light. Because light travels in straight lines, it cannot bend around the object, so a dark shadow forms behind it. Transparent things (glass) let light through, translucent things (wax paper) let some through.',k:'shadow'},
+{h:'👓 Lenses',p:'A <b>convex</b> lens (thicker in the middle) bends light inward to a focus point — magnifying glasses, cameras and your eyes use them. A <b>concave</b> lens (thinner in the middle) spreads light out and helps near-sighted people see far away.',k:'lens'}];
+function learn(i){const m=LEARN[i];app.innerHTML=`<div class="card"><div class="row"><b style="flex:1">${i+1} / ${LEARN.length}</b><button class="btn alt" id="bk">Menu</button></div><div style="text-align:center"><canvas id="lc" width="440" height="200" style="max-width:100%;background:#05081a;border-radius:14px"></canvas></div><h2>${m.h}</h2><p>${m.p}</p>
+ <div class="row"><button class="btn alt" id="pv" ${i?'':'disabled'}>← Prev</button><span style="flex:1"></span><button class="btn" id="nx">${i<LEARN.length-1?'Next →':'Done ✓'}</button></div></div>`;
+ $('#bk').onclick=menu;$('#pv').onclick=()=>learn(i-1);$('#nx').onclick=()=>{SFX.click();i<LEARN.length-1?learn(i+1):(SFX.win(),confetti(),menu())};demo($('#lc'),m.k)}
+function glow(g,c,w=5){g.strokeStyle=c;g.shadowColor=c;g.shadowBlur=14;g.lineWidth=w;g.lineCap='round'}
+function pl(g,pts){g.beginPath();pts.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.stroke()}
+function demo(c,k){const g=c.getContext('2d'),t0=performance.now();(function f(n){if(!c.isConnected)return;const t=(n-t0)/1000,s=(Math.sin(t*1.5)+1)/2;g.clearRect(0,0,440,200);g.shadowBlur=0;
+ if(k=='rays'){glow(g,'#ffe680',3);for(let a=-3;a<=3;a++)pl(g,[[60,100],[60+380,100+a*30]]);g.shadowBlur=0;g.fillStyle='#ffd34d';g.beginPath();g.arc(60,100,24,0,7);g.fill()}
+ if(k=='reflect'){g.fillStyle='#9fd8ff';g.fillRect(40,170,360,8);const a=.4+s*.6,x=220;glow(g,'#ff4040');pl(g,[[x-Math.cos(a)*200,170-Math.sin(a)*200],[x,170],[x+Math.cos(a)*200,170-Math.sin(a)*200]]);g.shadowBlur=0;g.setLineDash([4,4]);g.strokeStyle='#fff6';g.lineWidth=1;pl(g,[[x,170],[x,20]]);g.setLineDash([])}
+ if(k=='refract'){g.fillStyle='#2a6cff55';g.fillRect(0,100,440,100);glow(g,'#ff4040');pl(g,[[40,0],[200,100],[260,200]]);g.shadowBlur=0;g.fillStyle='#fff';g.font='14px sans-serif';g.fillText('air',10,90);g.fillText('water — light bends!',10,190)}
+ if(k=='prism'||k=='lens'||k=='mix'||k=='filter'||k=='shadow'){}
+ if(k=='prism'){g.fillStyle='#bfe8ff44';g.strokeStyle='#bfe8ff';g.lineWidth=2;g.beginPath();g.moveTo(220,30);g.lineTo(290,170);g.lineTo(150,170);g.closePath();g.fill();g.stroke();glow(g,'#fff',4);pl(g,[[0,120],[190,110]]);['#ff2020','#ff8a00','#ffe600','#30ff40','#2080ff','#4b40ff','#a040ff'].forEach((cl,j)=>{glow(g,cl,3);pl(g,[[190,110],[255,115+j*2],[440,120+j*12+s*4]])})}
+ if(k=='mix'){g.globalCompositeOperation='lighter';[[180,80,'#f00'],[260,80,'#0f0'],[220,140,'#00f']].forEach(([x,y,cl])=>{g.fillStyle=cl;g.beginPath();g.arc(x+Math.sin(t+x)*8,y,60,0,7);g.fill()});g.globalCompositeOperation='source-over'}
+ if(k=='filter'){glow(g,'#fff');pl(g,[[0,100],[200,100]]);glow(g,'#ff3030');pl(g,[[220,100],[440,100]]);g.shadowBlur=0;g.fillStyle='#ff303099';g.fillRect(200,40,20,120)}
+ if(k=='shadow'){const lx=60+s*80;g.fillStyle='#ffe68044';g.beginPath();g.moveTo(lx,100);g.lineTo(440,0);g.lineTo(440,200);g.fill();g.fillStyle='#05081a';const bx=240;g.beginPath();g.moveTo(bx,80);g.lineTo(440,80+(80-100)*(440-bx)/(bx-lx));g.lineTo(440,120+(120-100)*(440-bx)/(bx-lx));g.lineTo(bx,120);g.fill();g.fillStyle='#8a8f9e';g.fillRect(bx-10,80,20,40);g.fillStyle='#ffd34d';g.beginPath();g.arc(lx,100,12,0,7);g.fill()}
+ if(k=='lens'){g.fillStyle='#bfe8ff55';g.beginPath();g.ellipse(200,100,16,80,0,0,7);g.fill();const fx=300+s*40;for(let j=-2;j<=2;j++){glow(g,'#ffe680',2);pl(g,[[0,100+j*30],[200,100+j*30],[fx,100],[440,100-j*30*(240-fx)/(fx-200)]])}g.shadowBlur=0;g.fillStyle='#fff';g.font='14px sans-serif';g.fillText('focus',fx-18,130)}
+ g.shadowBlur=0;requestAnimationFrame(f)})(t0)}
+function levels(){app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">🔦 Laser puzzles</h2><button class="btn alt" id="bk">Menu</button></div><p style="color:var(--mut)">Solve fast for ★★★.</p><div class="grid" id="lg"></div></div>`;$('#bk').onclick=menu;
+ LV.forEach((l,i)=>{const lock=i>0&&!SAVE.stars[LV[i-1].id];const d=document.createElement('div');d.className='card tile';d.style.opacity=lock?.45:1;d.innerHTML=`<div class="em">${lock?'🔒':'🔦'}</div><h3>${i+1}. ${l.n}</h3><div class="stars">${starStr(SAVE.stars[l.id]||0)}</div>`;d.onclick=()=>{if(lock){SFX.bad();flash(d,0);return}SFX.click();play(i)};$('#lg').appendChild(d)})}
+let G=null;
+function play(i){const L=LV[i];const placed={},inv={...L.inv};let sel=null,done=false,t0=performance.now(),moves=0;
+ app.innerHTML=`<div class="card"><div class="row"><b style="flex:1">Puzzle ${i+1}: ${L.n}</b><span class="pill">⏱ <span id="tm">0</span>s</span><button class="btn alt" id="rs">↺</button><button class="btn alt" id="bk">Levels</button></div>
+ ${L.tip?`<div class="fact">💡 ${L.tip}</div>`:''}<canvas id="bc" width="900" height="700" style="width:100%;max-width:720px;display:block;margin:0 auto;background:#05081a;border-radius:14px;touch-action:none;cursor:pointer"></canvas>
+ <div class="row" id="iv" style="justify-content:center;margin-top:8px"></div><p style="text-align:center;color:var(--mut);font-size:14px;margin:4px">Targets show the color they need. ⚫ = must stay dark.</p><div class="fb" id="fb" style="text-align:center"></div></div>`;
+ $('#bk').onclick=levels;$('#rs').onclick=()=>play(i);const c=$('#bc'),g=c.getContext('2d'),S=100;
+ function drawInv(){$('#iv').innerHTML='';Object.keys(inv).forEach(k=>{const b=document.createElement('button');b.className='btn alt'+(sel==k?' sel':'');b.disabled=!inv[k];b.innerHTML=`<span style="font-size:20px">${PIECES[k].ic}</span> ${PIECES[k].n} ×${inv[k]}`;b.onclick=()=>{sel=sel==k?null:k;SFX.pick();drawInv()};$('#iv').appendChild(b)})}
+ drawInv();const busy=k=>L.w.some(([x,y])=>x+','+y==k)||L.l.some(([x,y])=>x+','+y==k)||L.t.some(([x,y])=>x+','+y==k);
+ c.onpointerdown=e=>{if(done)return;const r=c.getBoundingClientRect(),x=Math.floor((e.clientX-r.left)/r.width*W),y=Math.floor((e.clientY-r.top)/r.height*H),k=x+','+y;if(busy(k)){SFX.bad();return}
+  const p=placed[k];moves++;if(p){const rot=PIECES[p.k].rot,j=rot.indexOf(p.o);if(j<rot.length-1&&rot.length>1){p.o=rot[j+1];SFX.click()}else{delete placed[k];inv[p.k]++;SFX.drop()}}
+  else if(sel&&inv[sel]>0){placed[k]={k:sel,o:PIECES[sel].rot[0]};inv[sel]--;if(!inv[sel])sel=Object.keys(inv).find(q=>inv[q])||null;SFX.pick()}else{SFX.bad()}drawInv();check()};
+ function check(){const r=trace(L,placed);if(r.win&&!done){done=true;const sec=(performance.now()-t0)/1000,st=sec<40?3:sec<100?2:1;award(L.id,st);SFX.win();confetti();
+   $('#fb').innerHTML=`<div class="pop" style="font-size:22px">🎉 All targets lit! ${starStr(st)} (${sec.toFixed(0)} s)</div><div class="row" style="justify-content:center">${i<LV.length-1?'<button class="btn" id="nx">Next →</button>':''}<button class="btn alt" id="ag">Replay</button></div>`;if($('#nx'))$('#nx').onclick=()=>play(i+1);$('#ag').onclick=()=>play(i)}}
+ const cen=([x,y])=>[x*S+S/2,y*S+S/2];
+ (function draw(now){if(!c.isConnected)return;const t=now/1000;if(!done)$('#tm').textContent=((now-t0)/1000|0);g.clearRect(0,0,900,700);g.shadowBlur=0;
+  g.strokeStyle='#ffffff12';g.lineWidth=1;for(let x=0;x<=W;x++)pl(g,[[x*S,0],[x*S,700]]);for(let y=0;y<=H;y++)pl(g,[[0,y*S],[900,y*S]]);
+  L.w.forEach(([x,y])=>{g.fillStyle='#3a4270';g.fillRect(x*S+4,y*S+4,S-8,S-8);g.fillStyle='#4c5590';g.fillRect(x*S+4,y*S+4,S-8,12)});
+  const r=trace(L,placed);r.segs.forEach(s=>{glow(g,CC[s.c],7+Math.sin(t*8)*1.5);pl(g,s.pts.map(cen));glow(g,'#fff',2);pl(g,s.pts.map(cen))});g.shadowBlur=0;
+  L.l.forEach(([x,y,d,cl])=>{const[cx,cy]=cen([x,y]);g.save();g.translate(cx,cy);g.rotate(Math.atan2(DIRS[d][1],DIRS[d][0]));g.fillStyle='#8a8f9e';g.fillRect(-36,-22,60,44);g.fillStyle=CC[cl];g.fillRect(20,-10,16,20);g.restore()});
+  L.t.forEach(([x,y,cl])=>{const[cx,cy]=cen([x,y]),h=r.hit[x+','+y]||0,ok=h===cl;g.lineWidth=6;g.strokeStyle=cl?CC[cl]:'#555';g.beginPath();g.arc(cx,cy,34,0,7);g.stroke();g.fillStyle=h?CC[h]:'#111';if(ok){g.shadowColor=g.fillStyle;g.shadowBlur=30+Math.sin(t*6)*10}g.beginPath();g.arc(cx,cy,22,0,7);g.fill();g.shadowBlur=0;
+   g.fillStyle='#fff';g.font='bold 20px sans-serif';g.textAlign='center';g.fillText(ok?'✓':cl?'':'⚫',cx,cy+7)});
+  for(const k in placed){const p=placed[k],[x,y]=k.split(',').map(Number),[cx,cy]=cen([x,y]);g.save();g.translate(cx,cy);
+   if(p.k=='mirror'||p.k=='split'){g.rotate(p.o=='/'?-Math.PI/4:Math.PI/4);g.fillStyle=p.k=='mirror'?'#d8f1ff':'#d8f1ff88';g.fillRect(-42,-5,84,10);g.fillStyle='#7d8bb5';g.fillRect(-42,5,84,4)}
+   if(p.k=='prism'){g.fillStyle='#bfe8ff66';g.strokeStyle='#bfe8ff';g.lineWidth=3;g.beginPath();g.moveTo(0,-36);g.lineTo(34,28);g.lineTo(-34,28);g.closePath();g.fill();g.stroke()}
+   if(p.k=='block'){g.fillStyle='#6b5a46';g.fillRect(-34,-34,68,68);g.fillStyle='#846f56';g.fillRect(-34,-34,68,12)}
+   if(p.k[0]=='f'){g.fillStyle=CC[PIECES[p.k].c]+'88';g.strokeStyle=CC[PIECES[p.k].c];g.lineWidth=3;g.fillRect(-14,-38,28,76);g.strokeRect(-14,-38,28,76)}g.restore()}
+  G=requestAnimationFrame(draw)})(performance.now())}
+const QS=[
+{q:'What are the three primary colors of LIGHT?',opts:['Red, green, blue','Red, yellow, blue','Cyan, magenta, yellow','Black, white, grey'],a:'Red, green, blue'},
+{q:'Red light + green light makes…',opts:['Yellow','Brown','Purple','Blue'],a:'Yellow'},
+{q:'Red + green + blue light together make…',opts:['White','Black','Brown','Grey'],a:'White'},
+{q:'Green + blue light makes…',opts:['Cyan','Yellow','Magenta','Orange'],a:'Cyan'},
+{q:'Light bouncing off a mirror is called…',opts:['Reflection','Refraction','Absorption','Erosion'],a:'Reflection'},
+{q:'Light bending as it goes from air into water is called…',opts:['Refraction','Reflection','Evaporation','Friction'],a:'Refraction',fact:'That is why a straw in water looks broken.'},
+{q:'Why do shadows form?',opts:['Light travels in straight lines and is blocked','Light is pulled by gravity','Objects make darkness','Light bends around objects'],a:'Light travels in straight lines and is blocked'},
+{q:'A prism splits white light into…',opts:['A spectrum of colors','Sound waves','Heat only','Two white beams'],a:'A spectrum of colors'},
+{q:'Which color bends the MOST in a prism?',opts:['Violet','Red','Orange','Yellow'],a:'Violet',fact:'Violet/blue light bends most, red bends least.'},
+{q:'Shine white light through a red filter. What comes out?',opts:['Red light','White light','Green light','No light at all'],a:'Red light'},
+{q:'A magnifying glass uses which lens?',opts:['Convex lens','Concave lens','Flat mirror','Prism'],a:'Convex lens'},
+{q:'About how long does sunlight take to reach Earth?',opts:['About 8 minutes','About 1 second','About 1 day','About 1 year'],a:'About 8 minutes'},
+{q:'An object that lets NO light through is…',opts:['Opaque','Transparent','Translucent','Reflective'],a:'Opaque'},
+{q:'If light hits a mirror at 30°, it reflects at…',opts:['30°','60°','90°','0°'],a:'30°',fact:'Angle of incidence = angle of reflection.'},
+{q:'How do TV and phone screens make all their colors?',opts:['Tiny red, green and blue dots','Tiny paint drops','Many prisms','Only white light'],a:'Tiny red, green and blue dots'},
+{q:'Rainbows form when sunlight is refracted by…',opts:['Raindrops','Clouds of dust','The Moon','Wind'],a:'Raindrops'}];
+menu();
+</script></body></html>

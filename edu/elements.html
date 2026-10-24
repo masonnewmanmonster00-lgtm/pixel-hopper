@@ -1,0 +1,173 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Element Lab</title><style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;height:100%;background:#0f1630;color:#eef;font-family:system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden;user-select:none}
+#top{height:40px;display:flex;align-items:center;gap:8px;padding:0 8px;background:#18224a;border-bottom:2px solid #2c3a75}
+#top a,#top button{color:#fff;background:#2c3a75;border:0;border-radius:8px;padding:6px 10px;font-size:13px;text-decoration:none;cursor:pointer}
+#title{font-weight:800;flex:1;font-size:16px}#title b{color:#6ef2c4}
+#main{position:absolute;top:40px;left:0;right:0;bottom:0;overflow:auto}
+.btn{background:linear-gradient(#3a8cff,#2a5fd0);color:#fff;border:0;border-radius:12px;padding:10px 14px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 #1a3a8a}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #1a3a8a}
+.menu{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:12px}
+.card{background:#1c2858;border-radius:14px;padding:10px;width:190px;text-align:center;cursor:pointer;border:2px solid #2f3f80}
+.card:hover{border-color:#6ef2c4}.card h3{margin:4px 0;font-size:16px}.card p{margin:2px;font-size:12px;opacity:.8}
+.lv{display:inline-block;margin:3px;padding:5px 8px;border-radius:8px;background:#2c3a75;font-size:12px;cursor:pointer}
+.lv:hover{background:#3a8cff}
+#pt{display:grid;gap:2px;margin:4px auto;position:relative}
+.el{border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:#111;line-height:1}
+.el .z{font-size:.55em;opacity:.7}.el .s{font-weight:800}
+.el.dim{opacity:.18}.el.good{outline:3px solid #fff;animation:pop .4s}.el.bad{animation:shake .3s}
+@keyframes pop{50%{transform:scale(1.4)}}@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.am{background:#ff8a80}.ae{background:#ffcc80}.tm{background:#f8e08e}.pt{background:#b0bec5}.ml{background:#a5d6a7}.nm{background:#80deea}.hg{background:#ce93d8}.ng{background:#9fa8ff}.la{background:#f4a8c6}.ac{background:#e2a3a3}
+#info{position:fixed;right:8px;top:48px;width:230px;background:#1c2858;border:2px solid #6ef2c4;border-radius:12px;padding:10px;font-size:13px;display:none;z-index:5}
+#info h2{margin:0 0 4px}
+.q{display:flex;align-items:center;justify-content:center;gap:14px;padding:6px;font-size:16px;flex-wrap:wrap}
+.big{font-size:44px;font-weight:900;color:#6ef2c4}
+.opts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;padding:6px}
+.opts .btn{min-width:150px}
+.hud{display:flex;gap:14px;justify-content:center;font-size:14px;padding:4px;opacity:.9}
+#ov{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;z-index:9}
+#ov div{background:#1c2858;padding:20px;border-radius:16px;text-align:center;border:2px solid #6ef2c4}
+.stars{font-size:34px;color:#ffd54a}
+#lab{display:flex;height:100%}#pal{width:90px;padding:6px;display:flex;flex-direction:column;gap:6px;background:#141d40}
+#board{flex:1;position:relative;touch-action:none}#board svg{position:absolute;inset:0;width:100%;height:100%}
+.atom{position:absolute;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;color:#111;box-shadow:0 3px 8px #0008;touch-action:none;cursor:grab}
+.atom.sel{outline:4px solid #fff}.atom small{position:absolute;bottom:-4px;right:-4px;background:#111;color:#fff;border-radius:9px;font-size:10px;padding:1px 4px}
+.patom{width:56px;height:56px;border-radius:50%;margin:auto;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;color:#111;cursor:pointer;touch-action:none}
+#goal{position:absolute;left:8px;top:6px;font-size:14px;max-width:60%;pointer-events:none}
+#labbtns{position:absolute;right:8px;top:6px;display:flex;gap:6px}
+</style></head><body>
+<div id="top"><a href="./index.html">◀ Back to menu</a><div id="title">⚗️ Element <b>Lab</b></div><span id="starTot"></span><button id="home">Menu</button><button id="pauseB">⏸</button><button id="mute">🔊</button></div>
+<div id="main"></div><div id="info" onclick="this.style.display='none'" title="Tap to close"></div>
+<div id="ov"><div id="ovc"></div></div>
+<script>
+// ---------- DATA (IUPAC, accurate) ----------
+const SYM="H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og".split(" ");
+const NAME="Hydrogen Helium Lithium Beryllium Boron Carbon Nitrogen Oxygen Fluorine Neon Sodium Magnesium Aluminium Silicon Phosphorus Sulfur Chlorine Argon Potassium Calcium Scandium Titanium Vanadium Chromium Manganese Iron Cobalt Nickel Copper Zinc Gallium Germanium Arsenic Selenium Bromine Krypton Rubidium Strontium Yttrium Zirconium Niobium Molybdenum Technetium Ruthenium Rhodium Palladium Silver Cadmium Indium Tin Antimony Tellurium Iodine Xenon Caesium Barium Lanthanum Cerium Praseodymium Neodymium Promethium Samarium Europium Gadolinium Terbium Dysprosium Holmium Erbium Thulium Ytterbium Lutetium Hafnium Tantalum Tungsten Rhenium Osmium Iridium Platinum Gold Mercury Thallium Lead Bismuth Polonium Astatine Radon Francium Radium Actinium Thorium Protactinium Uranium Neptunium Plutonium Americium Curium Berkelium Californium Einsteinium Fermium Mendelevium Nobelium Lawrencium Rutherfordium Dubnium Seaborgium Bohrium Hassium Meitnerium Darmstadtium Roentgenium Copernicium Nihonium Flerovium Moscovium Livermorium Tennessine Oganesson".split(" ");
+const CATN={am:"Alkali metal",ae:"Alkaline earth metal",tm:"Transition metal",pt:"Post-transition metal",ml:"Metalloid",nm:"Reactive nonmetal",hg:"Halogen",ng:"Noble gas",la:"Lanthanide",ac:"Actinide"};
+function cat(z){if(z==1)return"nm";if([3,11,19,37,55,87].includes(z))return"am";if([4,12,20,38,56,88].includes(z))return"ae";if([9,17,35,53,85,117].includes(z))return"hg";if([2,10,18,36,54,86,118].includes(z))return"ng";if(z>=57&&z<=71)return"la";if(z>=89&&z<=103)return"ac";if([5,14,32,33,51,52].includes(z))return"ml";if([6,7,8,15,16,34].includes(z))return"nm";if([13,31,49,50,81,82,83,84,113,114,115,116].includes(z))return"pt";return"tm"}
+function pos(z){const P=[[1,1,1],[2,2,18]];let p,s;if(z<=2)return z==1?[1,1]:[1,18];
+ if(z<=10){p=2;s=3}else if(z<=18){p=3;s=11}else if(z<=36)return[4,z-18];else if(z<=54)return[5,z-36];
+ else{p=z<=86?6:7;s=p==6?55:87;const i=z-s;if(i<2)return[p,i+1];if(i<=16)return[p==6?8:9,i+1];return[p,i-13]}
+ const i=z-s;return[p,i<2?i+1:i+11]}
+const E=SYM.map((s,i)=>{const z=i+1,[r,c]=pos(z);return{z,s,n:NAME[i],c:cat(z),r,col:c,period:z>=57&&z<=71?6:z>=89&&z<=103?7:r,col:c}});
+const FACT={1:"The lightest and most abundant element in the universe. Stars like the Sun fuse it into helium.",2:"Lighter than air, so it makes balloons float. It is the second most abundant element in the universe.",3:"The lightest metal. Used in rechargeable lithium-ion batteries.",6:"The basis of all known life. Diamond and graphite are both pure carbon.",7:"Makes up about 78% of Earth's air.",8:"About 21% of the air. We breathe it in to release energy from food.",10:"Glows bright red-orange in neon signs.",11:"A soft metal that reacts strongly with water. Combined with chlorine it makes table salt.",13:"The most abundant metal in Earth's crust. Used in cans and foil.",14:"Used to make computer chips and solar cells.",17:"A toxic yellow-green gas used to disinfect swimming pools.",20:"Builds strong bones and teeth.",26:"Earth's core is mostly iron. Steel is made from it.",29:"An excellent conductor of electricity, used in wires.",47:"Conducts electricity better than any other metal.",79:"Very unreactive, so it never rusts or tarnishes.",80:"The only metal that is liquid at room temperature.",82:"Very dense and soft. Its symbol Pb comes from the Latin 'plumbum'.",92:"Radioactive; used as fuel in nuclear power plants.",118:"The heaviest element named so far (2016)."};
+// molecules: atoms with valence; bonds needed
+const VAL={H:1,O:2,C:4,N:3,Cl:1,Na:1,F:1,S:2};
+const MOL=[{f:"H₂",n:"Hydrogen gas",a:{H:2},t:"Two hydrogens share one pair of electrons (a single bond)."},
+{f:"H₂O",n:"Water",a:{H:2,O:1},t:"Oxygen makes 2 bonds, each hydrogen makes 1."},
+{f:"HCl",n:"Hydrogen chloride",a:{H:1,Cl:1},t:"Dissolved in water it becomes hydrochloric acid, found in your stomach."},
+{f:"NaCl",n:"Table salt",a:{Na:1,Cl:1},t:"An IONIC bond: sodium gives one electron to chlorine."},
+{f:"O₂",n:"Oxygen gas",a:{O:2},t:"Each O needs 2 bonds, so they share a DOUBLE bond. Tap the bond twice!"},
+{f:"CH₄",n:"Methane",a:{C:1,H:4},t:"Carbon makes 4 bonds. Methane is natural gas."},
+{f:"NH₃",n:"Ammonia",a:{N:1,H:3},t:"Nitrogen makes 3 bonds. Used to make fertilizer."},
+{f:"CO₂",n:"Carbon dioxide",a:{C:1,O:2},t:"O=C=O: two double bonds. We breathe it out; plants take it in."},
+{f:"N₂",n:"Nitrogen gas",a:{N:2},t:"A TRIPLE bond — tap the bond 3 times. 78% of air!"},
+{f:"C₂H₆",n:"Ethane",a:{C:2,H:6},t:"Two carbons joined by a single bond, each with 3 hydrogens."},
+{f:"HCN",n:"Hydrogen cyanide",a:{H:1,C:1,N:1},t:"H–C≡N: carbon has 1 single + 1 triple bond = 4."},
+{f:"C₂H₄",n:"Ethylene",a:{C:2,H:4},t:"A C=C double bond. Plants release it to ripen fruit."}];
+const ACOL={H:"#ffffff",O:"#ff6b6b",C:"#9aa0a6",N:"#6b8cff",Cl:"#7be07b",Na:"#c49bff",F:"#c8f08f",S:"#ffe066"};
+const FAMS=["am","ae","tm","hg","ng","ml"];
+// ---------- STATE ----------
+let save={stars:{},mute:false};try{const s=JSON.parse(localStorage.getItem("elementLabSave"));if(s&&s.stars)save=s}catch(e){}
+let state={screen:"menu",paused:false,mode:null,level:0,q:0,mistakes:0,score:0,streak:0,timer:0,cur:null,lock:false};
+function persist(){localStorage.setItem("elementLabSave",JSON.stringify(save))}
+const $=id=>document.getElementById(id),main=$("main");
+// ---------- AUDIO ----------
+let ac=null;function tone(f,d=.12,type="sine",v=.15,delay=0){if(save.mute)return;try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain(),t=ac.currentTime+delay;o.type=type;o.frequency.value=f;g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+d)}catch(e){}}
+const sGood=()=>{tone(660);tone(880,.15,"sine",.15,.08)},sBad=()=>tone(160,.2,"square",.08),sWin=()=>[523,659,784,1047].forEach((f,i)=>tone(f,.2,"triangle",.15,i*.1)),sTap=()=>tone(440,.05,"triangle",.08);
+$("mute").onclick=()=>{save.mute=!save.mute;persist();updTop()};
+$("home").onclick=()=>{hideOv();menu()};$("pauseB").onclick=togglePause;
+function updTop(){$("mute").textContent=save.mute?"🔇":"🔊";$("starTot").textContent="⭐ "+Object.values(save.stars).reduce((a,b)=>a+b,0)}
+// ---------- MODES ----------
+const MODES={
+ table:{t:"🔬 Explore Table",d:"Tap any element to learn about it",levels:0},
+ ptquiz:{t:"🗺️ Periodic Table Quiz",d:"Find the element on the table",levels:5,names:["Elements 1–20","Elements 1–36","Main groups","Transition metals","Whole table (timed)"]},
+ symbol:{t:"🔤 Symbol Quiz",d:"Match names and symbols",levels:4,names:["1–20","21–56","Tricky Latin symbols","Mixed (timed)"]},
+ family:{t:"👪 Families",d:"Sort elements into groups",levels:3,names:["Easy","Medium","Hard"]},
+ mol:{t:"🧪 Molecule Builder",d:"Drag atoms and bond them",levels:MOL.length,names:MOL.map(m=>m.f)}};
+function menu(){state.screen="menu";state.mode=null;$("info").style.display="none";updTop();
+ let h='<div class="menu">';for(const k in MODES){const m=MODES[k];h+=`<div class="card" data-m="${k}"><h3>${m.t}</h3><p>${m.d}</p>`;
+  if(m.levels)for(let i=0;i<m.levels;i++){const st=save.stars[k+i]||0;h+=`<span class="lv" data-m="${k}" data-l="${i}">${m.names[i]} ${"★".repeat(st)}${"☆".repeat(3-st)}</span>`}else h+=`<span class="lv" data-m="table" data-l="0">Open</span>`;h+='</div>'}
+ main.innerHTML=h+'</div><p style="text-align:center;font-size:12px;opacity:.6">Keys: 1–4 answer · type a symbol + Enter in Table Quiz · P pause · R restart</p>';
+ main.querySelectorAll(".lv").forEach(b=>b.onclick=e=>{e.stopPropagation();sTap();start(b.dataset.m,+b.dataset.l)})}
+function start(m,l){state=Object.assign(state,{screen:"play",mode:m,level:l,q:0,mistakes:0,score:0,streak:0,paused:false,lock:false,typed:""});hideOv();
+ clearInterval(state.tick);if(m=="table")return drawTable(null);if(m=="mol")return molStart();
+ state.total=10;state.timed=(m=="ptquiz"&&l==4)||(m=="symbol"&&l==3);state.timer=state.timed?60:0;
+ if(state.timed)state.tick=setInterval(()=>{if(state.paused)return;state.timer--;const t=$("tm");if(t)t.textContent="⏱ "+state.timer;if(state.timer<=0)finish()},1000);
+ nextQ()}
+function pool(){const m=state.mode,l=state.level;let p=E;
+ if(m=="ptquiz")p=[E.slice(0,20),E.slice(0,36),E.filter(e=>["am","ae","hg","ng","nm","ml","pt"].includes(e.c)&&e.z<87),E.filter(e=>e.c=="tm"&&e.z<=80),E.filter(e=>e.z<=103)][l];
+ if(m=="symbol")p=[E.slice(0,20),E.slice(20,56),E.filter(e=>[11,19,26,29,47,50,51,74,79,80,82].includes(e.z)),E.filter(e=>e.z<=86)][l];
+ if(m=="family"){const f=e=>FAMS.includes(e.c);p=[E.filter(e=>f(e)&&e.z<=20),E.filter(e=>f(e)&&e.z<=54),E.filter(e=>f(e)&&e.z<=86)][l]}return p}
+const rnd=a=>a[Math.random()*a.length|0],shuf=a=>a.map(x=>[Math.random(),x]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
+function hud(){return `<div class="hud"><span>Q ${Math.min(state.q+1,state.total)}/${state.total}</span><span>✔ ${state.score}</span><span>🔥 ${state.streak}</span>${state.timed?`<span id="tm">⏱ ${state.timer}</span>`:""}</div>`}
+function nextQ(){if(!state.timed&&state.q>=state.total)return finish();state.lock=false;const p=pool();let c;do c=rnd(p);while(state.cur&&c===state.cur&&p.length>1);state.cur=c;
+ if(state.mode=="ptquiz")return drawTable(c);
+ if(state.mode=="symbol"){const name2sym=Math.random()<.5,opts=shuf([c,...shuf(p.filter(e=>e!==c)).slice(0,3)]);
+  main.innerHTML=hud()+`<div class="q">${name2sym?"What is the symbol for":"Which element has the symbol"} <span class="big">${name2sym?c.n:c.s}</span>?</div><div class="opts">${opts.map((o,i)=>`<button class="btn" data-z="${o.z}">${i+1}. ${name2sym?o.s:o.n}</button>`).join("")}</div>`}
+ if(state.mode=="family"){const fams=state.level==0?["am","ae","hg","ng"]:FAMS;
+  main.innerHTML=hud()+`<div class="q">Which family does <span class="big">${c.s}</span> <b>${c.n}</b> belong to?</div><div class="opts">${fams.map((f,i)=>`<button class="btn ${f}" style="color:#111" data-f="${f}">${i+1}. ${CATN[f]}</button>`).join("")}</div>`}
+ main.querySelectorAll(".opts .btn").forEach(b=>b.onclick=()=>answer(b))}
+function answer(b){if(state.lock||state.paused)return;const ok=b.dataset.z?+b.dataset.z==state.cur.z:b.dataset.f==state.cur.c;
+ if(ok){state.lock=true;sGood();state.score++;state.streak++;b.style.background="#2ecc71";state.q++;setTimeout(nextQ,450)}
+ else{sBad();state.mistakes++;state.streak=0;b.style.background="#e74c3c";b.disabled=true}}
+function drawTable(target){const W=main.clientWidth,H=main.clientHeight-(target?54:4);const cs=Math.max(18,Math.min((W-(target?8:250))/18.4,H/10.2));
+ let h=target?hud()+`<div class="q" style="padding:2px">Tap <span class="big" style="font-size:24px">${target.n}</span> ${state.level<2?"("+target.s+")":""} <span id="typed" style="opacity:.6"></span></div>`:"";
+ h+=`<div id="pt" style="grid-template-columns:repeat(18,${cs}px);grid-template-rows:repeat(7,${cs}px) ${cs*.3}px repeat(2,${cs}px);font-size:${cs*.42}px;${target?"":"margin-left:6px"}">`;
+ const pl=target?pool():E;for(const e of E){const r=e.r>=8?e.r+1:e.r;h+=`<div class="el ${e.c} ${pl.includes(e)?"":"dim"}" data-z="${e.z}" style="grid-row:${r};grid-column:${e.col}"><span class="z">${e.z}</span><span class="s">${e.s}</span></div>`}
+ main.innerHTML=h+"</div>";main.querySelectorAll(".el").forEach(d=>d.onclick=()=>target?ptAns(d):showInfo(E[d.dataset.z-1],d))}
+function showInfo(e,d){sTap();const i=$("info");i.style.display="block";i.innerHTML=`<h2><span class="${e.c}" style="color:#111;padding:2px 8px;border-radius:6px">${e.s}</span> ${e.n}</h2>Atomic number: <b>${e.z}</b><br>Family: <b>${CATN[e.c]}</b><br>Period ${e.period}${e.c=="la"||e.c=="ac"?" (f-block)":", Group "+e.col}<br><br>${FACT[e.z]||(e.z>103?"A synthetic, radioactive element made only in labs.":"It has "+e.z+" protons in its nucleus.")}`}
+function ptAns(d){if(state.lock||state.paused)return;const z=+d.dataset.z;if(d.classList.contains("dim"))return;
+ if(z==state.cur.z){state.lock=true;sGood();state.score++;state.streak++;state.q++;d.classList.add("good");setTimeout(nextQ,500)}
+ else{sBad();state.mistakes++;state.streak=0;d.classList.remove("bad");void d.offsetWidth;d.classList.add("bad")}}
+function finish(){clearInterval(state.tick);state.screen="done";const acc=state.score/Math.max(1,state.score+state.mistakes);
+ let st=state.timed?(state.score>=15?3:state.score>=9?2:state.score>=4?1:0):(state.mistakes==0?3:state.mistakes<=3?2:1);
+ if(state.mode=="mol")st=state.mistakes==0?3:state.mistakes<=2?2:1;
+ const k=state.mode+state.level;save.stars[k]=Math.max(save.stars[k]||0,st);persist();updTop();sWin();
+ const nl=state.level+1<MODES[state.mode].levels;
+ ov(`<h2>Level complete!</h2><div class="stars">${"★".repeat(st)}${"☆".repeat(3-st)}</div><p>${state.mode=="mol"?MOL[state.level].n+" built!":`Correct: ${state.score} · Accuracy ${Math.round(acc*100)}%`}</p>
+ <button class="btn" id="again">↻ Again</button> ${nl?'<button class="btn" id="next">Next ▶</button>':""} <button class="btn" id="tomenu">Menu</button>`);
+ $("again").onclick=()=>start(state.mode,state.level);if(nl)$("next").onclick=()=>start(state.mode,state.level+1);$("tomenu").onclick=()=>{hideOv();menu()}}
+function ov(h){$("ovc").innerHTML=h;$("ov").style.display="flex"}function hideOv(){$("ov").style.display="none"}
+function togglePause(){if(state.screen!="play")return;state.paused=!state.paused;if(state.paused){ov('<h2>⏸ Paused</h2><button class="btn" id="res">Resume</button> <button class="btn" id="rst">Restart</button>');$("res").onclick=togglePause;$("rst").onclick=()=>start(state.mode,state.level)}else hideOv()}
+// ---------- MOLECULE BUILDER ----------
+let atoms=[],bonds=[],sel=null,aid=0;
+function molStart(){const m=MOL[state.level];atoms=[];bonds=[];sel=null;
+ const els=[...new Set([...Object.keys(m.a),...shuf(["H","O","C","N","Cl","Na"]).slice(0,2)])];
+ main.innerHTML=`<div id="lab"><div id="pal">${els.map(s=>`<div class="patom" data-s="${s}" style="background:${ACOL[s]}">${s}</div><div style="text-align:center;font-size:10px;opacity:.7">${VAL[s]} bond${VAL[s]>1?"s":""}</div>`).join("")}</div>
+ <div id="board"><svg id="svg"></svg><div id="goal">Build <b style="font-size:20px;color:#6ef2c4">${m.f}</b> — ${m.n}<br><span style="opacity:.75;font-size:12px">${m.t}<br>Drag atoms in · tap one atom then another to bond · tap a bond to make it stronger (×3 removes)</span></div>
+ <div id="labbtns"><button class="btn" id="clr">Clear</button><button class="btn" id="chk">Check ✔</button></div></div></div>`;
+ $("clr").onclick=()=>{atoms=[];bonds=[];renderMol()};$("chk").onclick=checkMol;
+ main.querySelectorAll(".patom").forEach(p=>p.onpointerdown=e=>{e.preventDefault();if(state.paused)return;const b=$("board").getBoundingClientRect();const a={id:aid++,s:p.dataset.s,x:b.width/2+(Math.random()*60-30),y:b.height/2+(Math.random()*60-30)};atoms.push(a);sTap();renderMol();dragStart(a,e,true)})}
+function bsum(a){return bonds.filter(b=>b.a==a.id||b.b==a.id).reduce((s,b)=>s+b.o,0)}
+function renderMol(){const bd=$("board");if(!bd)return;bd.querySelectorAll(".atom").forEach(n=>n.remove());let sv="";
+ for(const b of bonds){const A=atoms.find(a=>a.id==b.a),B=atoms.find(a=>a.id==b.b);const dx=B.x-A.x,dy=B.y-A.y,L=Math.hypot(dx,dy)||1,nx=-dy/L*6,ny=dx/L*6;
+  for(let i=0;i<b.o;i++){const k=i-(b.o-1)/2;sv+=`<line x1="${A.x+nx*k}" y1="${A.y+ny*k}" x2="${B.x+nx*k}" y2="${B.y+ny*k}" stroke="${b.ionic?"#ffd54a":"#eef"}" stroke-width="4" ${b.ionic?'stroke-dasharray="6 5"':""}/>`}
+  sv+=`<line class="bh" data-a="${b.a}" data-b="${b.b}" x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" stroke="transparent" stroke-width="26" style="pointer-events:stroke;cursor:pointer"/>`}
+ $("svg").innerHTML=sv;$("svg").querySelectorAll(".bh").forEach(l=>l.onpointerdown=e=>{e.stopPropagation();if(state.paused)return;const b=bonds.find(x=>x.a==l.dataset.a&&x.b==l.dataset.b);b.o++;if(b.o>3||b.ionic)bonds.splice(bonds.indexOf(b),1);sTap();renderMol()});
+ for(const a of atoms){const d=document.createElement("div");d.className="atom"+(sel===a?" sel":"");d.style.cssText=`left:${a.x}px;top:${a.y}px;background:${ACOL[a.s]}`;d.dataset.id=a.id;
+  const n=bsum(a);d.innerHTML=a.s+`<small style="background:${n==VAL[a.s]?"#2ecc71":n>VAL[a.s]?"#e74c3c":"#111"}">${n}/${VAL[a.s]}</small>`;d.onpointerdown=e=>dragStart(a,e,false);bd.appendChild(d)}}
+function dragStart(a,e,isNew){if(state.paused)return;e.preventDefault();const b=$("board").getBoundingClientRect();let moved=isNew;const sx=e.clientX,sy=e.clientY;
+ const mv=ev=>{if(Math.hypot(ev.clientX-sx,ev.clientY-sy)>6)moved=true;if(moved){a.x=Math.max(26,Math.min(b.width-26,ev.clientX-b.left));a.y=Math.max(26,Math.min(b.height-26,ev.clientY-b.top));renderMol()}};
+ const up=ev=>{removeEventListener("pointermove",mv);removeEventListener("pointerup",up);
+  if(isNew&&ev.clientX<b.left){atoms.splice(atoms.indexOf(a),1);renderMol();return}
+  if(!moved)tapAtom(a)};addEventListener("pointermove",mv);addEventListener("pointerup",up)}
+function tapAtom(a){if(!sel){sel=a}else if(sel===a){sel=null}else{const ex=bonds.find(b=>(b.a==sel.id&&b.b==a.id)||(b.b==sel.id&&b.a==a.id));
+  if(ex){ex.o++;if(ex.o>3)bonds.splice(bonds.indexOf(ex),1)}else bonds.push({a:sel.id,b:a.id,o:1,ionic:(sel.s=="Na"||a.s=="Na")});sTap();sel=null}renderMol()}
+function checkMol(){if(state.paused)return;const m=MOL[state.level];const cnt={};atoms.forEach(a=>cnt[a.s]=(cnt[a.s]||0)+1);let msg="";
+ const want=Object.entries(m.a),have=Object.entries(cnt);
+ if(have.length!=want.length||want.some(([s,n])=>cnt[s]!=n))msg=`You need exactly: ${want.map(([s,n])=>n+" "+s).join(", ")}.`;
+ else{const bad=atoms.find(a=>bsum(a)!=VAL[a.s]);if(bad)msg=`${bad.s} should have ${VAL[bad.s]} bond${VAL[bad.s]>1?"s":""} but has ${bsum(bad)}.`;
+  else{const seen=new Set([atoms[0].id]),st=[atoms[0].id];while(st.length){const x=st.pop();bonds.forEach(b=>{const o=b.a==x?b.b:b.b==x?b.a:null;if(o!=null&&!seen.has(o)){seen.add(o);st.push(o)}})}if(seen.size!=atoms.length)msg="All atoms must be connected into one molecule."}}
+ if(msg){sBad();state.mistakes++;const g=$("goal");g.innerHTML+=`<div style="color:#ff8a80;font-weight:700">✖ ${msg}</div>`}else{state.score=1;finish()}}
+// ---------- KEYS ----------
+addEventListener("keydown",e=>{const k=e.key;if(k=="p"||k=="P"){if(!(state.mode=="ptquiz"&&state.typed))return togglePause()}
+ if((k=="r"||k=="R")&&state.screen!="menu"&&!(state.mode=="ptquiz"&&state.typed))return start(state.mode,state.level);
+ if(k=="Escape")return menu();if(state.paused||state.screen!="play")return;
+ if(/^[1-6]$/.test(k)){const b=main.querySelectorAll(".opts .btn")[+k-1];if(b)answer(b)}
+ if(state.mode=="ptquiz"){if(/^[a-zA-Z]$/.test(k)&&k!="p"&&k!="r"||(state.typed&&/^[a-zA-Z]$/.test(k))){state.typed=(state.typed+k).slice(-2);$("typed").textContent=state.typed}
+  if(k=="Backspace"){state.typed=state.typed.slice(0,-1);$("typed").textContent=state.typed}
+  if(k=="Enter"&&state.typed){const e2=E.find(x=>x.s.toLowerCase()==state.typed.toLowerCase());state.typed="";const d=e2&&main.querySelector(`.el[data-z="${e2.z}"]`);if(d)ptAns(d);else{sBad();state.mistakes++;state.streak=0}}}});
+addEventListener("resize",()=>{if(state.mode=="table")drawTable(null);else if(state.mode=="ptquiz"&&state.screen=="play")drawTable(state.cur);else if(state.mode=="mol")renderMol()});
+menu();
+</script></body></html>

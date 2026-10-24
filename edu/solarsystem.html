@@ -1,0 +1,129 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Solar System Explorer</title><style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;height:100%;background:#05071a;color:#eef;font-family:system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden;user-select:none}
+#top{position:absolute;top:0;left:0;right:0;height:40px;display:flex;align-items:center;gap:6px;padding:0 8px;background:#0d1238cc;z-index:3}
+#top a,#top button{color:#fff;background:#283070;border:0;border-radius:8px;padding:6px 10px;font-size:13px;text-decoration:none;cursor:pointer}
+#title{flex:1;font-weight:800}#title b{color:#ffcf5a}
+canvas{position:absolute;top:40px;left:0;touch-action:none}
+#panel{position:absolute;right:8px;top:48px;width:250px;max-height:calc(100% - 56px);overflow:auto;background:#121a4ae8;border:2px solid #ffcf5a;border-radius:12px;padding:10px;font-size:13px;display:none;z-index:4}
+#panel h2{margin:0 0 4px}#panel ul{padding-left:16px;margin:4px 0}
+#bar{position:absolute;left:8px;bottom:8px;display:flex;gap:6px;z-index:3;flex-wrap:wrap}
+.btn{background:linear-gradient(#ffb340,#e07a10);color:#fff;border:0;border-radius:12px;padding:9px 13px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 #8a4a00}
+.btn:active{transform:translateY(2px)}
+#q{position:absolute;left:0;right:0;top:44px;text-align:center;z-index:3;pointer-events:none;font-size:16px;padding:0 260px 0 8px}
+#q .opts{pointer-events:auto;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px}
+#q b.big{color:#ffcf5a;font-size:19px}
+#ov{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:9}
+#ov>div{background:#121a4a;border:2px solid #ffcf5a;border-radius:16px;padding:16px;text-align:center;max-width:94%;max-height:94%;overflow:auto}
+.lv{display:inline-block;margin:3px;padding:6px 9px;border-radius:8px;background:#283070;font-size:13px;cursor:pointer}
+.lv:hover{background:#e07a10}.stars{font-size:32px;color:#ffd54a}
+.mode{display:inline-block;vertical-align:top;width:200px;margin:5px;padding:8px;background:#1a2360;border-radius:12px}
+</style></head><body>
+<div id="top"><a href="./index.html">◀ Back to menu</a><div id="title">🪐 Solar System <b>Explorer</b></div><span id="st"></span><button id="mB">Missions</button><button id="pB">⏸</button><button id="mu">🔊</button></div>
+<canvas id="c"></canvas><div id="panel"></div><div id="q"></div>
+<div id="bar"><button class="btn" id="zoomB">🔭 Zoom</button><button class="btn" id="spdB">⏩ Speed</button><button class="btn" id="missB">🚀 Missions</button></div>
+<div id="ov"><div id="ovc"></div></div>
+<script>
+// Accurate data (NASA). dist AU, diameter km, orbital period days, day length
+const P=[
+{n:"Mercury",col:"#b5b0a8",au:0.39,d:4879,yr:88,day:"59 Earth days (spin)",moons:0,type:"Rocky planet",f:["Smallest planet and closest to the Sun.","No real atmosphere, so temperatures swing from about 430°C by day to −180°C at night.","A year lasts just 88 Earth days."]},
+{n:"Venus",col:"#e8c47a",au:0.72,d:12104,yr:225,day:"243 Earth days (spin)",moons:0,type:"Rocky planet",f:["Hottest planet (about 465°C) because its thick CO₂ atmosphere traps heat.","Spins backwards compared with most planets.","Its day (243 Earth days) is longer than its year (225 days)."]},
+{n:"Earth",col:"#4f9cff",au:1,d:12742,yr:365.25,day:"24 hours",moons:1,type:"Rocky planet",f:["The only known world with life.","About 71% of its surface is covered by water.","Light from the Sun takes about 8 minutes 20 seconds to reach us."]},
+{n:"Mars",col:"#e0603a",au:1.52,d:6779,yr:687,day:"24 h 37 min",moons:2,type:"Rocky planet",f:["The 'Red Planet' — iron oxide (rust) colours its dust.","Home to Olympus Mons, the tallest volcano in the solar system.","Has two small moons, Phobos and Deimos."]},
+{n:"Jupiter",col:"#d9a77a",au:5.2,d:139820,yr:4333,day:"about 10 hours",moons:"95+",type:"Gas giant",f:["Largest planet — more than 1,300 Earths could fit inside.","The Great Red Spot is a storm bigger than Earth.","Has the shortest day of any planet, about 10 hours."]},
+{n:"Saturn",col:"#e8d08f",au:9.54,d:116460,yr:10759,day:"about 10.7 hours",moons:"270+",type:"Gas giant",f:["Famous for its bright rings made of ice and rock.","It is so light (low density) it would float in a giant bathtub of water.","Has the most known moons of any planet."]},
+{n:"Uranus",col:"#8fe0e8",au:19.2,d:50724,yr:30687,day:"about 17 hours",moons:"28+",type:"Ice giant",f:["Tilted on its side by about 98°, so it rolls around the Sun.","The first planet discovered with a telescope (William Herschel, 1781).","Methane gas gives it a blue-green colour."]},
+{n:"Neptune",col:"#4466ff",au:30.1,d:49244,yr:60190,day:"about 16 hours",moons:16,type:"Ice giant",f:["Farthest planet from the Sun.","Has the fastest winds in the solar system, over 2,000 km/h.","Found in 1846 using maths before anyone saw it."]}];
+const SUN={n:"Sun",col:"#ffcf3a",d:1392700,type:"Star",f:["A star made mostly of hydrogen and helium.","Holds about 99.8% of all the mass in the solar system.","About 109 Earths could line up across its diameter.","Its surface is about 5,500°C."]};
+const DW=[{n:"Ceres",col:"#9a9a9a",au:2.77,d:940,yr:1682,type:"Dwarf planet",f:["Largest object in the asteroid belt between Mars and Jupiter.","The only dwarf planet in the inner solar system."]},
+{n:"Pluto",col:"#d8b89a",au:39.5,d:2377,yr:90560,type:"Dwarf planet",f:["Reclassified as a dwarf planet in 2006.","Has a heart-shaped nitrogen-ice plain called Tombaugh Regio.","Its largest moon, Charon, is about half Pluto's size."]},
+{n:"Haumea",col:"#e8e8e8",au:43.2,d:1632,yr:103400,type:"Dwarf planet",f:["Shaped like a squashed egg because it spins once every 4 hours.","It has a ring."]},
+{n:"Makemake",col:"#c98a6a",au:45.8,d:1430,yr:111400,type:"Dwarf planet",f:["Found in 2005, shortly after Easter — it is named after a Rapa Nui creator god."]},
+{n:"Eris",col:"#f0f0ff",au:67.7,d:2326,yr:203600,type:"Dwarf planet",f:["Almost the same size as Pluto but more massive.","Its discovery in 2005 led to the new definition of 'planet'."]}];
+const MOONS={Earth:[{n:"Moon",f:["Earth's only natural satellite, 3,474 km across.","12 astronauts walked on it between 1969 and 1972.","Always shows the same face to Earth."]}],
+Mars:[{n:"Phobos",f:["Larger Martian moon, about 22 km across, slowly spiralling inward."]},{n:"Deimos",f:["Smaller Martian moon, about 12 km across."]}],
+Jupiter:[{n:"Io",f:["The most volcanically active world in the solar system."]},{n:"Europa",f:["Has an ice crust with a salty ocean underneath — a place to search for life."]},{n:"Ganymede",f:["Largest moon in the solar system — bigger than Mercury."]},{n:"Callisto",f:["One of the most heavily cratered objects known."]}],
+Saturn:[{n:"Titan",f:["Has a thick atmosphere and lakes of liquid methane and ethane."]},{n:"Enceladus",f:["Shoots jets of water ice from its south pole."]}],
+Uranus:[{n:"Titania",f:["Uranus's largest moon, named after a queen in Shakespeare."]}],
+Neptune:[{n:"Triton",f:["Orbits backwards (retrograde) and has nitrogen geysers."]}],
+Pluto:[{n:"Charon",f:["About half the diameter of Pluto; they orbit each other."]}]};
+// ---------- state ----------
+let save={stars:{},mute:false,seen:[]};try{const s=JSON.parse(localStorage.getItem("solarSystemSave"));if(s&&s.stars)save=Object.assign(save,s)}catch(e){}
+const persist=()=>localStorage.setItem("solarSystemSave",JSON.stringify(save));
+const cv=document.getElementById("c"),cx=cv.getContext("2d"),$=id=>document.getElementById(id);
+let W=0,H=0,dpr=1,t=0,speed=1,zoom=1,paused=false,mode="explore",level=0,mistakes=0,qn=0,cur=null,orderIdx=0,lock=false,hits=[],selected=null,flash=[];
+const bodies=[...P.map((p,i)=>({...p,kind:"planet",ring:i,ang:i*1.7})),...DW.map((p,i)=>({...p,kind:"dwarf",ring:p.n=="Ceres"?3.5:8+i*.45,ang:i*2.3+1}))];
+const stars=Array.from({length:220},()=>[Math.random(),Math.random(),Math.random()*1.4+.2,Math.random()*6]);
+function resize(){dpr=window.devicePixelRatio||1;W=innerWidth;H=innerHeight-40;cv.width=W*dpr|0;cv.height=H*dpr|0;cv.style.width=W+"px";cv.style.height=H+"px";cx.setTransform(dpr,0,0,dpr,0,0)}
+resize();addEventListener("resize",resize);
+// ---------- audio ----------
+let ac=null;function tone(f,d=.12,type="sine",v=.13,dl=0){if(save.mute)return;try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain(),T=ac.currentTime+dl;o.type=type;o.frequency.value=f;g.gain.setValueAtTime(v,T);g.gain.exponentialRampToValueAtTime(.001,T+d);o.connect(g).connect(ac.destination);o.start(T);o.stop(T+d)}catch(e){}}
+const sG=()=>{tone(700);tone(1050,.15,"sine",.12,.08)},sB=()=>tone(150,.22,"square",.07),sT=()=>tone(520,.06,"triangle",.07),sW=()=>[523,659,784,1047].forEach((f,i)=>tone(f,.22,"triangle",.13,i*.1));
+// ---------- layout ----------
+function layout(){const cxp=(W-(($("panel").style.display=="block"||mode!="explore")&&W>600?0:0))/2,cyp=H/2+(mode=="explore"?0:18);
+ const maxR=Math.min(W*.48,H*.62)*zoom*(mode=="explore"?1:.9);hits=[];
+ const sunR=Math.max(14,maxR*.07);hits.push({b:SUN,x:cxp,y:cyp,r:sunR+6});
+ for(const b of bodies){const rr=sunR+12+(b.ring/10)*(maxR-sunR-12);const pr=b.kind=="dwarf"?3:Math.max(4,Math.min(13,3+Math.log(b.d/2000)*2.4))*Math.min(1.4,zoom);
+  b.x=cxp+Math.cos(b.ang)*rr;b.y=cyp+Math.sin(b.ang)*rr*.62;b.rr=rr;b.pr=pr;b.cx=cxp;b.cy=cyp;hits.push({b,x:b.x,y:b.y,r:Math.max(pr+8,16)})}
+ return{cxp,cyp,sunR}}
+function draw(){const L=layout();cx.fillStyle="#05071a";cx.fillRect(0,0,W,H);
+ for(const s of stars){cx.globalAlpha=.4+.4*Math.sin(t*2+s[3]);cx.fillStyle="#fff";cx.fillRect(s[0]*W,s[1]*H,s[2],s[2])}cx.globalAlpha=1;
+ cx.strokeStyle="#ffffff22";cx.lineWidth=1;for(const b of bodies){if(b.kind=="dwarf"&&b.n!="Ceres"&&b.n!="Pluto")continue;cx.beginPath();cx.ellipse(L.cxp,L.cyp,b.rr,b.rr*.62,0,0,7);cx.stroke()}
+ // asteroid belt
+ cx.fillStyle="#8884";for(let i=0;i<120;i++){const a=i*2.4+t*.05,r=bodies[0].rr*0+ (bodies[3].rr+bodies[4].rr)/2+Math.sin(i*7)*6;cx.fillRect(L.cxp+Math.cos(a)*r,L.cyp+Math.sin(a)*r*.62,1.5,1.5)}
+ const g=cx.createRadialGradient(L.cxp,L.cyp,2,L.cxp,L.cyp,L.sunR*2.2);g.addColorStop(0,"#fff6c0");g.addColorStop(.45,"#ffb020");g.addColorStop(1,"#ff600000");cx.fillStyle=g;cx.beginPath();cx.arc(L.cxp,L.cyp,L.sunR*2.2,0,7);cx.fill();
+ const sorted=[...bodies].sort((a,b)=>a.y-b.y);
+ for(const b of sorted){if(b.n=="Saturn"){cx.strokeStyle="#e8d08fbb";cx.lineWidth=2;cx.beginPath();cx.ellipse(b.x,b.y,b.pr*2,b.pr*.7,-.3,0,7);cx.stroke()}
+  const gg=cx.createRadialGradient(b.x-b.pr/3,b.y-b.pr/3,1,b.x,b.y,b.pr);gg.addColorStop(0,"#fff");gg.addColorStop(.25,b.col);gg.addColorStop(1,"#111");cx.fillStyle=gg;cx.beginPath();cx.arc(b.x,b.y,b.pr,0,7);cx.fill();
+  if(b.n=="Earth"){const ma=t*3;cx.fillStyle="#ccc";cx.beginPath();cx.arc(b.x+Math.cos(ma)*(b.pr+5),b.y+Math.sin(ma)*(b.pr+5),1.6,0,7);cx.fill()}
+  if(selected===b||(mode=="order"&&b.done)){cx.strokeStyle=b.done?"#4f4":"#ffcf5a";cx.lineWidth=2;cx.beginPath();cx.arc(b.x,b.y,b.pr+5,0,7);cx.stroke()}
+  if(zoom>=1&&(b.kind=="planet"||zoom>1.5)&&mode!="order"){cx.fillStyle="#fffc";cx.font="11px system-ui";cx.textAlign="center";cx.fillText(b.n,b.x,b.y+b.pr+12)}
+  if(mode=="order"&&b.done){cx.fillStyle="#4f4";cx.font="bold 12px system-ui";cx.textAlign="center";cx.fillText(b.done,b.x,b.y-b.pr-5)}}
+ flash=flash.filter(f=>f.l>0);for(const f of flash){f.l-=.03;cx.strokeStyle=f.c;cx.globalAlpha=f.l;cx.lineWidth=3;cx.beginPath();cx.arc(f.x,f.y,(1-f.l)*40+8,0,7);cx.stroke()}cx.globalAlpha=1}
+let last=performance.now();function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;if(!paused){t+=dt;for(const b of bodies)b.ang+=dt*speed*2*Math.PI/(Math.pow(b.yr/365.25,.5)*8)}draw();requestAnimationFrame(loop)}
+// ---------- explore ----------
+function info(b){selected=b;sT();if(!save.seen.includes(b.n)){save.seen.push(b.n);persist()}const p=$("panel");p.style.display="block";
+ const moons=MOONS[b.n]||[];
+ p.innerHTML=`<h2 style="color:${b.col}">${b.n}</h2><i>${b.type}</i><br>${b.au?`Distance from Sun: <b>${b.au} AU</b> (${Math.round(b.au*149.6)} million km)<br>`:""}Diameter: <b>${b.d.toLocaleString()} km</b><br>${b.yr?`One orbit (year): <b>${b.yr<1000?b.yr+" Earth days":(b.yr/365.25).toFixed(1)+" Earth years"}</b><br>`:""}${b.day?`Day: <b>${b.day}</b><br>`:""}${b.moons!==undefined?`Moons: <b>${b.moons}</b><br>`:""}
+ <ul>${b.f.map(x=>`<li>${x}</li>`).join("")}</ul>${moons.length?"<b>Moons to explore:</b><br>"+moons.map((m,i)=>`<span class="lv" data-m="${i}">🌙 ${m.n}</span>`).join(""):""}<div id="mf"></div><br><span class="lv" id="cl">✖ Close</span><div style="font-size:11px;opacity:.7;margin-top:4px">Explored ${save.seen.length} objects</div>`;
+ p.querySelectorAll("[data-m]").forEach(s=>s.onclick=()=>{sT();const m=moons[s.dataset.m];if(!save.seen.includes(m.n)){save.seen.push(m.n);persist()}$("mf").innerHTML=`<b>${m.n}:</b> ${m.f.join(" ")}`});$("cl").onclick=()=>{p.style.display="none";selected=null}}
+function pick(x,y){let best=null,bd=1e9;for(const h of hits){const d=Math.hypot(h.x-x,h.y-y);if(d<h.r&&d<bd){bd=d;best=h.b}}return best}
+cv.addEventListener("pointerdown",e=>{if(paused)return;const r=cv.getBoundingClientRect(),b=pick(e.clientX-r.left,e.clientY-r.top);if(!b)return;
+ if(mode=="explore")info(b);else if(mode=="order")orderTap(b)});
+// ---------- missions ----------
+const MISS={order:{t:"🔢 Order the Planets",lv:["Planets from the Sun","Planets by size (big→small)","Fastest orbit first"]},facts:{t:"🧠 Match the Facts",lv:["Planet basics","Moons & dwarfs","Expert"]},scale:{t:"📏 Scale & Distance",lv:["Which is farther?","Which is bigger?","Light & numbers"]}};
+function missions(){if(paused)return;stopMission();let h='<h2>🚀 Missions</h2>';for(const k in MISS){h+=`<div class="mode"><b>${MISS[k].t}</b><br>`;MISS[k].lv.forEach((n,i)=>{const s=save.stars[k+i]||0;h+=`<span class="lv" data-k="${k}" data-i="${i}">${n} ${"★".repeat(s)}${"☆".repeat(3-s)}</span>`});h+="</div>"}
+ h+='<br><span class="lv" id="exB">🔭 Free explore</span><p style="font-size:11px;opacity:.7">Keys: 1–4 answer · P pause · R restart · Esc explore</p>';ov(h);
+ document.querySelectorAll("#ovc [data-k]").forEach(b=>b.onclick=()=>{sT();startM(b.dataset.k,+b.dataset.i)});$("exB").onclick=()=>{hideOv();stopMission()}}
+function stopMission(){mode="explore";$("q").innerHTML="";bodies.forEach(b=>b.done=0);$("bar").style.display="flex"}
+function startM(k,i){hideOv();paused=false;mode=k;level=i;mistakes=0;qn=0;lock=false;$("panel").style.display="none";selected=null;$("bar").style.display="none";bodies.forEach(b=>b.done=0);
+ if(k=="order"){orderIdx=0;const pl=bodies.filter(b=>b.kind=="planet");cur=i==0?pl.slice():i==1?pl.slice().sort((a,b)=>b.d-a.d):pl.slice().sort((a,b)=>a.yr-b.yr);showOrder()}else nextQ()}
+function showOrder(){$("q").innerHTML=`<div>${["Tap the planets in order from the Sun outward","Tap planets from BIGGEST to smallest","Tap planets from shortest year to longest"][level]} — <b class="big">${orderIdx+1}/8</b> ❌ ${mistakes}</div>`}
+function orderTap(b){if(lock||b.kind!="planet"||b.done)return;if(b===cur[orderIdx]){sG();orderIdx++;b.done=orderIdx;flash.push({x:b.x,y:b.y,c:"#4f4",l:1});if(orderIdx==8)return setTimeout(()=>finish(),500);showOrder()}else{sB();mistakes++;flash.push({x:b.x,y:b.y,c:"#f44",l:1});showOrder()}}
+const rnd=a=>a[Math.random()*a.length|0],shuf=a=>a.map(x=>[Math.random(),x]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
+function genQ(){const pl=bodies.filter(b=>b.kind=="planet");
+ if(mode=="facts"){if(level==0){const b=rnd(pl);return{q:rnd(b.f.slice(0,2)).replace(new RegExp(b.n,"g"),"___"),a:b.n,o:shuf([b.n,...shuf(pl.filter(x=>x!==b)).slice(0,3).map(x=>x.n)])}}
+  if(level==1){if(Math.random()<.5){const host=rnd(Object.keys(MOONS)),m=rnd(MOONS[host]);return{q:`${m.n} is a moon of which world?`,a:host,o:shuf([host,...shuf(Object.keys(MOONS).filter(x=>x!=host)).slice(0,3)])}}
+   const d=rnd(DW.map(n=>bodies.find(b=>b.n==n.n)));return{q:d.f[0].replace(new RegExp(d.n,"g"),"___"),a:d.n,o:shuf([d.n,...shuf(DW.filter(x=>x.n!=d.n)).slice(0,3).map(x=>x.n)])}}
+  const pool=[["Which planet is tilted on its side?","Uranus"],["Which planet has the Great Red Spot?","Jupiter"],["Which planet's day is longer than its year?","Venus"],["Which planet has the tallest volcano, Olympus Mons?","Mars"],["Which planet was found using maths first?","Neptune"],["Which planet could float in water?","Saturn"],["Which planet has no atmosphere to speak of and is smallest?","Mercury"],["Which is the largest moon in the solar system?","Ganymede"],["Which moon has lakes of liquid methane?","Titan"],["Which moon is the most volcanic?","Io"],["Which body holds 99.8% of the solar system's mass?","Sun"]];
+  const [q,a]=rnd(pool);const all=["Mercury","Venus","Earth","Mars","Jupiter","Saturn","Uranus","Neptune","Ganymede","Titan","Io","Sun","Europa"];return{q,a,o:shuf([a,...shuf(all.filter(x=>x!=a)).slice(0,3)])}}
+ if(mode=="scale"){if(level<2){const [a,b]=shuf(level==0?[...pl,...DW.map(d=>bodies.find(x=>x.n==d.n))]:pl).slice(0,2);const k=level==0?"au":"d";return{q:level==0?`Which is FARTHER from the Sun?`:`Which is BIGGER (diameter)?`,a:a[k]>b[k]?a.n:b.n,o:[a.n,b.n],ex:`${a.n}: ${level==0?a.au+" AU":a.d.toLocaleString()+" km"} · ${b.n}: ${level==0?b.au+" AU":b.d.toLocaleString()+" km"}`}}
+  const pool=[["How long does sunlight take to reach Earth?","About 8 minutes",["About 8 seconds","About 8 hours","About 8 days"]],["1 AU (astronomical unit) is the distance from…","Earth to the Sun",["Earth to the Moon","Sun to Pluto","Earth to Mars"]],["About how many Earths fit across the Sun's diameter?","109",["10","1,000","12"]],["About how many Earths could fit inside Jupiter?","Over 1,300",["About 11","About 50","Exactly 2"]],["How many planets are in our solar system?","8",["9","7","10"]],["How long is one year on Mars?","687 Earth days",["365 days","88 days","12 Earth years"]],["How far is Neptune from the Sun?","About 30 AU",["About 3 AU","About 300 AU","About 1 AU"]],["Roughly how big is the Moon compared with Earth?","About ¼ the diameter",["Half the diameter","The same size","1/100 the diameter"]],["Which planet takes about 12 Earth years to orbit?","Jupiter",["Saturn","Mars","Neptune"]]];
+  const [q,a,w]=rnd(pool);return{q,a,o:shuf([a,...w])}}}
+function nextQ(){if(qn>=8)return finish();lock=false;let g;do g=genQ();while(cur&&g.q==cur.q&&g.a==cur.a);cur=g;
+ $("q").innerHTML=`<div>Q ${qn+1}/8 · ❌ ${mistakes}</div><div><b class="big">${g.q}</b></div><div class="opts">${g.o.map((o,i)=>`<button class="btn" data-a="${o}">${i+1}. ${o}</button>`).join("")}</div><div id="ex" style="font-size:12px;min-height:16px"></div>`;
+ document.querySelectorAll("#q .btn").forEach(b=>b.onclick=()=>ans(b));const tb=bodies.find(b=>b.n==g.a);selected=null}
+function ans(b){if(lock||paused)return;if(b.dataset.a==cur.a){lock=true;sG();b.style.background="#2ecc71";qn++;const tb=bodies.find(x=>x.n==cur.a);if(tb){selected=tb;flash.push({x:tb.x,y:tb.y,c:"#4f4",l:1})}if(cur.ex)$("ex").textContent=cur.ex;setTimeout(nextQ,cur.ex?1100:600)}else{sB();mistakes++;b.style.background="#c0392b";b.disabled=true}}
+function finish(){const st=mistakes==0?3:mistakes<=2?2:1,k=mode+level;save.stars[k]=Math.max(save.stars[k]||0,st);persist();upd();sW();lock=true;const m=mode,l=level,nl=l+1<3;
+ ov(`<h2>Mission complete! 🚀</h2><div class="stars">${"★".repeat(st)}${"☆".repeat(3-st)}</div><p>Mistakes: ${mistakes}</p><button class="btn" id="ag">↻ Again</button> ${nl?'<button class="btn" id="nx">Next ▶</button>':""} <button class="btn" id="ms">Missions</button>`);
+ $("ag").onclick=()=>startM(m,l);if(nl)$("nx").onclick=()=>startM(m,l+1);$("ms").onclick=missions}
+function ov(h){$("ovc").innerHTML=h;$("ov").style.display="flex"}function hideOv(){$("ov").style.display="none"}
+function togglePause(){if($("ov").style.display=="flex"&&!paused)return;paused=!paused;if(paused){ov('<h2>⏸ Paused</h2><button class="btn" id="rs">Resume</button> <button class="btn" id="rt">Restart</button>');$("rs").onclick=togglePause;$("rt").onclick=restart}else hideOv()}
+function restart(){paused=false;hideOv();if(mode=="explore"){t=0;zoom=1;speed=1;$("panel").style.display="none";selected=null;bodies.forEach((b,i)=>b.ang=i*1.7)}else startM(mode,level)}
+function upd(){$("mu").textContent=save.mute?"🔇":"🔊";$("st").textContent="⭐ "+Object.values(save.stars).reduce((a,b)=>a+b,0)}
+$("mu").onclick=()=>{save.mute=!save.mute;persist();upd()};$("pB").onclick=togglePause;$("mB").onclick=missions;$("missB").onclick=missions;
+$("zoomB").onclick=()=>{zoom=zoom>=3?1:zoom*1.7;sT()};$("spdB").onclick=()=>{speed=speed>=8?.25:speed*2;sT();$("spdB").textContent="⏩ x"+speed};
+addEventListener("keydown",e=>{const k=e.key.toLowerCase();if(k=="p")togglePause();else if(k=="r")restart();else if(k=="escape"){paused=false;hideOv();stopMission()}else if(k=="m")missions();else if(k=="+"||k=="=")zoom=Math.min(3,zoom*1.3);else if(k=="-")zoom=Math.max(.6,zoom/1.3);
+ else if(/^[1-4]$/.test(k)&&!paused){const b=document.querySelectorAll("#q .btn")[+k-1];if(b)ans(b)}});
+upd();draw();requestAnimationFrame(loop);
+</script></body></html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Note Reader</title><style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;height:100%;background:#fdf6e8;color:#2b2140;font-family:system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden;user-select:none}
+#top{height:40px;display:flex;align-items:center;gap:6px;padding:0 8px;background:#5b3fa8;color:#fff}
+#top a,#top button{color:#fff;background:#7a5ccc;border:0;border-radius:8px;padding:6px 10px;font-size:13px;text-decoration:none;cursor:pointer}
+#title{flex:1;font-weight:800}#title b{color:#ffd86b}
+#game{position:absolute;top:40px;left:0;right:0;bottom:0;display:none}
+canvas{position:absolute;left:0;top:0;touch-action:none}
+#hud{position:absolute;top:4px;right:8px;font-size:14px;font-weight:700;text-align:right}
+#piano{position:absolute;left:50%;transform:translateX(-50%);bottom:6px;height:42%;display:flex;touch-action:none}
+.wk{position:relative;background:linear-gradient(#fff,#eee);border:1px solid #555;border-radius:0 0 8px 8px;display:flex;align-items:flex-end;justify-content:center;font-weight:800;color:#888;padding-bottom:4px;cursor:pointer}
+.bk{position:absolute;top:0;background:linear-gradient(#333,#000);border-radius:0 0 5px 5px;z-index:2;cursor:pointer;color:#bbb;font-size:10px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px}
+.wk.ok,.bk.ok{background:#4cd07d!important}.wk.no,.bk.no{background:#ff7a7a!important}.wk.dn,.bk.dn{filter:brightness(.85)}
+#menu{position:absolute;top:40px;left:0;right:0;bottom:0;overflow:auto;padding:8px;text-align:center}
+.lv{display:inline-block;width:150px;margin:4px;padding:8px;border-radius:12px;background:#fff;box-shadow:0 3px 0 #d8c8f0;cursor:pointer;vertical-align:top}
+.lv:hover{background:#efe6ff}.lv b{display:block;font-size:14px}.lv span{font-size:11px;opacity:.7}.lv .s{color:#f2a900;font-size:16px;opacity:1}
+.btn{background:linear-gradient(#8a6be0,#5b3fa8);color:#fff;border:0;border-radius:12px;padding:9px 14px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 #3a2470}
+#ov{position:fixed;inset:0;background:#2b214099;display:none;align-items:center;justify-content:center;z-index:9}
+#ov>div{background:#fff;border-radius:16px;padding:16px 22px;text-align:center}.stars{font-size:34px;color:#f2a900}
+</style></head><body>
+<div id="top"><a href="./index.html">◀ Back to menu</a><div id="title">🎼 Note <b>Reader</b></div><span id="tot"></span><button id="mB">Lessons</button><button id="pB">⏸</button><button id="mu">🔊</button></div>
+<div id="menu"></div>
+<div id="game"><canvas id="c"></canvas><div id="hud"></div><div id="piano"></div></div>
+<div id="ov"><div id="ovc"></div></div>
+<script>
+const L="CDEFGAB",NOFF=[0,2,4,5,7,9,11],PC=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"],FL={1:"D♭",3:"E♭",6:"G♭",8:"A♭",10:"B♭"};
+// d = diatonic index, C4 = 0
+const midi=(d,acc=0)=>60+Math.floor(d/7)*12+NOFF[((d%7)+7)%7]+acc;
+const nm=(d,acc)=>L[((d%7)+7)%7]+(acc==1?"♯":acc==-1?"♭":"")+(Math.floor(d/7)+4);
+const R=(a,b)=>{const r=[];for(let i=a;i<=b;i++)r.push(i);return r};
+const LESSONS=[
+{n:"Treble lines",h:"Every Good Boy Does Fine (E G B D F)",cl:"t",ds:[2,4,6,8,10]},
+{n:"Treble spaces",h:"The spaces spell F-A-C-E",cl:"t",ds:[3,5,7,9]},
+{n:"Bass lines",h:"Good Boys Do Fine Always (G B D F A)",cl:"b",ds:[-10,-8,-6,-4,-2]},
+{n:"Bass spaces",h:"All Cows Eat Grass (A C E G)",cl:"b",ds:[-9,-7,-5,-3]},
+{n:"All treble notes",h:"Lines E G B D F · Spaces F A C E",cl:"t",ds:R(1,11)},
+{n:"All bass notes",h:"Lines G B D F A · Spaces A C E G",cl:"b",ds:R(-11,-1)},
+{n:"Ledger lines",h:"Middle C sits on a ledger line below treble / above bass",cl:"x",ds:[["t",0],["t",-1],["t",12],["t",13],["t",14],["b",0],["b",1],["b",-12],["b",-13]]},
+{n:"Sharps ♯ & flats ♭",h:"♯ raises a note one half step (next key right), ♭ lowers it (next key left)",cl:"x",acc:true,ds:[]},
+{n:"Grand mix",h:"Everything together!",cl:"x",acc:true,mix:true,ds:[]}];
+let save={stars:{},best:0,mute:false,bestStreak:0};try{const s=JSON.parse(localStorage.getItem("noteReaderSave"));if(s&&s.stars)save=Object.assign(save,s)}catch(e){}
+const persist=()=>localStorage.setItem("noteReaderSave",JSON.stringify(save));
+const $=id=>document.getElementById(id),cv=$("c"),cx=cv.getContext("2d");
+let W=0,H=0,S={screen:"menu",lesson:0,q:0,total:10,mist:0,streak:0,score:0,note:null,paused:false,timed:false,time:0,reveal:0,lock:false,shake:0,keys:[]};
+// audio
+let ac=null;function AC(){if(save.mute)return null;try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();if(ac.state=="suspended")ac.resume()}catch(e){}return ac}
+function pianoTone(m,v=.25){const a=AC();if(!a)return;const f=440*Math.pow(2,(m-69)/12),T=a.currentTime,g=a.createGain();g.gain.setValueAtTime(0,T);g.gain.linearRampToValueAtTime(v,T+.01);g.gain.exponentialRampToValueAtTime(.001,T+1.2);g.connect(a.destination);
+ [[1,"triangle",1],[2,"sine",.35],[3,"sine",.12]].forEach(([h,t,vv])=>{const o=a.createOscillator(),gg=a.createGain();o.type=t;o.frequency.value=f*h;gg.gain.value=vv;o.connect(gg).connect(g);o.start(T);o.stop(T+1.2)})}
+function buzz(){const a=AC();if(!a)return;const o=a.createOscillator(),g=a.createGain(),T=a.currentTime;o.type="square";o.frequency.value=110;g.gain.setValueAtTime(.06,T);g.gain.exponentialRampToValueAtTime(.001,T+.25);o.connect(g).connect(a.destination);o.start(T);o.stop(T+.25)}
+const fanfare=()=>[72,76,79,84].forEach((m,i)=>setTimeout(()=>pianoTone(m,.18),i*110));
+function resize(){const dpr=devicePixelRatio||1;W=innerWidth;H=innerHeight-40;cv.width=W*dpr|0;cv.height=H*dpr|0;cv.style.width=W+"px";cv.style.height=H+"px";cx.setTransform(dpr,0,0,dpr,0,0);buildPiano()}
+// piano: one octave C..B plus next C
+function buildPiano(){const p=$("piano");const ww=Math.min(64,(W-20)/8),h=Math.min(H*.42,150);p.style.height=h+"px";p.innerHTML="";S.keys=[];
+ for(let i=0;i<8;i++){const k=document.createElement("div");k.className="wk";k.style.width=ww+"px";k.textContent=L[i%7];k.dataset.pc=NOFF[i%7];k.dataset.m=60+NOFF[i%7]+(i==7?12:0);p.appendChild(k);S.keys.push(k)}
+ [[1,0],[3,1],[6,3],[8,4],[10,5]].forEach(([pc,after])=>{const k=document.createElement("div");k.className="bk";k.style.cssText=`left:${(after+1)*ww-ww*.3}px;width:${ww*.6}px;height:${h*.6}px`;k.innerHTML=PC[pc]+"<br>"+FL[pc];k.dataset.pc=pc;k.dataset.m=60+pc;p.appendChild(k);S.keys.push(k)});
+ S.keys.forEach(k=>k.onpointerdown=e=>{e.preventDefault();press(k)})}
+function press(k){if(S.screen!="play"||S.paused)return;k.classList.add("dn");setTimeout(()=>k.classList.remove("dn"),120);answer(+k.dataset.pc,k)}
+// staff drawing
+function geom(){const gap=Math.max(9,Math.min(16,(H*.55)/9.5));const top=H*.04+gap*3.2;return{gap,x0:W*.08,x1:W*.92,bottomY:top+gap*4}}
+function drawClef(cl,g){const x=g.x0+gap0(g)*1.8,G=g.gap,by=g.bottomY;cx.save();cx.strokeStyle="#2b2140";cx.fillStyle="#2b2140";cx.lineWidth=G*.18;cx.lineCap="round";
+ if(cl=="t"){const gy=by-G;// G line
+  cx.beginPath();cx.moveTo(x+G*.3,by+G*1.6);cx.quadraticCurveTo(x+G*.6,by-G*2,x+G*.1,by-G*5.2);cx.quadraticCurveTo(x-G*.6,by-G*4.2,x+G*.2,by-G*3);cx.quadraticCurveTo(x+G*1.2,by-G*1.8,x+G*.6,by-G*.2);cx.quadraticCurveTo(x-G*.6,by+G*.3,x-G*.6,by-G*1.2);cx.quadraticCurveTo(x-G*.2,gy-G*1.3,x+G*.9,gy-G*.6);cx.quadraticCurveTo(x+G*1.3,gy+G*.6,x+G*.2,gy+G*.6);cx.quadraticCurveTo(x-G*.3,gy+G*.3,x,gy-G*.1);cx.stroke();
+  cx.beginPath();cx.arc(x+G*.1,by+G*1.6,G*.3,0,7);cx.fill()}
+ else{const fy=by-G*3;cx.beginPath();cx.arc(x-G*.3,fy+G*.1,G*.35,0,7);cx.fill();cx.beginPath();cx.moveTo(x-G*.5,fy);cx.quadraticCurveTo(x+G*.4,fy-G*1.4,x+G*1.2,fy-G*.1);cx.quadraticCurveTo(x+G*1.2,fy+G*1.8,x-G*.6,fy+G*3);cx.stroke();
+  cx.beginPath();cx.arc(x+G*1.7,fy-G*.5,G*.16,0,7);cx.arc(x+G*1.7,fy+G*.5,G*.16,0,7);cx.fill()}
+ cx.restore()}
+const gap0=g=>g.gap;
+function draw(){cx.clearRect(0,0,W,H);if(S.screen!="play"||!S.note)return;const g=geom(),G=g.gap,n=S.note;
+ cx.fillStyle="#fffdf7";cx.beginPath();cx.roundRect?cx.roundRect(g.x0-14,g.bottomY-G*7.5,g.x1-g.x0+28,G*11,14):cx.rect(g.x0-14,g.bottomY-G*7.5,g.x1-g.x0+28,G*11);cx.fill();
+ cx.strokeStyle="#2b2140";cx.lineWidth=1.4;for(let i=0;i<5;i++){const y=g.bottomY-i*G;cx.beginPath();cx.moveTo(g.x0,y);cx.lineTo(g.x1,y);cx.stroke()}
+ drawClef(n.cl,g);cx.fillStyle="#5b3fa8";cx.font=`700 ${G*1.1}px system-ui`;cx.textAlign="left";cx.fillText(n.cl=="t"?"Treble clef":"Bass clef",g.x0+G*4,g.bottomY-G*5.4);
+ const step=n.d-(n.cl=="t"?2:-10),y=g.bottomY-step*G/2,sh=S.shake>0?Math.sin(S.shake*40)*6:0,x=(g.x0+g.x1)/2+sh;
+ cx.lineWidth=1.6;for(let s=-2;s>=step;s-=2){cx.beginPath();cx.moveTo(x-G*1.1,g.bottomY-s*G/2);cx.lineTo(x+G*1.1,g.bottomY-s*G/2);cx.stroke()}
+ for(let s=10;s<=step;s+=2){cx.beginPath();cx.moveTo(x-G*1.1,g.bottomY-s*G/2);cx.lineTo(x+G*1.1,g.bottomY-s*G/2);cx.stroke()}
+ const col=S.reveal>0?(S.lastOk?"#1f9e55":"#d63b3b"):"#2b2140";cx.fillStyle=col;cx.strokeStyle=col;
+ cx.save();cx.translate(x,y);cx.rotate(-.35);cx.beginPath();cx.ellipse(0,0,G*.66,G*.46,0,0,7);cx.fill();cx.restore();
+ cx.lineWidth=G*.12;cx.beginPath();if(step<4){cx.moveTo(x+G*.6,y-G*.1);cx.lineTo(x+G*.6,y-G*3.4)}else{cx.moveTo(x-G*.6,y+G*.1);cx.lineTo(x-G*.6,y+G*3.4)}cx.stroke();
+ if(n.acc){cx.font=`700 ${G*2.2}px serif`;cx.textAlign="center";cx.fillText(n.acc==1?"♯":"♭",x-G*1.9,y+G*(n.acc==1?.7:.4))}
+ if(S.reveal>0){cx.font=`800 ${G*1.6}px system-ui`;cx.textAlign="left";cx.fillText(nm(n.d,n.acc),x+G*2,y+G*.5)}
+ cx.fillStyle="#7a6a99";cx.font=`${Math.max(11,G*.85)}px system-ui`;cx.textAlign="left";cx.fillText("💡 "+(S.timed?"Name as many notes as you can!":LESSONS[S.lesson].h),g.x0,g.bottomY+G*3.1)}
+function hud(){$("hud").innerHTML=(S.timed?`⏱ ${Math.ceil(S.time)}s · Score ${S.score}`:`${LESSONS[S.lesson].n} · ${Math.min(S.q+1,S.total)}/${S.total} · ❌ ${S.mist}`)+`<br>🔥 Streak ${S.streak} · Best ${save.bestStreak}`}
+const rnd=a=>a[Math.random()*a.length|0];
+function genNote(){const Ls=S.timed?LESSONS[8]:LESSONS[S.lesson];let cl,d,acc=0;
+ if(Ls.mix||S.timed){const r=Math.random();if(r<.15){[cl,d]=rnd(LESSONS[6].ds)}else{cl=Math.random()<.5?"t":"b";d=cl=="t"?rnd(R(0,12)):rnd(R(-12,0))}}
+ else if(Ls.cl=="x"&&!Ls.acc){[cl,d]=rnd(Ls.ds)}else if(Ls.acc){cl=Math.random()<.5?"t":"b";d=cl=="t"?rnd(R(1,11)):rnd(R(-11,-1))}else{cl=Ls.cl;d=rnd(Ls.ds)}
+ if(Ls.acc&&Math.random()<(Ls.mix?.35:.8)){const l=((d%7)+7)%7;const opts=[];if(l!=2&&l!=6)opts.push(1);if(l!=0&&l!=3)opts.push(-1);acc=rnd(opts)}
+ return{cl,d,acc}}
+function nextNote(){let n;do n=genNote();while(S.note&&n.d==S.note.d&&n.cl==S.note.cl&&n.acc==S.note.acc);S.note=n;S.reveal=0;S.lock=false;hud()}
+function answer(pc,k){if(S.lock)return;const n=S.note,want=((midi(n.d,n.acc)%12)+12)%12;
+ if(pc==want){S.lock=true;S.lastOk=true;pianoTone(midi(n.d,n.acc));S.reveal=1;S.streak++;S.score++;save.bestStreak=Math.max(save.bestStreak,S.streak);persist();k.classList.add("ok");setTimeout(()=>k.classList.remove("ok"),400);
+  S.q++;setTimeout(()=>{if(!S.timed&&S.q>=S.total)finish();else nextNote()},S.timed?350:700)}
+ else{S.lastOk=false;buzz();S.mist++;S.streak=0;S.shake=.3;k.classList.add("no");setTimeout(()=>k.classList.remove("no"),400);if(S.timed)S.time=Math.max(0,S.time-2)}hud()}
+function start(i,timed=false){Object.assign(S,{screen:"play",lesson:i,q:0,mist:0,streak:0,score:0,paused:false,timed,time:60,note:null});hideOv();$("menu").style.display="none";$("game").style.display="block";resize();nextNote()}
+function finish(){S.screen="done";let st;if(S.timed){st=S.score>=30?3:S.score>=18?2:S.score>=8?1:0;const nb=S.score>save.best;save.best=Math.max(save.best,S.score);save.stars.challenge=Math.max(save.stars.challenge||0,st);persist();fanfare();
+ ov(`<h2>Time's up!</h2><div class="stars">${"★".repeat(st)}${"☆".repeat(3-st)}</div><p>Score <b>${S.score}</b>${nb?" — new best! 🎉":" · Best "+save.best}</p><button class="btn" id="ag">↻ Again</button> <button class="btn" id="mn">Lessons</button>`);$("ag").onclick=()=>start(0,true)}
+ else{st=S.mist==0?3:S.mist<=3?2:1;save.stars["l"+S.lesson]=Math.max(save.stars["l"+S.lesson]||0,st);persist();fanfare();const nl=S.lesson+1<LESSONS.length;
+ ov(`<h2>Lesson complete!</h2><div class="stars">${"★".repeat(st)}${"☆".repeat(3-st)}</div><p>${LESSONS[S.lesson].n} · mistakes: ${S.mist}</p><button class="btn" id="ag">↻ Again</button> ${nl?'<button class="btn" id="nx">Next ▶</button>':""} <button class="btn" id="mn">Lessons</button>`);
+ $("ag").onclick=()=>start(S.lesson);if(nl)$("nx").onclick=()=>start(S.lesson+1)}$("mn").onclick=menu;tot()}
+function menu(){S.screen="menu";S.paused=false;hideOv();$("game").style.display="none";$("menu").style.display="block";tot();
+ let h="<h3 style='margin:4px'>Pick a lesson — answer on the piano!</h3>";LESSONS.forEach((l,i)=>{const s=save.stars["l"+i]||0;h+=`<div class="lv" data-i="${i}"><b>${i+1}. ${l.n}</b><span>${l.h}</span><div class="s">${"★".repeat(s)}${"☆".repeat(3-s)}</div></div>`});
+ const cs=save.stars.challenge||0;h+=`<div class="lv" data-c="1" style="background:#ffe9a8"><b>⏱ Timed Challenge</b><span>60 seconds, all notes. Best: ${save.best}</span><div class="s">${"★".repeat(cs)}${"☆".repeat(3-cs)}</div></div><p style="font-size:12px;opacity:.6">Keys: A–G white keys · W 3 T Y U black keys (C♯ D♯ F♯ G♯ A♯) · P pause · R restart</p>`;
+ $("menu").innerHTML=h;document.querySelectorAll(".lv").forEach(e=>e.onclick=()=>{AC();e.dataset.c?start(0,true):start(+e.dataset.i)})}
+function tot(){$("tot").textContent="⭐ "+Object.values(save.stars).reduce((a,b)=>a+b,0);$("mu").textContent=save.mute?"🔇":"🔊"}
+function ov(h){$("ovc").innerHTML=h;$("ov").style.display="flex"}function hideOv(){$("ov").style.display="none"}
+function togglePause(){if(S.screen!="play")return;S.paused=!S.paused;if(S.paused){ov('<h2>⏸ Paused</h2><button class="btn" id="rs">Resume</button> <button class="btn" id="rt">Restart</button>');$("rs").onclick=togglePause;$("rt").onclick=()=>start(S.lesson,S.timed)}else hideOv()}
+$("pB").onclick=togglePause;$("mB").onclick=menu;$("mu").onclick=()=>{save.mute=!save.mute;persist();tot()};
+const KMAP={c:0,d:2,e:4,f:5,g:7,a:9,b:11,w:1,e2:3,t:6,y:8,u:10};const KB={w:1,t:6,y:8,u:10};
+addEventListener("keydown",e=>{const k=e.key.toLowerCase();if(k=="p")return togglePause();if(k=="r"&&S.screen!="menu")return start(S.lesson,S.timed);if(k=="escape")return menu();
+ if(S.screen!="play"||S.paused||e.repeat)return;let pc=null;if("cdefgab".includes(k)&&k.length==1)pc=KMAP[k];else if(k in KB)pc=KB[k];else if(k=="3")pc=3;
+ if(e.key=="E"&&e.shiftKey)pc=3;// Shift+E alt for D#
+ if(pc!=null){const key=S.keys.find(x=>+x.dataset.pc==pc);press(key)}});
+// note: D♯/E♭ black key on keyboard = 'r' is restart, so use '3' or click
+let last=performance.now();function loop(t){const dt=(t-last)/1000;last=t;if(S.screen=="play"&&!S.paused){if(S.timed){S.time-=dt;if(S.time<=0){S.time=0;finish()}else if(Math.floor(S.time+dt)!=Math.floor(S.time))hud()}if(S.shake>0)S.shake-=dt;if(S.reveal>0)S.reveal-=dt*.6}draw();requestAnimationFrame(loop)}
+addEventListener("resize",()=>{if(S.screen!="menu")resize()});
+resize();menu();requestAnimationFrame(loop);
+</script></body></html>

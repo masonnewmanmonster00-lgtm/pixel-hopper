@@ -424,6 +424,12 @@ h1 span{color:#ff6b6b}
 .wlk{background:#2b3f6e}
 .wlk i{position:absolute;left:12%;top:68%;width:76%;height:10px;background:#5caa46;border-radius:2px}
 .wlk b{position:absolute;left:22%;top:40%;width:10px;height:16px;background:#3a64e0;border-radius:4px 4px 2px 2px;box-shadow:18px 0 0 #3fd14a,36px 4px 0 #3a64e0}
+.ihk{background:#d7e9f8}
+.ihk i{position:absolute;left:0;top:46%;width:100%;height:8px;background:#d03030}
+.ihk b{position:absolute;left:16%;top:36%;width:14px;height:18px;background:#2f7cf6;border-radius:8px;box-shadow:48px 8px 0 #111,68px 2px 0 #e23b3b}
+.jpk{background:#241b38}
+.jpk i{position:absolute;left:30%;top:40%;width:14px;height:20px;background:#f1f1f1;border-radius:4px}
+.jpk b{position:absolute;left:24%;top:64%;width:8px;height:12px;background:#ff6a00;border-radius:0 0 4px 4px;box-shadow:5px 3px 0 #ffd23f}
 @keyframes bob{50%{transform:translateY(-6px)}}
 @keyframes wave{50%{transform:skewY(8deg)}}
 
@@ -489,7 +495,7 @@ a.card[hidden]{display:none}
 <h1>Pixel <span>Arcade</span></h1>
 <button type="button" id="random">Random game</button>
 </div>
-<p class="lede">One hundred four browser games. Best scores stay on this device.</p>
+<p class="lede">One hundred six browser games. Best scores stay on this device.</p>
 <p class="edu-link"><a href="./edu/index.html">Learning Lab · educational games</a></p>
 <div class="tools">
 <input id="q" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off">
@@ -931,6 +937,14 @@ a.card[hidden]{display:none}
 <a class="card" href="./walkers.html" data-cat="Puzzle" data-key="arcade-walk-best" data-name="Little Walkers">
 <div class="thumb wlk" aria-hidden="true"><i></i><b></b></div>
 <div class="meta"><p class="kicker">Puzzle</p><h2>Little Walkers</h2><p>Guide the walkers home across 20 levels. Best is your total percent.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./hockey.html" data-cat="Sports" data-key="arcade-hockey-best" data-name="Ice Hockey">
+<div class="thumb ihk" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Sports</p><h2>Ice Hockey</h2><p>Skate, pass, and score in 3-on-3. Best is your wins vs CPU.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
+</a>
+<a class="card" href="./jetpack.html" data-cat="Arcade" data-key="arcade-jet-best" data-name="Jetpack Dash">
+<div class="thumb jpk" aria-hidden="true"><i></i><b></b></div>
+<div class="meta"><p class="kicker">Arcade</p><h2>Jetpack Dash</h2><p>Hold to fly through the lab. Best is your farthest run.</p><p class="scoreline">Best <span class="best">-</span></p><span class="play">Play</span></div>
 </a>
 </main>
 <p id="empty" hidden>No games match that search.</p>

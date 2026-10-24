@@ -1,0 +1,139 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Cloud Spotter</title><style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;height:100%;background:#1d1630;color:#eef;font-family:system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden;user-select:none}
+#top{position:absolute;top:0;left:0;right:0;height:40px;display:flex;align-items:center;gap:6px;padding:0 8px;background:#0008;z-index:3}
+#top a,#top button{color:#fff;background:#283070;border:0;border-radius:8px;padding:6px 10px;font-size:13px;text-decoration:none;cursor:pointer;white-space:nowrap}
+#title{flex:1;font-weight:800;white-space:nowrap;overflow:hidden}#title b{color:#ffcf5a}#st{font-size:13px;white-space:nowrap}
+canvas{position:absolute;top:40px;left:0;touch-action:none}
+.btn{background:linear-gradient(#ffb340,#e07a10);color:#fff;border:0;border-radius:12px;padding:9px 13px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 #8a4a00;margin:3px}
+.btn:active{transform:translateY(2px)}
+#ov{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:9}
+#ov>div{background:#121a4a;border:2px solid #ffcf5a;border-radius:16px;padding:12px 16px;text-align:center;max-width:96%;max-height:94%;overflow:auto}
+#ov h2{margin:4px 0}#ov p{margin:6px 0;font-size:14px}
+.lv{display:inline-block;margin:3px;padding:5px 8px;border-radius:8px;background:#283070;font-size:13px;cursor:pointer;min-width:120px}
+.lv:hover{background:#e07a10}.lv.lock{opacity:.45;cursor:default}.stars{font-size:34px;color:#ffd54a}
+</style></head><body>
+<div id="top"><a id="lz" href="./index.html">◀ Learning Lab</a><a id="menu" href="../index.html">🏠</a><div id="title">☁️ Cloud <b>Spotter</b></div><span id="st"></span><button id="lvB">Levels</button><button id="pB">⏸</button><button id="mu">🔊</button></div>
+<canvas id="c"></canvas><div id="ov"><div id="ovc"></div></div>
+<script>
+const SAVEKEY='g3CloudsSave',TITLE='☁️ Cloud Spotter',INTRO='Look up! Learn the ten main cloud types, how high they float, what their names mean, and what weather each one brings.';
+// shared skeleton injected into both games
+const $=id=>document.getElementById(id);
+const cv=$('c'),cx=cv.getContext('2d');let W=0,H=0,DPR=1;
+let save={mute:false,stars:{},unlocked:1};
+try{const s=JSON.parse(localStorage.getItem(SAVEKEY)||'null');if(s)save=Object.assign(save,s)}catch(e){}
+function persist(){try{localStorage.setItem(SAVEKEY,JSON.stringify(save))}catch(e){}}
+let AC=null;function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(AC&&AC.state==='suspended')AC.resume();return AC}
+function tone(f,d=0.12,t='sine',v=0.15,dl=0){if(save.mute)return;const a=ac();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type=t;o.frequency.value=f;const s=a.currentTime+dl;g.gain.setValueAtTime(v,s);g.gain.exponentialRampToValueAtTime(0.001,s+d);o.connect(g);g.connect(a.destination);o.start(s);o.stop(s+d+0.02)}
+const sfx={ok(){tone(660,.1,'triangle');tone(990,.15,'triangle',.15,.08)},bad(){tone(200,.25,'sawtooth',.08)},tap(){tone(500,.05,'square',.05)},win(){[523,659,784,1046].forEach((f,i)=>tone(f,.2,'triangle',.15,i*.12))}};
+function resize(){DPR=window.devicePixelRatio||1;W=innerWidth;H=innerHeight-40;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);cv.style.width=W+'px';cv.style.height=H+'px';cx.setTransform(DPR,0,0,DPR,0,0)}
+function rr(x,y,w,h,r){cx.beginPath();cx.roundRect?cx.roundRect(x,y,w,h,r):cx.rect(x,y,w,h)}
+function txt(s,x,y,sz,col='#fff',al='center',wt='700'){cx.font=wt+' '+sz+'px system-ui,Segoe UI,Roboto,sans-serif';cx.fillStyle=col;cx.textAlign=al;cx.textBaseline='middle';cx.fillText(s,x,y)}
+function fit(s,maxw,sz){cx.font='700 '+sz+'px system-ui';while(sz>9&&cx.measureText(s).width>maxw){sz--;cx.font='700 '+sz+'px system-ui'}return sz}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function pick(a){return a[Math.random()*a.length|0]}
+let paused=false,btns=[];
+function hit(x,y){for(let i=btns.length-1;i>=0;i--){const b=btns[i];if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){b.f();return true}}return false}
+function ptr(e){ac();if(paused||$('ov').style.display==='flex')return;const r=cv.getBoundingClientRect();const p=e.changedTouches?e.changedTouches[0]:e;onTap(p.clientX-r.left,p.clientY-r.top)}
+cv.addEventListener('pointerdown',e=>{e.preventDefault();ptr(e)});
+function ov(html){$('ovc').innerHTML=html;$('ov').style.display=html?'flex':'none'}
+function setPause(p){if($('ov').style.display==='flex'&&!paused)return;paused=p;$('pB').textContent=p?'▶':'⏸';ov(p?'<h2>⏸ Paused</h2><p>Press P or tap to resume. R restarts the level.</p><button class="btn" onclick="setPause(false)">▶ Resume</button> <button class="btn" onclick="setPause(false);restart()">↻ Restart</button>':'')}
+$('pB').onclick=()=>setPause(!paused);
+$('mu').textContent=save.mute?'🔇':'🔊';$('mu').onclick=()=>{save.mute=!save.mute;$('mu').textContent=save.mute?'🔇':'🔊';persist()};
+$('lvB').onclick=()=>{paused=false;showLevels()};
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function showLevels(){let h='<h2>'+TITLE+'</h2><p>'+INTRO+'</p>';LV.forEach((L,i)=>{const ok=i<save.unlocked;h+='<span class="lv'+(ok?'':' lock')+'" data-lv="'+i+'" '+(ok?'onclick="startLevel('+i+')"':'')+'>'+(ok?'':'🔒 ')+(i+1)+'. '+L.name+'<br><small>'+starStr(save.stars[i]||0)+'</small></span>'});h+='<p><small>Keys: 1-4 choose · P pause · R restart · M mute</small></p>';ov(h)}
+function finishLevel(stars){sfx.win();const i=cur;save.stars[i]=Math.max(save.stars[i]||0,stars);save.unlocked=Math.max(save.unlocked,Math.min(LV.length,i+2));persist();
+ ov('<h2>Level complete!</h2><div class="stars">'+starStr(stars)+'</div><p>'+LV[i].name+'</p>'+(i+1<LV.length?'<button class="btn" id="nextB" onclick="startLevel('+(i+1)+')">Next level ▶</button> ':'')+'<button class="btn" onclick="restart()">↻ Replay</button> <button class="btn" onclick="showLevels()">Levels</button>')}
+function restart(){ov('');startLevel(cur)}
+addEventListener('keydown',e=>{const k=e.key;if(k==='p'||k==='P'){setPause(!paused);return}if(paused)return;if($('ov').style.display==='flex'){if(k==='Enter'&&$('nextB'))$('nextB').click();return}
+ if(keyTyping()&&k.length===1&&k!=='p'&&k!=='P'){onKey(e);return}
+ if(k==='r'||k==='R'){restart();return}if(k==='m'||k==='M'){$('mu').click();return}onKey(e)});
+addEventListener('resize',()=>{resize();draw()});
+function ri(a,b){return a+Math.floor(Math.random()*(b-a+1))}
+let cur=0,qi=0,miss=0,Q=null,msg='',msgCol='#fff',lock=false;const CUSTOM={};let BG=['#2a2140','#16213e'],ICON='📚';
+const NQ=()=>{const L=LV[cur];return L.n||(L.m==='order'||L.m==='tl'?(L.reps||1):L.m==='mix'?8:6)};
+function mo(ans,pool,n=4){return shuffle([ans,...shuffle([...new Set(pool)].filter(x=>x!==ans)).slice(0,n-1)])}
+function fromList(list,q){const u=(Q&&Q.used)||[],key=x=>Array.isArray(x)?x[0]:x,left=list.filter(x=>!u.includes(key(x)));const f=pick(left.length?left:list);q.used=u.concat(key(f));return f}
+function quizQ(q,f){q.text=f[0];q.opts=shuffle([f[1],...f[2]]);q.ans=f[1];q.why=f[3]||''}
+function orderQ(q,list,text){q.list=list;q.stages=shuffle(list.map((s,i)=>({s,i})));q.next=0;q.text=text||'Tap the steps IN ORDER, first to last.'}
+function tlQ(q,TL,fmt){const ev=shuffle(TL).slice(0,4).sort((a,b)=>a[0]-b[0]);orderQ(q,ev.map(e=>e[1]+' ('+fmt(e[0])+')'),'Tap these events from OLDEST to NEWEST.');q.stages.forEach(s=>s.s=s.s.replace(/ \([^)]*\)$/,''))}
+function startLevel(i){ov('');paused=false;cur=i;qi=0;miss=0;msg='';lock=false;Q=null;Q=makeQ();draw();if(TIPS[i]&&!save['tip'+i]){save['tip'+i]=1;persist();ov('<h2>'+LV[i].name+'</h2><p>'+TIPS[i]+'</p><button class="btn" onclick="ov(\'\')">Let\'s go ▶</button>')}}
+function keyTyping(){return false}
+function card(x,y,w,h,col,stroke){cx.fillStyle=col;rr(x,y,w,h,12);cx.fill();if(stroke){cx.strokeStyle=stroke;cx.lineWidth=3;cx.stroke()}}
+function wrapC(s,x,y,w,sz,col,maxL=3){cx.font='700 '+sz+'px system-ui';const ws=String(s).split(' ');let lines=[],l='';for(const wd of ws){const t=l?l+' '+wd:wd;if(cx.measureText(t).width>w&&l){lines.push(l);l=wd}else l=t}lines.push(l);if(lines.length>maxL&&sz>10)return wrapC(s,x,y,w,sz-1,col,maxL);lines.forEach((ln,i)=>txt(ln,x,y+(i-(lines.length-1)/2)*(sz+3),sz,col))}
+function draw(){btns=[];cx.clearRect(0,0,W,H);const g=cx.createLinearGradient(0,0,0,H);g.addColorStop(0,BG[0]);g.addColorStop(1,BG[1]);cx.fillStyle=g;cx.fillRect(0,0,W,H);if(!Q)return;const q=Q;
+ $('st').textContent='Lv '+(cur+1)+' · '+Math.min(qi+1,NQ())+'/'+NQ()+' · ✗'+miss;txt(LV[cur].name,W/2,14,13,'#ffcf5a');
+ if(CUSTOM[q.m])return CUSTOM[q.m].draw(q);
+ if(q.stages){wrapC(q.text,W/2,36,W-40,16,'#fff');const n=q.stages.length,gap=8,bw=Math.min(180,(W-20-gap*(n-1))/n),x0=(W-(n*bw+gap*(n-1)))/2;for(let i=0;i<n;i++){const x=x0+i*(bw+gap);card(x,56,bw,40,'#0005');wrapC(i<q.next?q.list[i]:(i+1)+'. ?',x+bw/2,76,bw-8,11,i<q.next?'#7f7':'#ccd')}
+  q.stages.forEach((st,i)=>{const x=x0+i*(bw+gap),y=110,done=st.i<q.next;card(x,y,bw,120,done?'#2a5a3a':'#fdf6e3',st.bad?'#e74c3c':null);const parts=st.s.split(' ');const em=/^\p{Extended_Pictographic}/u.test(parts[0])?parts.shift():'';if(em)txt(em,x+bw/2,y+30,26);wrapC(parts.join(' '),x+bw/2,y+(em?80:60),bw-10,12,done?'#cfc':'#2b1d0e',4);if(!done)btns.push({x,y,w:bw,h:120,f:()=>pickStage(st)})});if(msg)wrapC(msg,W/2,H-36,W-40,14,msgCol);return}
+ const lw=q.wide?0:W*.4;if(!q.wide){if(q.vis)q.vis(lw/2+8,H/2,Math.min(lw,H-60));else if(q.big){card(16,50,lw-16,H-80,'#fdf6e3');wrapC(q.big,lw/2+8,H/2-6,lw-44,q.bigSz||20,'#2b1d0e',6)}else txt(q.icon||ICON,lw/2+8,H/2,70)}
+ const px=q.wide?20:lw+24,pw=W-px-14;wrapC(q.text,px+pw/2,q.wide?52:48,pw,q.wide?17:16,'#fff',q.wide?3:4);const n=q.opts.length,one=n<=3&&q.optCol!==2,bw=one?pw:(pw-10)/2,bh=n>4?36:one?38:46,top=q.wide?92:96;
+ q.opts.forEach((o,i)=>{const bx=px+(one?0:(i%2)*(bw+10)),by=top+(one?i*(bh+8):Math.floor(i/2)*(bh+10));let col='#283070';if(q.picked!=null){if(o===q.ans)col='#2a8a3a';else if(o===q.picked)col='#a33'}card(bx,by,bw,bh,col);const s=(i+1)+'  '+o;if(cx.measureText&&s.length>40)wrapC(s,bx+bw/2,by+bh/2,bw-14,13,'#fff',2);else txt(s,bx+bw/2,by+bh/2,fit(s,bw-10,15));btns.push({x:bx,y:by,w:bw,h:bh,f:()=>choose(o)})});
+ if(msg)wrapC(msg,px+pw/2,H-30,pw,13,msgCol)}
+function pickStage(st){if(lock)return;const q=Q;if(st.i===q.next){q.next++;st.bad=0;sfx.ok();if(q.next>=q.stages.length){lock=true;msg='✔ Perfect order!'+(q.done?' '+q.done:'');msgCol='#7f7';draw();setTimeout(next,1900);return}msg='✔ Yes!';msgCol='#7f7'}else{sfx.bad();miss++;st.bad=1;msg='✘ Not yet — what comes next?';msgCol='#f99'}draw()}
+function choose(v){if(lock)return;Q.picked=v;lock=true;const ok=v===Q.ans;if(ok)sfx.ok();else{sfx.bad();miss++}msg=(ok?'✔ Correct! ':'✘ The answer: '+Q.ans+'. ')+(Q.why||'');msgCol=ok?'#7f7':'#f99';draw();setTimeout(next,ok?1600:3300)}
+function good(m){sfx.ok();lock=true;msg='✔ '+m;msgCol='#7f7';draw();setTimeout(next,1900)}
+function bad(m){sfx.bad();miss++;msg='✘ '+m;msgCol='#f99';draw()}
+function next(){msg='';lock=false;qi++;if(qi>=NQ()){finishLevel(miss===0?3:miss<=2?2:1);return}Q=makeQ();draw()}
+function onTap(x,y){hit(x,y)}
+function onKey(e){const k=e.key,q=Q;if(!q||lock)return;const n=+k;if(CUSTOM[q.m]&&CUSTOM[q.m].key)return CUSTOM[q.m].key(e,q);if(q.opts&&n>=1&&n<=q.opts.length)return choose(q.opts[n-1]);if(q.stages&&n>=1&&n<=q.stages.length&&q.stages[n-1].i>=q.next)return pickStage(q.stages[n-1])}
+
+BG=['#3a7bd5','#1c4b8a'];ICON='☁️';
+const CL={Cirrus:['High','Thin, wispy streaks like curls of hair, made of ice crystals','Fair now; a change in the weather may come within a day'],Cirrocumulus:['High','Tiny white puffs in rows or ripples ("mackerel sky")','Usually fair, cold weather'],Cirrostratus:['High','A thin milky veil that makes a halo around the Sun or Moon','Rain or snow may arrive within 12–24 hours'],
+Altocumulus:['Middle','Grey-white patches or rolls, bigger than cirrocumulus','Fair, but on a warm, humid morning they can mean storms later'],Altostratus:['Middle','A grey sheet; the Sun looks like it\'s behind frosted glass, with no halo','Rain or snow is probably on its way soon'],Nimbostratus:['Middle','A thick, dark grey layer that hides the Sun completely','Steady rain or snow for hours'],
+Stratus:['Low','A flat, grey, featureless blanket — fog that doesn\'t touch the ground','Dull skies, maybe light drizzle'],Stratocumulus:['Low','Low lumpy grey patches with blue gaps','Mostly dry, maybe a little drizzle'],Cumulus:['Low','Puffy white "cotton wool" heaps with flat bottoms','Fair weather (if they stay small)'],Cumulonimbus:['Low','A huge tower reaching very high, often with a flat anvil top','Thunderstorms, lightning, heavy rain, hail and gusty winds']};
+const NAMES=Object.keys(CL);
+let SEED=1;const rnd=()=>{SEED=(SEED*16807)%2147483647;return SEED/2147483647};
+function puff(x,y,r,col){cx.fillStyle=col;cx.beginPath();cx.arc(x,y,r,0,7);cx.fill()}
+function sky(t,x0,y0,w,h,seed){SEED=seed;const alt={High:.2,Middle:.45,Low:.72}[CL[t][0]];const dark=['Nimbostratus','Cumulonimbus','Stratus','Altostratus'].includes(t);const g=cx.createLinearGradient(0,y0,0,y0+h);g.addColorStop(0,dark?'#6b7b8c':'#4a90e2');g.addColorStop(1,dark?'#a7b3bf':'#bfe0ff');cx.fillStyle=g;cx.fillRect(x0,y0,w,h);
+ cx.save();cx.beginPath();cx.rect(x0,y0,w,h);cx.clip();const Y=y0+h*alt;
+ const sun=(a)=>{cx.globalAlpha=a;puff(x0+w*.75,y0+h*.22,h*.07,'#fff6c8');cx.globalAlpha=1};
+ if(t==='Cirrus'){sun(1);cx.strokeStyle='#fffc';cx.lineCap='round';for(let i=0;i<7;i++){const sx=x0+rnd()*w,sy=y0+h*(.08+rnd()*.25);cx.lineWidth=1.5+rnd()*2.5;cx.beginPath();cx.moveTo(sx,sy);cx.quadraticCurveTo(sx+w*.12,sy-h*.02,sx+w*.2,sy-h*.1-rnd()*h*.05);cx.stroke()}}
+ if(t==='Cirrocumulus'){sun(1);for(let r=0;r<5;r++)for(let c=0;c<22;c++)puff(x0+c*w/20+(r%2)*w/40,y0+h*.1+r*h*.05,h*.012+rnd()*h*.008,'#ffffffdd')}
+ if(t==='Cirrostratus'){sun(1);cx.strokeStyle='#ffffffaa';cx.lineWidth=3;cx.beginPath();cx.arc(x0+w*.75,y0+h*.22,h*.2,0,7);cx.stroke();cx.fillStyle='#ffffff40';cx.fillRect(x0,y0,w,h*.45)}
+ if(t==='Altocumulus'){sun(1);for(let r=0;r<3;r++)for(let c=0;c<9;c++)for(let k=0;k<3;k++)puff(x0+c*w/8+(r%2)*w/16+k*h*.03,Y-h*.08+r*h*.07+(rnd()-.5)*h*.02,h*.03+rnd()*h*.012,k?'#f3f6fa':'#c9d2dc')}
+ if(t==='Altostratus'){sun(.5);cx.fillStyle='#b8c2ccdd';cx.fillRect(x0,y0+h*.15,w,h*.45)}
+ if(t==='Nimbostratus'){cx.fillStyle='#59636e';cx.fillRect(x0,y0,w,h*.65);cx.strokeStyle='#cfe3ff99';cx.lineWidth=1.5;for(let i=0;i<60;i++){const rx=x0+rnd()*w,ry=y0+h*(.6+rnd()*.35);cx.beginPath();cx.moveTo(rx,ry);cx.lineTo(rx-4,ry+12);cx.stroke()}}
+ if(t==='Stratus'){cx.fillStyle='#9aa5b0';cx.fillRect(x0,y0+h*.45,w,h*.25);cx.fillStyle='#8d98a3';cx.fillRect(x0,y0,w,h*.45)}
+ if(t==='Stratocumulus'){sun(1);for(let c=0;c<7;c++){if(rnd()<.2)continue;const cxp=x0+c*w/6.5+rnd()*20;for(let k=0;k<5;k++)puff(cxp+k*h*.05,Y+(rnd()-.5)*h*.04,h*.06,k%2?'#a9b3bd':'#c3cbd3')}}
+ if(t==='Cumulus'){sun(1);for(let n=0;n<3;n++){const bx=x0+w*(.12+n*.3+rnd()*.06),by=Y;[[0,0,1],[.6,-.3,.9],[1.2,0,.8],[-.6,.05,.7],[.4,-.7,.7]].forEach(p=>puff(bx+p[0]*h*.08,by+p[1]*h*.08,h*.08*p[2],'#ffffff'));[-.5,.2,.9,1.5].forEach(k=>puff(bx+k*h*.08,by+h*.045,h*.045,'#dfe6ee'))}}
+ if(t==='Cumulonimbus'){const bx=x0+w*.45;for(let k=0;k<9;k++)puff(bx+(rnd()-.5)*h*.3,y0+h*(.82-k*.075),h*(.2-k*.008),k<3?'#6f7a86':'#eef2f6');cx.fillStyle='#eef2f6';cx.beginPath();cx.ellipse(bx,y0+h*.15,h*.6,h*.08,0,0,7);cx.fill();cx.strokeStyle='#ffe066';cx.lineWidth=3;cx.beginPath();cx.moveTo(bx+h*.05,y0+h*.85);cx.lineTo(bx-h*.02,y0+h*.93);cx.lineTo(bx+h*.04,y0+h*.93);cx.lineTo(bx-h*.03,y0+h);cx.stroke()}
+ cx.restore();cx.fillStyle='#3d6b3a';cx.fillRect(x0,y0+h-6,w,6)}
+const ROOT=[['Cirrus (Latin)','A curl or wisp of hair'],['Cumulus (Latin)','A heap or pile'],['Stratus (Latin)','Spread out in a layer'],['Nimbus (Latin)','A rain cloud'],['Alto- (from Latin altus)','High — used for MIDDLE-level clouds']];
+const BUILD=[['High + heap','Cirrocumulus'],['High + layer','Cirrostratus'],['Middle + heap','Altocumulus'],['Middle + layer','Altostratus'],['Rain + layer','Nimbostratus'],['Heap + rain','Cumulonimbus'],['Layer + heap','Stratocumulus']];
+const Q_SCI=[['Clouds are made of…','Tiny water droplets or ice crystals',['Smoke','Cotton','Steam from factories only'],'Air rises, cools, and its water vapour condenses onto tiny dust specks.'],['Fog is really…','A stratus cloud at ground level',['Smoke','Air pollution only','A cirrus cloud'],'Fog forms when air near the ground cools.'],['Why do high clouds look wispy?','They are made of ice crystals',['They are dusty','They are full of rain','They are far too hot'],'It is well below freezing that high up.'],['Who named the clouds in 1802?','Luke Howard',['Isaac Newton','Charles Darwin','Galileo'],'Howard was a British chemist and amateur weather watcher.'],['What makes a cloud turn grey or dark?','It is thick enough to block sunlight',['It is dirty','It is very cold','It is about to vanish'],'Thick, water-heavy clouds absorb and scatter more light.'],['Which cloud can grow over 12 km tall?','Cumulonimbus',['Stratus','Cirrus','Altocumulus'],'Its anvil spreads out when it hits the top of the troposphere.']];
+const Q_STORM=[['A cumulonimbus anvil forms because…','The cloud hits the top of the troposphere and spreads out',['Wind cuts it','It freezes into metal','It is pulled by the Moon'],'Rising air can\'t go higher, so it spreads sideways.'],['What can fall from cumulonimbus clouds?','Hail',['Cotton','Dust only','Nothing'],'Strong updrafts toss ice up and down until it is heavy hailstones.'],['If you see a cumulonimbus with lightning, you should…','Go indoors',['Stand under a tall tree','Go swimming','Fly a kite'],'"When thunder roars, go indoors!"'],['Small cumulus clouds that grow taller through the day can become…','Cumulonimbus storms',['Cirrus','Fog','Stratus'],'Watch for puffy clouds that keep growing upwards.'],['Lightning is…','A giant electric spark',['Fire falling','Sunlight','Moonbeams'],'Thunder is the sound of air heated by lightning expanding fast.']];
+const SEQ=[['Cirrus → Cirrostratus (halo) → Altostratus → Nimbostratus','Steady rain is on the way (a warm front)'],['Small cumulus that stay small all afternoon','Fine, fair weather'],['Cumulus growing taller and darker by the hour','Afternoon thunderstorms'],['A low grey stratus blanket all morning','A dull, drizzly day'],['A halo around the Moon at night','Rain or snow may come within a day']];
+const LV=[
+{name:'What do cloud names mean?',m:'root'},
+{name:'Puffy, layered or wispy?',m:'id',set:['Cumulus','Stratus','Cirrus']},
+{name:'High, middle or low?',m:'alt'},
+{name:'The rain-makers',m:'id',set:['Cumulus','Stratus','Cirrus','Nimbostratus','Cumulonimbus']},
+{name:'Weather forecaster',m:'wx'},
+{name:'High clouds (cirro-)',m:'id',set:['Cirrus','Cirrocumulus','Cirrostratus']},
+{name:'Middle clouds (alto-)',m:'id',set:['Altocumulus','Altostratus','Nimbostratus']},
+{name:'Low clouds',m:'id',set:['Stratus','Stratocumulus','Cumulus','Cumulonimbus']},
+{name:'Build a cloud name',m:'build'},
+{name:'Storm clouds',m:'quiz',k:Q_STORM},
+{name:'All ten clouds',m:'id',set:NAMES},
+{name:'Read the sky',m:'seq'},
+{name:'Cloud science',m:'quiz',k:Q_SCI},
+{name:'Cloud Spotter master',m:'mix'}];
+const TIPS={0:'Cloud names use Latin words: CIRRUS (hair curl), CUMULUS (heap), STRATUS (layer), NIMBUS (rain). They were named by Luke Howard in 1802.',2:'HIGH clouds are above about 6,000 m, MIDDLE clouds about 2,000–6,000 m, and LOW clouds below about 2,000 m. Cumulonimbus starts low but towers up through all levels.',5:'"Cirro-" means a HIGH cloud made of ice.',6:'"Alto-" (from altus, high) is used for MIDDLE clouds — confusing, but true!'};
+function makeQ(){const L=LV[cur];let m=L.m;if(m==='mix')m=pick(['id','alt','wx','build','seq','root']);const q={m,used:(Q&&Q.used)||[]};
+ const set=L.set||NAMES;
+ if(m==='id'||m==='alt'||m==='wx'){const t=pick(m==='id'?set:NAMES),seed=ri(1,1e6);q.vis=(x,y,s)=>{const w=W*.4-20,h=H-70;sky(t,16,40,w,h,seed)};
+  if(m==='id'){q.text='Which cloud is this?';q.opts=mo(t,set.length>=4?set:NAMES.filter(n=>set.includes(n)||Math.random()<.3),Math.min(4,Math.max(3,set.length)));if(!q.opts.includes(t))q.opts[0]=t;q.ans=t;q.why=t+': '+CL[t][1]+'.'}
+  else if(m==='alt'){q.text='This is '+t+'. At what level is it found?';q.opts=['High','Middle','Low'];q.ans=CL[t][0];q.why=t+(t==='Cumulonimbus'?' has a LOW base but towers up through every level.':' is a '+CL[t][0].toLowerCase()+' cloud.')}
+  else{q.text='You spot '+t+'. What weather does it suggest?';q.opts=mo(CL[t][2],NAMES.map(n=>CL[n][2]));q.ans=CL[t][2];q.why=t+': '+CL[t][1]+'.'}}
+ else if(m==='root'){const f=fromList(ROOT,q);q.big=f[0];q.bigSz=24;q.text='What does it mean?';q.opts=mo(f[1],ROOT.map(r=>r[1]));q.ans=f[1];q.why=''}
+ else if(m==='build'){const f=fromList(BUILD,q);q.big=f[0];q.bigSz=24;q.text='Which cloud name means this?';q.opts=mo(f[1],BUILD.map(b=>b[1]).concat(['Cirrus','Stratus']));q.ans=f[1];q.why=f[1]+': '+CL[f[1]][1]+'.'}
+ else if(m==='seq'){const f=fromList(SEQ,q);q.big=f[0];q.bigSz=17;q.text='What weather is coming?';q.opts=mo(f[1],SEQ.map(s=>s[1]));q.ans=f[1];q.why='Cloud watchers have used clues like this for centuries.'}
+ else quizQ(q,fromList(L.k||pick([Q_SCI,Q_STORM]),q));
+ return q}
+window.G={get Q(){return Q},LV,sky,NAMES};
+resize();cur=0;Q=makeQ();draw();showLevels();
+
+
+</script></body></html>

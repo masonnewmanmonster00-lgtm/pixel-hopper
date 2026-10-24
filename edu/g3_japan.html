@@ -1,0 +1,119 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Feudal Japan</title><style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;height:100%;background:#1d1630;color:#eef;font-family:system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden;user-select:none}
+#top{position:absolute;top:0;left:0;right:0;height:40px;display:flex;align-items:center;gap:6px;padding:0 8px;background:#0008;z-index:3}
+#top a,#top button{color:#fff;background:#283070;border:0;border-radius:8px;padding:6px 10px;font-size:13px;text-decoration:none;cursor:pointer;white-space:nowrap}
+#title{flex:1;font-weight:800;white-space:nowrap;overflow:hidden}#title b{color:#ffcf5a}#st{font-size:13px;white-space:nowrap}
+canvas{position:absolute;top:40px;left:0;touch-action:none}
+.btn{background:linear-gradient(#ffb340,#e07a10);color:#fff;border:0;border-radius:12px;padding:9px 13px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 #8a4a00;margin:3px}
+.btn:active{transform:translateY(2px)}
+#ov{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:9}
+#ov>div{background:#121a4a;border:2px solid #ffcf5a;border-radius:16px;padding:12px 16px;text-align:center;max-width:96%;max-height:94%;overflow:auto}
+#ov h2{margin:4px 0}#ov p{margin:6px 0;font-size:14px}
+.lv{display:inline-block;margin:3px;padding:5px 8px;border-radius:8px;background:#283070;font-size:13px;cursor:pointer;min-width:120px}
+.lv:hover{background:#e07a10}.lv.lock{opacity:.45;cursor:default}.stars{font-size:34px;color:#ffd54a}
+</style></head><body>
+<div id="top"><a id="lz" href="./index.html">◀ Learning Lab</a><a id="menu" href="../index.html">🏠</a><div id="title">🏯 Feudal <b>Japan</b></div><span id="st"></span><button id="lvB">Levels</button><button id="pB">⏸</button><button id="mu">🔊</button></div>
+<canvas id="c"></canvas><div id="ov"><div id="ovc"></div></div>
+<script>
+const SAVEKEY='g3JapanSave',TITLE='🏯 Feudal Japan',INTRO='Step into feudal Japan! Sort the social ladder from shogun to merchant, build a castle, learn the samurai code of bushido, and explore everyday life in the peaceful Edo period.';
+// shared skeleton injected into both games
+const $=id=>document.getElementById(id);
+const cv=$('c'),cx=cv.getContext('2d');let W=0,H=0,DPR=1;
+let save={mute:false,stars:{},unlocked:1};
+try{const s=JSON.parse(localStorage.getItem(SAVEKEY)||'null');if(s)save=Object.assign(save,s)}catch(e){}
+function persist(){try{localStorage.setItem(SAVEKEY,JSON.stringify(save))}catch(e){}}
+let AC=null;function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(AC&&AC.state==='suspended')AC.resume();return AC}
+function tone(f,d=0.12,t='sine',v=0.15,dl=0){if(save.mute)return;const a=ac();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type=t;o.frequency.value=f;const s=a.currentTime+dl;g.gain.setValueAtTime(v,s);g.gain.exponentialRampToValueAtTime(0.001,s+d);o.connect(g);g.connect(a.destination);o.start(s);o.stop(s+d+0.02)}
+const sfx={ok(){tone(660,.1,'triangle');tone(990,.15,'triangle',.15,.08)},bad(){tone(200,.25,'sawtooth',.08)},tap(){tone(500,.05,'square',.05)},win(){[523,659,784,1046].forEach((f,i)=>tone(f,.2,'triangle',.15,i*.12))}};
+function resize(){DPR=window.devicePixelRatio||1;W=innerWidth;H=innerHeight-40;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);cv.style.width=W+'px';cv.style.height=H+'px';cx.setTransform(DPR,0,0,DPR,0,0)}
+function rr(x,y,w,h,r){cx.beginPath();cx.roundRect?cx.roundRect(x,y,w,h,r):cx.rect(x,y,w,h)}
+function txt(s,x,y,sz,col='#fff',al='center',wt='700'){cx.font=wt+' '+sz+'px system-ui,Segoe UI,Roboto,sans-serif';cx.fillStyle=col;cx.textAlign=al;cx.textBaseline='middle';cx.fillText(s,x,y)}
+function fit(s,maxw,sz){cx.font='700 '+sz+'px system-ui';while(sz>9&&cx.measureText(s).width>maxw){sz--;cx.font='700 '+sz+'px system-ui'}return sz}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function pick(a){return a[Math.random()*a.length|0]}
+let paused=false,btns=[];
+function hit(x,y){for(let i=btns.length-1;i>=0;i--){const b=btns[i];if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){b.f();return true}}return false}
+function ptr(e){ac();if(paused||$('ov').style.display==='flex')return;const r=cv.getBoundingClientRect();const p=e.changedTouches?e.changedTouches[0]:e;onTap(p.clientX-r.left,p.clientY-r.top)}
+cv.addEventListener('pointerdown',e=>{e.preventDefault();ptr(e)});
+function ov(html){$('ovc').innerHTML=html;$('ov').style.display=html?'flex':'none'}
+function setPause(p){if($('ov').style.display==='flex'&&!paused)return;paused=p;$('pB').textContent=p?'▶':'⏸';ov(p?'<h2>⏸ Paused</h2><p>Press P or tap to resume. R restarts the level.</p><button class="btn" onclick="setPause(false)">▶ Resume</button> <button class="btn" onclick="setPause(false);restart()">↻ Restart</button>':'')}
+$('pB').onclick=()=>setPause(!paused);
+$('mu').textContent=save.mute?'🔇':'🔊';$('mu').onclick=()=>{save.mute=!save.mute;$('mu').textContent=save.mute?'🔇':'🔊';persist()};
+$('lvB').onclick=()=>{paused=false;showLevels()};
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function showLevels(){let h='<h2>'+TITLE+'</h2><p>'+INTRO+'</p>';LV.forEach((L,i)=>{const ok=i<save.unlocked;h+='<span class="lv'+(ok?'':' lock')+'" data-lv="'+i+'" '+(ok?'onclick="startLevel('+i+')"':'')+'>'+(ok?'':'🔒 ')+(i+1)+'. '+L.name+'<br><small>'+starStr(save.stars[i]||0)+'</small></span>'});h+='<p><small>Keys: 1-4 choose · P pause · R restart · M mute</small></p>';ov(h)}
+function finishLevel(stars){sfx.win();const i=cur;save.stars[i]=Math.max(save.stars[i]||0,stars);save.unlocked=Math.max(save.unlocked,Math.min(LV.length,i+2));persist();
+ ov('<h2>Level complete!</h2><div class="stars">'+starStr(stars)+'</div><p>'+LV[i].name+'</p>'+(i+1<LV.length?'<button class="btn" id="nextB" onclick="startLevel('+(i+1)+')">Next level ▶</button> ':'')+'<button class="btn" onclick="restart()">↻ Replay</button> <button class="btn" onclick="showLevels()">Levels</button>')}
+function restart(){ov('');startLevel(cur)}
+addEventListener('keydown',e=>{const k=e.key;if(k==='p'||k==='P'){setPause(!paused);return}if(paused)return;if($('ov').style.display==='flex'){if(k==='Enter'&&$('nextB'))$('nextB').click();return}
+ if(keyTyping()&&k.length===1&&k!=='p'&&k!=='P'){onKey(e);return}
+ if(k==='r'||k==='R'){restart();return}if(k==='m'||k==='M'){$('mu').click();return}onKey(e)});
+addEventListener('resize',()=>{resize();draw()});
+function ri(a,b){return a+Math.floor(Math.random()*(b-a+1))}
+let cur=0,qi=0,miss=0,Q=null,msg='',msgCol='#fff',lock=false;const CUSTOM={};let BG=['#2a2140','#16213e'],ICON='📚';
+const NQ=()=>{const L=LV[cur];return L.n||(L.m==='order'||L.m==='tl'?(L.reps||1):L.m==='mix'?8:6)};
+function mo(ans,pool,n=4){return shuffle([ans,...shuffle([...new Set(pool)].filter(x=>x!==ans)).slice(0,n-1)])}
+function fromList(list,q){const u=(Q&&Q.used)||[],key=x=>Array.isArray(x)?x[0]:x,left=list.filter(x=>!u.includes(key(x)));const f=pick(left.length?left:list);q.used=u.concat(key(f));return f}
+function quizQ(q,f){q.text=f[0];q.opts=shuffle([f[1],...f[2]]);q.ans=f[1];q.why=f[3]||''}
+function orderQ(q,list,text){q.list=list;q.stages=shuffle(list.map((s,i)=>({s,i})));q.next=0;q.text=text||'Tap the steps IN ORDER, first to last.'}
+function tlQ(q,TL,fmt){const ev=shuffle(TL).slice(0,4).sort((a,b)=>a[0]-b[0]);orderQ(q,ev.map(e=>e[1]+' ('+fmt(e[0])+')'),'Tap these events from OLDEST to NEWEST.');q.stages.forEach(s=>s.s=s.s.replace(/ \([^)]*\)$/,''))}
+function startLevel(i){ov('');paused=false;cur=i;qi=0;miss=0;msg='';lock=false;Q=null;Q=makeQ();draw();if(TIPS[i]&&!save['tip'+i]){save['tip'+i]=1;persist();ov('<h2>'+LV[i].name+'</h2><p>'+TIPS[i]+'</p><button class="btn" onclick="ov(\'\')">Let\'s go ▶</button>')}}
+function keyTyping(){return false}
+function card(x,y,w,h,col,stroke){cx.fillStyle=col;rr(x,y,w,h,12);cx.fill();if(stroke){cx.strokeStyle=stroke;cx.lineWidth=3;cx.stroke()}}
+function wrapC(s,x,y,w,sz,col,maxL=3){cx.font='700 '+sz+'px system-ui';const ws=String(s).split(' ');let lines=[],l='';for(const wd of ws){const t=l?l+' '+wd:wd;if(cx.measureText(t).width>w&&l){lines.push(l);l=wd}else l=t}lines.push(l);if(lines.length>maxL&&sz>10)return wrapC(s,x,y,w,sz-1,col,maxL);lines.forEach((ln,i)=>txt(ln,x,y+(i-(lines.length-1)/2)*(sz+3),sz,col))}
+function draw(){btns=[];cx.clearRect(0,0,W,H);const g=cx.createLinearGradient(0,0,0,H);g.addColorStop(0,BG[0]);g.addColorStop(1,BG[1]);cx.fillStyle=g;cx.fillRect(0,0,W,H);if(!Q)return;const q=Q;
+ $('st').textContent='Lv '+(cur+1)+' · '+Math.min(qi+1,NQ())+'/'+NQ()+' · ✗'+miss;txt(LV[cur].name,W/2,14,13,'#ffcf5a');
+ if(CUSTOM[q.m])return CUSTOM[q.m].draw(q);
+ if(q.stages){wrapC(q.text,W/2,36,W-40,16,'#fff');const n=q.stages.length,gap=8,bw=Math.min(180,(W-20-gap*(n-1))/n),x0=(W-(n*bw+gap*(n-1)))/2;for(let i=0;i<n;i++){const x=x0+i*(bw+gap);card(x,56,bw,40,'#0005');wrapC(i<q.next?q.list[i]:(i+1)+'. ?',x+bw/2,76,bw-8,11,i<q.next?'#7f7':'#ccd')}
+  q.stages.forEach((st,i)=>{const x=x0+i*(bw+gap),y=110,done=st.i<q.next;card(x,y,bw,120,done?'#2a5a3a':'#fdf6e3',st.bad?'#e74c3c':null);const parts=st.s.split(' ');const em=/^\p{Extended_Pictographic}/u.test(parts[0])?parts.shift():'';if(em)txt(em,x+bw/2,y+30,26);wrapC(parts.join(' '),x+bw/2,y+(em?80:60),bw-10,12,done?'#cfc':'#2b1d0e',4);if(!done)btns.push({x,y,w:bw,h:120,f:()=>pickStage(st)})});if(msg)wrapC(msg,W/2,H-36,W-40,14,msgCol);return}
+ const lw=q.wide?0:W*.4;if(!q.wide){if(q.vis)q.vis(lw/2+8,H/2,Math.min(lw,H-60));else if(q.big){card(16,50,lw-16,H-80,'#fdf6e3');wrapC(q.big,lw/2+8,H/2-6,lw-44,q.bigSz||20,'#2b1d0e',6)}else txt(q.icon||ICON,lw/2+8,H/2,70)}
+ const px=q.wide?20:lw+24,pw=W-px-14;wrapC(q.text,px+pw/2,q.wide?52:48,pw,q.wide?17:16,'#fff',q.wide?3:4);const n=q.opts.length,one=n<=3&&q.optCol!==2,bw=one?pw:(pw-10)/2,bh=n>4?36:one?38:46,top=q.wide?92:96;
+ q.opts.forEach((o,i)=>{const bx=px+(one?0:(i%2)*(bw+10)),by=top+(one?i*(bh+8):Math.floor(i/2)*(bh+10));let col='#283070';if(q.picked!=null){if(o===q.ans)col='#2a8a3a';else if(o===q.picked)col='#a33'}card(bx,by,bw,bh,col);const s=(i+1)+'  '+o;if(cx.measureText&&s.length>40)wrapC(s,bx+bw/2,by+bh/2,bw-14,13,'#fff',2);else txt(s,bx+bw/2,by+bh/2,fit(s,bw-10,15));btns.push({x:bx,y:by,w:bw,h:bh,f:()=>choose(o)})});
+ if(msg)wrapC(msg,px+pw/2,H-30,pw,13,msgCol)}
+function pickStage(st){if(lock)return;const q=Q;if(st.i===q.next){q.next++;st.bad=0;sfx.ok();if(q.next>=q.stages.length){lock=true;msg='✔ Perfect order!'+(q.done?' '+q.done:'');msgCol='#7f7';draw();setTimeout(next,1900);return}msg='✔ Yes!';msgCol='#7f7'}else{sfx.bad();miss++;st.bad=1;msg='✘ Not yet — what comes next?';msgCol='#f99'}draw()}
+function choose(v){if(lock)return;Q.picked=v;lock=true;const ok=v===Q.ans;if(ok)sfx.ok();else{sfx.bad();miss++}msg=(ok?'✔ Correct! ':'✘ The answer: '+Q.ans+'. ')+(Q.why||'');msgCol=ok?'#7f7':'#f99';draw();setTimeout(next,ok?1600:3300)}
+function good(m){sfx.ok();lock=true;msg='✔ '+m;msgCol='#7f7';draw();setTimeout(next,1900)}
+function bad(m){sfx.bad();miss++;msg='✘ '+m;msgCol='#f99';draw()}
+function next(){msg='';lock=false;qi++;if(qi>=NQ()){finishLevel(miss===0?3:miss<=2?2:1);return}Q=makeQ();draw()}
+function onTap(x,y){hit(x,y)}
+function onKey(e){const k=e.key,q=Q;if(!q||lock)return;const n=+k;if(CUSTOM[q.m]&&CUSTOM[q.m].key)return CUSTOM[q.m].key(e,q);if(q.opts&&n>=1&&n<=q.opts.length)return choose(q.opts[n-1]);if(q.stages&&n>=1&&n<=q.stages.length&&q.stages[n-1].i>=q.next)return pickStage(q.stages[n-1])}
+
+BG=['#5a1e1e','#24100f'];ICON='🏯';
+const RANK=[['Emperor','Highest in honour, but held little real power','👑'],['Shogun','The top military ruler who really governed Japan','⚔️'],['Daimyo','Powerful lords who ruled their own domains','🏯'],['Samurai','Warrior class who served the daimyo','🗡️'],['Peasant farmers','Grew the rice that paid taxes — respected below samurai','🌾'],['Artisans','Craftspeople like swordsmiths and potters','🔨'],['Merchants','Traders — lowest official class, though some grew rich','💰']];
+const WHO=[['Ruled Japan from Edo castle as the top military leader','Shogun'],['Ruled a domain (han) and kept an army of samurai','Daimyo'],['Followed bushido and served a lord','Samurai'],['Paid taxes in rice (koku)','Peasant farmers'],['Made swords, pottery and lacquerware','Artisans'],['Bought and sold goods but were ranked lowest','Merchants'],['Lived in Kyoto, honoured as descended from the sun goddess Amaterasu','Emperor'],['A samurai with no master','Ronin']];
+const Q_BUSHI=[['Bushido means…','"The way of the warrior"',['"The sword of the king"','"Peaceful farming"','"The tea ceremony"'],'A code of honour that grew over centuries and was written down mostly in the Edo period.'],['Which value was central to bushido?','Loyalty to your lord',['Getting rich','Travelling the world','Never working'],'Also courage, honesty, respect, self-control and honour.'],['A samurai\'s pair of swords was called…','Daishō (long katana + short wakizashi)',['Ninja stars','Bō staff','Nunchaku'],'Only samurai were allowed to wear two swords in the Edo period.'],['Samurai also studied…','Poetry, calligraphy and the tea ceremony',['Only fighting','Nothing at all','Space travel'],'A cultured samurai balanced bun (learning) and bu (war).'],['A samurai who lost his master became a…','Ronin',['Shogun','Geisha','Daimyo'],'The 47 ronin are a famous true story from 1701–1703.'],['Samurai armour was made mostly from…','Laced plates of lacquered iron and leather',['Solid gold','Plastic','Chain mail only'],'Lacing (odoshi) let the armour flex as they moved.']];
+const Q_CASTLE=[['Japanese castles were built on…','Tall sloping stone bases',['Wooden stilts only','Floating rafts','Ice'],'The sloped stone walls helped them survive earthquakes.'],['The main tower of a castle is called the…','Tenshu (keep)',['Pagoda','Torii','Dojo'],'Himeji Castle\'s white tenshu is one of the most famous.'],['Himeji Castle is nicknamed…','The White Heron Castle',['The Black Crow','The Red Dragon','The Golden Fish'],'Its white plaster walls look like a bird taking flight.'],['Why did castles have maze-like paths?','To confuse and slow down attackers',['For fun','To grow rice','For races'],'Gates and winding paths trapped enemies under fire.'],['Ishi-otoshi were…','Openings to drop stones on attackers',['Kitchen sinks','Tea rooms','Shoe racks'],'Castles also had slits for bows and guns.']];
+const Q_LIFE=[['What was the most important crop?','Rice',['Wheat','Potatoes','Corn'],'Wealth was even measured in koku of rice — enough to feed a person for a year.'],['Japanese homes had floors covered in…','Tatami mats of woven straw',['Carpet','Stone tiles','Sand'],'People took off their shoes before going inside.'],['Sliding paper walls and doors are called…','Shōji',['Torii','Kimono','Bento'],'Paper let soft light into the room.'],['Popular entertainment in Edo included…','Kabuki theatre and sumo wrestling',['Cinema','Video games','Football'],'Kabuki began in the early 1600s.'],['Ukiyo-e were…','Colourful woodblock prints',['Swords','Castles','Boats'],'Hokusai\'s "Great Wave off Kanagawa" (about 1831) is the most famous.'],['People wrote poems of 5-7-5 syllables called…','Haiku',['Sonnets','Limericks','Raps'],'Matsuo Bashō was a great Edo haiku master.'],['Under sakoku, Japan…','Strictly limited contact with foreign countries',['Invaded Europe','Joined the Olympics','Had no rules'],'Only Dutch and Chinese traders could visit, at Nagasaki.']];
+const Q_EDO=[['Who won the Battle of Sekigahara in 1600?','Tokugawa Ieyasu',['Oda Nobunaga','Toyotomi Hideyoshi','Emperor Meiji'],'It led to 250 years of Tokugawa rule.'],['The Edo period lasted about…','260 years of peace (1603–1868)',['10 years','1,000 years','One winter'],'It is also called the Tokugawa period.'],['Edo is the old name of…','Tokyo',['Kyoto','Osaka','Beijing'],'By the 1700s Edo was one of the biggest cities in the world.'],['Sankin-kōtai forced daimyo to…','Spend every other year in Edo',['Build pyramids','Stop farming','Sail to America'],'Their families stayed in Edo as a guarantee of loyalty.'],['In 1853, who sailed into Edo Bay demanding trade?','Commodore Matthew Perry of the USA',['Marco Polo','Christopher Columbus','Captain Cook'],'His "black ships" helped end Japan\'s isolation.']];
+const CASTLE=['🪨 Build the sloping stone base (ishigaki)','🪵 Raise the wooden frame of the keep','⬜ Cover the walls in white plaster','🏯 Add curved tiled roofs, layer by layer','🐟 Place shachihoko (tiger-fish) on the roof top','🚪 Add gates, walls and a maze of paths'];
+const TL=[[1185,'⛩️ Kamakura shogunate begins'],[1274,'🌊 First Mongol invasion fails'],[1543,'🔫 Portuguese bring guns to Japan'],[1590,'🗾 Hideyoshi unites Japan'],[1600,'⚔️ Battle of Sekigahara'],[1603,'🏯 Tokugawa Ieyasu becomes shogun'],[1639,'🚫 Sakoku closes Japan to most foreigners'],[1703,'🗡️ Story of the 47 ronin'],[1853,'🚢 Perry\'s black ships arrive'],[1868,'🌸 Meiji Restoration ends the samurai era']];
+const LV=[
+{name:'The social ladder',m:'order',list:RANK.map(r=>r[2]+' '+r[0])},
+{name:'Who am I?',m:'who'},
+{name:'Bushido & samurai',m:'quiz',k:Q_BUSHI},
+{name:'Build a castle',m:'order',list:CASTLE},
+{name:'Castle defenders',m:'quiz',k:Q_CASTLE},
+{name:'Higher or lower?',m:'hl'},
+{name:'Everyday life',m:'quiz',k:Q_LIFE},
+{name:'The road to Edo',m:'quiz',k:Q_EDO},
+{name:'Feudal timeline',m:'tl',reps:3},
+{name:'Who am I? (harder)',m:'who',hard:1},
+{name:'Arts of Edo',m:'quiz',k:Q_LIFE.slice(3).concat(Q_BUSHI.slice(3))},
+{name:'Samurai or not?',m:'sam'},
+{name:'Feudal Japan master',m:'mix'}];
+const TIPS={0:'Feudal Japanese society was arranged like a ladder. Tap from the TOP (most honoured) to the BOTTOM. The official four classes were samurai, farmers, artisans and merchants.',2:'Samurai followed BUSHIDO, a code of loyalty, courage and honour.',8:'All these dates are AD. Smaller number = earlier.'};
+const SAMQ=[['Wore two swords in public','Samurai'],['Grew rice in paddy fields','Not samurai'],['Received a stipend paid in rice from their lord','Samurai'],['Sold cloth in a busy Edo market','Not samurai'],['Trained in archery and horse riding','Samurai'],['Carved wooden blocks for ukiyo-e prints','Not samurai'],['Could be given the title "bushi"','Samurai'],['Pulled a rickshaw-like kago (palanquin) for travellers','Not samurai']];
+function makeQ(){const L=LV[cur];let m=L.m;if(m==='mix')m=pick(['who','quiz','hl','sam']);const q={m,used:(Q&&Q.used)||[]};
+ if(m==='order'){orderQ(q,L.list,L.list===CASTLE?'Tap the building steps IN ORDER.':'Tap from the TOP of the ladder to the BOTTOM.');q.done=L.list===CASTLE?'Many castles took years — Himeji\'s keep was finished in 1609.':'Merchants ranked lowest — yet many became richer than samurai!'}
+ else if(m==='who'){const f=fromList(WHO,q);q.big='"'+f[0]+'"';q.text='Who am I?';q.opts=mo(f[1],WHO.map(x=>x[1]));q.ans=f[1];q.why=(RANK.find(r=>r[0]===f[1])||['','A ronin was a masterless samurai.'])[1]+'.'}
+ else if(m==='hl'){const a=pick(RANK.slice(1)),b=pick(RANK.slice(1).filter(x=>x!==a));const ia=RANK.indexOf(a),ib=RANK.indexOf(b);q.big=a[2]+' '+a[0]+'  vs  '+b[2]+' '+b[0];q.text='Who ranked HIGHER in Edo society?';q.opts=[a[0],b[0]];q.ans=ia<ib?a[0]:b[0];q.why='Order: '+RANK.slice(1).map(r=>r[0]).join(' > ')+'.'}
+ else if(m==='sam'){const f=fromList(SAMQ,q);q.big=f[0];q.text='Samurai or not?';q.opts=['Samurai','Not samurai'];q.ans=f[1];q.why=''}
+ else if(m==='tl')tlQ(q,TL,y=>'AD '+y);
+ else quizQ(q,fromList(L.k||pick([Q_BUSHI,Q_CASTLE,Q_LIFE,Q_EDO]),q));
+ return q}
+window.G={get Q(){return Q},LV};
+resize();cur=0;Q=makeQ();draw();showLevels();
+
+
+</script></body></html>

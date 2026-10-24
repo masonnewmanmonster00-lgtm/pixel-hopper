@@ -123,7 +123,7 @@ function EXTRA(){TYPES.sort={check:1,render(t,ar){t.place=t.items.map(()=>-1);t.
  card(t,i,cls){const it=t.items[i];return `<button class="acard ${t.cur===i?'sel':''} ${cls||''}" data-i="${i}">${it.ic}${it.n}</button>`},
  draw(t,mark){$('#cards').innerHTML=t.items.map((_,i)=>t.place[i]<0?TYPES.sort.card(t,i):'').join('')||'<span style="opacity:.5">All sorted! Press Check.</span>';
   document.querySelectorAll('.bin').forEach(b=>{const bi=+b.dataset.b;b.classList.toggle('hot',t.cur>=0);b.querySelector('.cards').innerHTML=t.items.map((it,i)=>t.place[i]===bi?TYPES.sort.card(t,i,mark?(it.b===bi?'ok':'bad'):''):'').join('')})},
- check(t){if(t.place.some(x=>x<0)){toastFb('Sort every animal first!');return}const bad=t.items.filter((it,i)=>it.b!==t.place[i]);t.why=bad.length?bad.map(it=>`<b>${it.n}</b> → ${t.bins[it.b]}. ${it.f}`).join('<br>'):t.items.filter(it=>TRICKY.includes(it.n)).map(it=>it.f).join(' ')||'Every animal is in the right group.';answer(!bad.length)},
+ check(t){if(t.place.some(x=>x<0)){toastFb('Sort every item first!');return}const bad=t.items.filter((it,i)=>it.b!==t.place[i]);t.why=bad.length?bad.map(it=>`<b>${it.n}</b> → ${t.bins[it.b]}. ${it.f}`).join('<br>'):t.items.filter(it=>TRICKY.includes(it.n)).map(it=>it.f).join(' ')||'Every item is in the right group.';answer(!bad.length)},
  reveal(t){t.cur=-1;TYPES.sort.draw(t,1)},key(n){const c=document.querySelectorAll('.bin')[n];if(c&&G.tasks[G.i].cur>=0)c.click();else{const k=document.querySelectorAll('#cards .acard')[n];if(k)k.click()}}}}
 const L=(...gs)=>()=>{const out=[],seen=new Set;let g=0;while(out.length<6&&g++<200){const t=gs[out.length%gs.length]();const k=t.q+t.a+(t.items?t.items.map(x=>x.n).join():'');if(!seen.has(k)){seen.add(k);out.push(t)}}return out};
 const WORLDS=[

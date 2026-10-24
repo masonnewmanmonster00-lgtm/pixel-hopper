@@ -1,0 +1,183 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>Gravity Lab</title>
+<style>
+:root{--bg:#0f1530;--card:#1b2350;--ink:#f4f6ff;--mut:#9aa6d8;--acc:#7ad0ff;--good:#3ddc84;--bad:#ff5c7a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:"Trebuchet MS",system-ui,sans-serif;background:radial-gradient(circle at 20% 0%,#2a3480,var(--bg) 60%);color:var(--ink);min-height:100vh;user-select:none;-webkit-user-select:none;overflow-x:hidden}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0008;position:sticky;top:0;z-index:5;backdrop-filter:blur(4px)}
+header a{color:var(--ink);text-decoration:none;background:#fff1;padding:6px 12px;border-radius:20px;font-weight:bold}
+header h1{font-size:20px;margin:0;flex:1;color:var(--acc);text-shadow:0 2px 0 #0006}
+.pill{background:#fff1;padding:5px 10px;border-radius:14px;font-size:14px}
+main{max-width:980px;margin:0 auto;padding:14px}
+.btn{font:inherit;font-weight:bold;border:0;border-radius:14px;padding:10px 16px;background:var(--acc);color:#111;cursor:pointer;box-shadow:0 4px 0 #0007;transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #0007}.btn.alt{background:#2c3770;color:var(--ink)}.btn.sel{outline:3px solid #fff}
+.btn:disabled{opacity:.4}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border-radius:18px;padding:14px;box-shadow:0 6px 18px #0005;border:2px solid #ffffff10}
+.tile{cursor:pointer;transition:transform .15s}.tile:hover{transform:translateY(-4px) rotate(-1deg)}
+.tile .em{font-size:40px}.tile h3{margin:6px 0}.tile p{margin:0;color:var(--mut);font-size:14px}
+.stars{color:#ffd34d;letter-spacing:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fb{min-height:28px;font-weight:bold;font-size:18px;margin:8px 0}
+.opt{display:block;width:100%;margin:6px 0;text-align:left;background:#2c3770;color:var(--ink)}
+.opt.ok{background:var(--good);color:#111}.opt.no{background:var(--bad)}
+.pop{animation:pop .35s}@keyframes pop{50%{transform:scale(1.12)}}
+.shake{animation:shk .35s}@keyframes shk{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:9}
+.bar{height:10px;background:#fff2;border-radius:6px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--acc);transition:width .3s}
+.fact{background:#ffd34d22;border-left:4px solid #ffd34d;padding:8px 12px;border-radius:8px;margin:8px 0}
+svg text{font-family:inherit}
+</style></head><body>
+<header><a href="./index.html">← Learning Lab</a><h1>Gravity Lab</h1><span class="pill" id="starTotal">⭐ 0</span><button class="btn alt" id="snd" style="padding:6px 10px">🔊</button></header>
+<main id="app"></main><canvas id="fx"></canvas>
+<script>
+// ---- shared helpers ----
+const $=s=>document.querySelector(s),app=$('#app');
+const SAVEKEY='g1_gravityLab';let SAVE=JSON.parse(localStorage.getItem(SAVEKEY)||'{}');SAVE.stars=SAVE.stars||{};SAVE.best=SAVE.best||{};
+function save(){localStorage.setItem(SAVEKEY,JSON.stringify(SAVE));$('#starTotal').textContent='⭐ '+Object.values(SAVE.stars).reduce((a,b)=>a+b,0)}
+let AC=null,muted=!!SAVE.muted;$('#snd').textContent=muted?'🔇':'🔊';
+$('#snd').onclick=()=>{muted=!muted;SAVE.muted=muted;save();$('#snd').textContent=muted?'🔇':'🔊'};
+function tone(f,d=.12,type='sine',v=.15,slide=0,delay=0){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.02)}catch(e){}}
+function noise(d=.4,v=.2,lp=800){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const n=AC.sampleRate*d,b=AC.createBuffer(1,n,AC.sampleRate),c=b.getChannelData(0);for(let i=0;i<n;i++)c[i]=(Math.random()*2-1)*(1-i/n);const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();f.type='lowpass';f.frequency.value=lp;g.gain.value=v;s.buffer=b;s.connect(f);f.connect(g);g.connect(AC.destination);s.start()}catch(e){}}
+const SFX={click:()=>tone(660,.05,'square',.06),good:()=>{tone(523,.1,'triangle');tone(784,.15,'triangle',.15,0,.08)},bad:()=>tone(200,.25,'sawtooth',.08,-80),
+win:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.15,0,i*.1)),pick:()=>tone(440,.06,'sine',.1,200),drop:()=>tone(330,.08,'sine',.12,-100)};
+// confetti
+const cv=$('#fx'),cx=cv.getContext('2d');let fxp=[];function rs(){cv.width=innerWidth;cv.height=innerHeight}rs();addEventListener('resize',rs);
+function confetti(x=innerWidth/2,y=innerHeight/3,n=60){for(let i=0;i<n;i++)fxp.push({x,y,vx:(Math.random()-.5)*10,vy:-Math.random()*9-2,c:`hsl(${Math.random()*360},90%,60%)`,l:90});}
+(function loop(){cx.clearRect(0,0,cv.width,cv.height);fxp=fxp.filter(p=>p.l-->0);for(const p of fxp){p.vy+=.3;p.x+=p.vx;p.y+=p.vy;cx.fillStyle=p.c;cx.fillRect(p.x,p.y,7,7)}requestAnimationFrame(loop)})();
+function flash(el,ok){el.classList.remove('pop','shake');void el.offsetWidth;el.classList.add(ok?'pop':'shake')}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function award(id,n){if((SAVE.stars[id]||0)<n)SAVE.stars[id]=n;save()}
+// generic timed quiz: qs=[{q,opts,a,fact}] ; a is correct string
+let __QZ=0;function runQuiz(id,title,qs,secs,back){let i=0,score=0,t=secs,timer;const tok=++__QZ;clearInterval(window.__qt);const alive=()=>tok===__QZ&&!!document.getElementById("qz"+tok);qs=shuffle(qs).slice(0,10);
+ function end(){clearInterval(timer);if(!alive())return;const st=score>=9?3:score>=7?2:score>=5?1:0;award(id,st);if(score>(SAVE.best[id]||0))SAVE.best[id]=score;save();if(st)SFX.win(),confetti();
+  app.innerHTML=`<div class="card" style="text-align:center"><h2>${title} — done!</h2><div style="font-size:48px" class="stars">${starStr(st)}</div><p>You got <b>${score}/${qs.length}</b>. Best: ${SAVE.best[id]}</p><div class="row" style="justify-content:center"><button class="btn" id="ag">Play again</button><button class="btn alt" id="bk">Back</button></div></div>`;$('#ag').onclick=()=>runQuiz(id,title,qs,secs,back);$('#bk').onclick=back}
+ function show(){if(i>=qs.length)return end();const q=qs[i];app.innerHTML=`<div class="card" id="qz${tok}"><div class="row"><b style="flex:1">${title} · Q${i+1}/${qs.length}</b>${secs?`<span class="pill">⏱ <span id="tm">${t}</span>s</span>`:''}<span class="pill">✅ ${score}</span></div><div class="bar" style="margin:8px 0"><i style="width:${i/qs.length*100}%"></i></div>${q.svg||''}<h2>${q.q}</h2><div id="os"></div><div class="fb" id="fb"></div></div>`;
+  shuffle(q.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.innerHTML=o;b.onclick=()=>{if(b.parentNode.dataset.done)return;b.parentNode.dataset.done=1;const ok=o==q.a;if(ok){score++;SFX.good();confetti(innerWidth/2,innerHeight/2,20)}else SFX.bad();[...$('#os').children].forEach(x=>{if(x.innerHTML==q.a)x.classList.add('ok')});if(!ok)b.classList.add('no');flash(b,ok);$('#fb').innerHTML=(ok?'✅ Correct! ':'❌ Not quite. ')+(q.fact?`<div class="fact">💡 ${q.fact}</div>`:'');setTimeout(()=>{if(!alive())return;i++;show()},q.fact?2200:1100)};$('#os').appendChild(b)})}
+ if(secs)window.__qt=timer=setInterval(()=>{if(!alive()){clearInterval(timer);return}t--;const e=$('#tm');if(e)e.textContent=t;if(t<=5&&t>0)tone(880,.05);if(t<=0)end()},1000);show()}
+save();
+</script>
+<script>
+// common menu/learn/levels helpers for g1 games
+function learnPage(i){const m=LEARN[i];app.innerHTML=`<div class="card"><div class="row"><b style="flex:1">📖 ${i+1} / ${LEARN.length}</b><button class="btn alt" id="bk">Menu</button></div><div style="text-align:center"><canvas id="lc" width="440" height="200" style="max-width:100%;background:#05081a;border-radius:14px"></canvas></div><h2>${m.h}</h2><p style="line-height:1.5">${m.p}</p>
+ <div class="row"><button class="btn alt" id="pv" ${i?'':'disabled'}>← Prev</button><span style="flex:1"></span><button class="btn" id="nx">${i<LEARN.length-1?'Next →':'Done ✓'}</button></div></div>`;
+ $('#bk').onclick=menu;$('#pv').onclick=()=>learnPage(i-1);$('#nx').onclick=()=>{SFX.click();if(i<LEARN.length-1)learnPage(i+1);else{SAVE.learned=1;save();SFX.win();confetti();menu()}};
+ const c=$('#lc'),g=c.getContext('2d'),t0=performance.now();(function f(n){if(!c.isConnected)return;g.clearRect(0,0,440,200);g.save();m.d(g,(n-t0)/1000);g.restore();requestAnimationFrame(f)})(t0)}
+function unlocked(i){return i==0||(SAVE.stars[LV[i-1].id]||0)>0}
+function levelGrid(title){app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">${title}</h2><button class="btn alt" id="bk">Menu</button></div><p style="color:var(--mut)">Earn a star to unlock the next level.</p><div class="grid" id="lg"></div></div>`;$('#bk').onclick=menu;
+ LV.forEach((l,i)=>{const d=document.createElement('div'),u=unlocked(i);d.className='card tile lv'+i;d.style.opacity=u?1:.45;d.innerHTML=`<div class="em">${u?l.em||'🎯':'🔒'}</div><h3>${i+1}. ${l.n}</h3><p class="stars">${starStr(SAVE.stars[l.id]||0)}</p>`;d.onclick=()=>{if(!u){SFX.bad();flash(d,0);return}SFX.click();play(i)};$('#lg').appendChild(d)})}
+function winLevel(i,st,msg){award(LV[i].id,st);SFX.win();confetti();const last=i>=LV.length-1;
+ $('#fb').innerHTML=`🎉 ${msg} <span class="stars">${starStr(st)}</span><div class="row" style="margin-top:6px"><button class="btn" id="nl">${last?'All levels ✓':'Next level →'}</button><button class="btn alt" id="rl">Retry</button></div>`;
+ $('#nl').onclick=()=>last?levels():play(i+1);$('#rl').onclick=()=>play(i)}
+function mainMenu(em,name,blurb,tiles){const tot=LV.length*3,got=LV.reduce((a,l)=>a+(SAVE.stars[l.id]||0),0);
+ app.innerHTML=`<div class="card" style="text-align:center"><div style="font-size:54px">${em}</div><h2 style="margin:4px">${name}</h2><p style="color:var(--mut)">${blurb}</p><div class="bar"><i style="width:${got/tot*100}%"></i></div><p class="stars">${got}/${tot} ★</p></div><div class="grid" style="margin-top:12px" id="mg"></div>`;
+ tiles.forEach(([id,e,h,p,fn])=>{const d=document.createElement('div');d.className='card tile';d.id=id;d.innerHTML=`<div class="em">${e}</div><h3>${h}</h3><p>${p}</p>`;d.onclick=()=>{SFX.click();fn()};$('#mg').appendChild(d)})}
+function stdTiles(qtitle){return[['mQ','❓','Quiz',`10 questions. <span class="stars">${starStr(SAVE.stars.quiz||0)}</span>`,()=>runQuiz('quiz',qtitle,QS,0,menu)],['mT','⏱️','Timed challenge',`60 seconds! <span class="stars">${starStr(SAVE.stars.timed||0)}</span>`,()=>runQuiz('timed','Timed Challenge',QS,60,menu)]]}
+// ---- Gravity Lab ----
+const W8={Mercury:{g:3.7,air:0,c:'#b5a59a',e:'☿️'},Venus:{g:8.87,air:50,c:'#e8c27a',e:'🟡'},Earth:{g:9.81,air:1,c:'#3d8bff',e:'🌍'},Moon:{g:1.62,air:0,c:'#c9c9c9',e:'🌙'},Mars:{g:3.71,air:.012,c:'#d9603b',e:'🔴'},Jupiter:{g:24.79,air:.13,c:'#d8a46b',e:'🟠'},Saturn:{g:10.44,air:.15,c:'#e6cf8f',e:'🪐'},Uranus:{g:8.69,air:.35,c:'#8fe3e8',e:'🔵'},Neptune:{g:11.15,air:.4,c:'#4b6bff',e:'🔷'},Pluto:{g:.62,air:0,c:'#c9a98a',e:'⚪'}};
+const OBJ={feather:{n:'Feather',e:'🪶',vt:.6,m:.0001},hammer:{n:'Hammer',e:'🔨',vt:45,m:1.3},ball:{n:'Bowling ball',e:'🎳',vt:60,m:6},paper:{n:'Paper sheet',e:'📄',vt:1.5,m:.005}};
+// fall time with quadratic drag (vt scales 1/sqrt(air density)); numeric
+function fallSim(h,w,ob,vac){const g=W8[w].g,air=vac?0:W8[w].air;const vt=air?OBJ[ob].vt/Math.sqrt(air)*Math.sqrt(g/9.81):1e9;let y=0,v=0,t=0,dt=.002,pts=[];while(y<h&&t<200){const a=g-g*v*v/(vt*vt);v+=a*dt;y+=v*dt;t+=dt;if(pts.length<4000&&(pts.length==0||t-pts[pts.length-1][0]>.016))pts.push([t,y])}pts.push([t,h]);return{t,pts,v}}
+const LV=[
+{n:'Drop it!',em:'🍎',k:'drop',h:5,goal:'Drop the ball from 5 m on Earth. Then predict: how long did it take?',w:['Earth'],ask:'time'},
+{n:'Moon drop',em:'🌙',k:'pick',h:5,q:'Pick the world where the ball takes about 2.5 s to fall 5 m.',ans:'Moon',opts:['Earth','Moon','Jupiter','Mars']},
+{n:'Feather & hammer',em:'🪶',k:'race',w:'Earth',goal:'Make the feather and hammer land at the same time.',fact:'In 1971 astronaut David Scott dropped a hammer and a falcon feather on the Moon. With no air, they landed together — just as Galileo predicted!'},
+{n:'Heaviest pull',em:'🟠',k:'pick',h:10,q:'Which world makes a ball fall 10 m fastest?',ans:'Jupiter',opts:['Earth','Saturn','Jupiter','Neptune'],fact:'Jupiter\'s gravity at its cloud tops is about 2.5× Earth\'s. (It has no solid ground to stand on!)'},
+{n:'Weigh an astronaut',em:'⚖️',k:'weigh',m:70,goal:'Find a world where a 70 kg astronaut weighs about 260 N.',ans:'Mars',tol:20,fact:'Weight = mass × g. On Mars: 70 × 3.71 ≈ 260 N. Their MASS is still 70 kg everywhere!'},
+{n:'Same mass?',em:'🧑‍🚀',k:'mc',q:'An astronaut has a mass of 60 kg on Earth. What is her mass on the Moon?',ans:'60 kg',opts:['60 kg','10 kg','360 kg','0 kg'],fact:'Mass is the amount of matter in you — it never changes. Weight (the pull of gravity) on the Moon is about 1/6 of Earth\'s.'},
+{n:'Into orbit',em:'🛰️',k:'orbit',want:'orbit',goal:'Launch the satellite fast enough to ORBIT Earth without escaping.',fact:'Low Earth orbit needs about 7.8 km/s — roughly 28,000 km/h! The ISS goes round Earth every ~90 minutes.'},
+{n:'Escape!',em:'🚀',k:'orbit',want:'escape',goal:'Launch fast enough to ESCAPE Earth\'s gravity completely.',fact:'Escape velocity from Earth\'s surface is about 11.2 km/s.'},
+{n:'Vacuum chamber',em:'🫙',k:'race',w:'Earth',obs:['feather','ball'],novac:false,goal:'On Earth, make the feather and bowling ball land together.',fact:'NASA\'s huge vacuum chamber in Ohio repeated the feather-and-ball drop in 2014: with the air pumped out, they fell side by side.'},
+{n:'Timed fall',em:'⏱️',k:'height',w:'Mars',target:2,goal:'On Mars, choose a drop height so the ball takes 2.0 s (±0.1 s) to land.',fact:'Falling distance = ½ × g × t². On Mars: ½ × 3.71 × 2² ≈ 7.4 m.'},
+{n:'Lightest pull',em:'⚪',k:'weigh',m:50,goal:'Find a world where a 50 kg kid weighs about 31 N.',ans:'Pluto',tol:6,fact:'Pluto\'s gravity is only 0.62 m/s² — about 1/16 of Earth\'s.'},
+{n:'Crash landing',em:'💥',k:'orbit',want:'crash',goal:'Launch too slowly to orbit, so the probe falls back — but it must land at least 2,000 km away.',fact:'Isaac Newton imagined this "cannon on a mountain": the faster you fire, the farther the ball lands — until it falls all the way around!'},
+{n:'Thick air',em:'🟡',k:'pick2',q:'Paper drops 5 m on two worlds with the same-ish gravity. Where does it fall SLOWEST?',ans:'Venus',opts:['Venus','Earth'],h:5,ob:'paper',fact:'Venus\'s atmosphere is about 90× Earth\'s pressure and ~50× as dense, so air resistance is huge there.'},
+{n:'Gravity champion',em:'🏆',k:'height',w:'Jupiter',target:1,goal:'On Jupiter, pick a height so the ball falls for 1.0 s (±0.1 s).',fact:'½ × 24.79 × 1² ≈ 12.4 m in just one second!'}];
+LV.forEach((l,i)=>l.id='G'+i);
+const LEARN=[
+{h:'🍎 What is gravity?',p:'Gravity is a pulling force between all things that have mass. The more mass something has, the harder it pulls. Earth is so massive that it pulls everything toward its centre — that is why things fall <b>down</b>.',d:(g,t)=>{g.fillStyle='#3d8bff';g.beginPath();g.arc(220,240,130,0,7);g.fill();for(let k=0;k<6;k++){const a=k/6*6.28+t*.3,x=220+Math.cos(a)*190,y=240+Math.sin(a)*190;if(y<200){const f=(t*.5+k*.17)%1;g.font='20px serif';g.fillText('🍎',x+(220-x)*f*.3-10,y+(240-y)*f*.3)}}}},
+{h:'📏 g — the strength of gravity',p:'We measure gravity\'s pull with <b>g</b>, in metres per second squared (m/s²). On Earth g ≈ 9.8 m/s²: a falling object speeds up by about 9.8 m/s every second. On the Moon g ≈ 1.6, on Mars 3.7, on Jupiter about 24.8!',d:(g,t)=>{const L=[['Moon',1.62],['Mars',3.71],['Earth',9.81],['Jupiter',24.79]];L.forEach(([n,v],i)=>{g.fillStyle=W8[n].c;const w=v/25*300*Math.min(1,t/2);g.fillRect(110,25+i*44,w,30);g.fillStyle='#fff';g.font='15px sans-serif';g.fillText(n,10,45+i*44);g.fillText(v+' m/s²',120+w,45+i*44)})}},
+{h:'🪶 Air resistance',p:'Without air, everything falls at the same rate — a feather and a hammer land together! On Earth the feather floats down slowly because air pushes up against its big, light surface. That push is called <b>air resistance</b> or drag.',d:(g,t)=>{const f=(t%3)/3;g.font='30px serif';g.fillStyle='#fff';g.font='14px sans-serif';g.fillText('With air',60,20);g.fillText('Vacuum',300,20);g.font='30px serif';g.fillText('🔨',60,30+Math.min(1,f*f*4)*150);g.fillText('🪶',110,30+f*60+Math.sin(t*4)*4);g.fillText('🔨',290,30+Math.min(1,f*f*4)*150);g.fillText('🪶',340,30+Math.min(1,f*f*4)*150)}},
+{h:'⚖️ Mass vs weight',p:'<b>Mass</b> is how much matter something has, measured in kilograms. It is the same everywhere. <b>Weight</b> is the force of gravity on that mass, measured in newtons (N): weight = mass × g. A 30 kg kid weighs about 294 N on Earth but only about 49 N on the Moon.',d:(g,t)=>{['Earth','Moon'].forEach((w,i)=>{const x=110+i*220,wt=30*W8[w].g;g.fillStyle='#555';g.fillRect(x-60,150,120,20);g.fillStyle='#111';g.fillRect(x-40,120,80,30);g.fillStyle='#3ddc84';g.font='18px monospace';g.fillText(Math.round(wt*Math.min(1,t/1.5))+' N',x-32,142);g.font='40px serif';g.fillText('🧒',x-20,110);g.fillStyle='#fff';g.font='15px sans-serif';g.fillText(w+' · mass 30 kg',x-55,192)})}},
+{h:'🛰️ Orbits',p:'An orbit is falling while moving sideways so fast that you keep missing the ground! Fire a cannonball faster and faster: it lands farther away, until at about 7.8 km/s it curves around Earth forever. At about 11.2 km/s it escapes Earth completely.',d:(g,t)=>{g.fillStyle='#3d8bff';g.beginPath();g.arc(220,110,50,0,7);g.fill();g.strokeStyle='#fff5';g.setLineDash([4,4]);g.beginPath();g.ellipse(220,110,85,80,0,0,7);g.stroke();g.setLineDash([]);g.font='20px serif';g.fillText('🛰️',220+Math.cos(t)*85-10,110+Math.sin(t)*80+7)}},
+{h:'🌊 Gravity everywhere',p:'The Moon\'s gravity pulls on Earth\'s oceans, causing <b>tides</b>. The Sun\'s gravity keeps all the planets in orbit. Isaac Newton described gravity in 1687, and Albert Einstein later explained it as the bending of space and time.',d:(g,t)=>{g.fillStyle='#ffd34d';g.beginPath();g.arc(220,100,26,0,7);g.fill();[[60,'#3d8bff',1],[95,'#d9603b',.53]].forEach(([r,c,s])=>{g.fillStyle=c;g.beginPath();g.arc(220+Math.cos(t*s)*r*1.8,100+Math.sin(t*s)*r*.8,8,0,7);g.fill()})}}];
+const QS=[
+{q:'What is g on Earth (about)?',a:'9.8 m/s²',opts:['9.8 m/s²','1.6 m/s²','24.8 m/s²','100 m/s²']},
+{q:'Which has the strongest gravity?',a:'Jupiter',opts:['Jupiter','Earth','Mars','Moon']},
+{q:'Gravity on the Moon is about…',a:'1/6 of Earth\'s',opts:['1/6 of Earth\'s','the same as Earth\'s','double Earth\'s','zero']},
+{q:'In a vacuum, a feather and a hammer…',a:'land at the same time',opts:['land at the same time','hammer lands first','feather lands first','both float']},
+{q:'Mass is measured in…',a:'kilograms',opts:['kilograms','newtons','metres','seconds']},
+{q:'Weight is measured in…',a:'newtons',opts:['newtons','kilograms','litres','degrees']},
+{q:'Weight = ?',a:'mass × g',opts:['mass × g','mass ÷ g','g ÷ mass','mass + g']},
+{q:'If you fly to Mars, your MASS…',a:'stays the same',opts:['stays the same','gets smaller','gets bigger','becomes zero']},
+{q:'What slows a falling feather on Earth?',a:'air resistance',opts:['air resistance','magnetism','friction with the ground','sunlight']},
+{q:'Who described the law of gravity in 1687?',a:'Isaac Newton',opts:['Isaac Newton','Albert Einstein','Marie Curie','Charles Darwin']},
+{q:'About how fast must a satellite go to orbit low around Earth?',a:'7.8 km/s',opts:['7.8 km/s','100 m/s','1 km/s','300,000 km/s']},
+{q:'Earth\'s escape velocity is about…',a:'11.2 km/s',opts:['11.2 km/s','2.4 km/s','50 km/s','340 m/s']},
+{q:'What causes ocean tides?',a:'mainly the Moon\'s gravity',opts:['mainly the Moon\'s gravity','wind','earthquakes','fish swimming']},
+{q:'Who dropped a hammer and feather on the Moon in 1971?',a:'David Scott',opts:['David Scott','Neil Armstrong','Yuri Gagarin','Galileo']},
+{q:'A 10 kg box on Earth weighs about…',a:'98 N',opts:['98 N','10 N','1 N','980 N']},
+{q:'Which world has the weakest gravity of these?',a:'Pluto',opts:['Pluto','Mars','Mercury','Venus']},
+{q:'An orbit is really…',a:'falling around a planet',opts:['falling around a planet','floating with no gravity','being pushed by the Sun\'s light','magnetism']},
+{q:'Why do astronauts on the ISS float?',a:'they are falling around Earth together with the station',opts:['they are falling around Earth together with the station','there is no gravity in space','the ISS has magnets','they are too light']},
+{q:'What keeps the planets going around the Sun?',a:'the Sun\'s gravity',opts:['the Sun\'s gravity','solar wind','magnetism','nothing']},
+{q:'A falling object (no air) speeds up by about how much each second on Earth?',a:'9.8 m/s',opts:['9.8 m/s','1 m/s','98 m/s','0 m/s']}];
+function menu(){mainMenu('🍎🪐🛰️','Gravity Lab','Drop things on other worlds, beat air resistance, launch satellites and weigh astronauts!',[['mL','📖','Learn','Gravity, g, mass vs weight, air resistance, orbits.',()=>learnPage(0)],['mS','🧪','Free lab','Drop objects on 10 worlds, with or without air.',()=>sandbox()],['mO','🛰️','Orbit cannon','Launch at any speed.',()=>orbitLab(null)],['mP','🧩','Puzzles',`${LV.length} gravity puzzles.`,()=>levels()],...stdTiles('Gravity Quiz')])}
+function levels(){levelGrid('🧩 Gravity puzzles')}
+// ---- drop scene ----
+function dropScene(cv,w,h,lanes){// lanes:[{ob,vac}] -> returns promise of results
+ const g=cv.getContext('2d'),Wd=cv.width,Hd=cv.height,sims=lanes.map(l=>fallSim(h,w,l.ob,l.vac)),T=Math.max(...sims.map(s=>s.t));const slow=T>6?T/6:1;let t0=null;
+ return new Promise(res=>{function f(n){if(!cv.isConnected)return res(sims);if(t0==null)t0=n;const t=(n-t0)/1000*(1/slow)*1;draw(t);if(t<T+.3)requestAnimationFrame(f);else res(sims)}
+  function draw(t){const sky=g.createLinearGradient(0,0,0,Hd);sky.addColorStop(0,W8[w].air?'#1b3a7a':'#000');sky.addColorStop(1,W8[w].air?'#6aa9ff':'#111');g.fillStyle=sky;g.fillRect(0,0,Wd,Hd);
+   g.fillStyle=W8[w].c;g.fillRect(0,Hd-30,Wd,30);g.fillStyle='#fff';g.font='14px sans-serif';g.fillText(`${W8[w].e} ${w} · g = ${W8[w].g} m/s² · ${h} m drop`,10,20);
+   const top=40,bot=Hd-30;sims.forEach((s,i)=>{const x=(i+1)*Wd/(lanes.length+1);let y=0,done=t>=s.t;if(done)y=h;else{for(const p of s.pts){if(p[0]>t)break;y=p[1]}}
+    g.font='34px serif';g.fillText(OBJ[lanes[i].ob].e,x-17,top+(bot-top-30)*(y/h)+30);g.font='13px sans-serif';g.fillStyle='#fff';g.fillText((done?s.t:t).toFixed(2)+' s'+(lanes[i].vac?' (vacuum)':''),x-30,Hd-10)})}
+  draw(0);requestAnimationFrame(f)})}
+function sandbox(){let w='Earth',vac=false,h=10,sel={feather:1,hammer:1};
+ app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">🧪 Free lab</h2><button class="btn alt" id="bk">Menu</button></div><div class="row" id="ws" style="margin:8px 0"></div>
+ <div class="row" id="os"></div><div class="row" style="margin:8px 0"><label>Height: <b id="hv">10</b> m <input type="range" id="hs" min="1" max="50" value="10"></label><button class="btn alt" id="vc">💨 Air: ON</button><button class="btn" id="go">Drop!</button></div>
+ <canvas id="cv" width="640" height="320" style="width:100%;border-radius:14px"></canvas><div class="fb" id="fb"></div></div>`;$('#bk').onclick=menu;
+ Object.keys(W8).forEach(k=>{const b=document.createElement('button');b.className='btn alt';b.textContent=W8[k].e+' '+k;b.onclick=()=>{w=k;SFX.click();[...$('#ws').children].forEach(x=>x.classList.remove('sel'));b.classList.add('sel')};if(k==w)b.classList.add('sel');$('#ws').appendChild(b)});
+ Object.keys(OBJ).forEach(k=>{const b=document.createElement('button');b.className='btn alt'+(sel[k]?' sel':'');b.textContent=OBJ[k].e+' '+OBJ[k].n;b.onclick=()=>{sel[k]=!sel[k];b.classList.toggle('sel');SFX.click()};$('#os').appendChild(b)});
+ $('#hs').oninput=e=>{h=+e.target.value;$('#hv').textContent=h};$('#vc').onclick=()=>{vac=!vac;$('#vc').textContent=vac?'🫙 Vacuum':'💨 Air: ON';SFX.click()};
+ $('#go').onclick=async()=>{const L=Object.keys(OBJ).filter(k=>sel[k]).map(ob=>({ob,vac}));if(!L.length)return;SFX.drop();const r=await dropScene($('#cv'),w,h,L);if(!$('#fb'))return;SFX.good();
+  $('#fb').innerHTML=r.map((s,i)=>`${OBJ[L[i].ob].e} ${s.t.toFixed(2)} s`).join(' · ')+`<div class="fact">💡 No-air prediction: t = √(2h/g) = ${Math.sqrt(2*h/W8[w].g).toFixed(2)} s${W8[w].air?'':` — ${w} has (almost) no air, so everything falls together.`}</div>`};
+ dropScene($('#cv'),w,h,[{ob:'feather',vac},{ob:'hammer',vac}]).then(()=>0)}
+// ---- orbit ----
+const GM=398600,RE=6371;
+function orbitSim(v){let x=0,y=RE+200,vx=v,vy=0,pts=[[x,y]],ang=0,prev=Math.atan2(x,y),t=0;const dt=4;
+ for(let k=0;k<30000;k++){const r=Math.hypot(x,y),a=-GM/(r*r*r);vx+=a*x*dt;vy+=a*y*dt;x+=vx*dt;y+=vy*dt;t+=dt;if(k%5==0)pts.push([x,y]);
+  const an=Math.atan2(x,y);let d=an-prev;if(d<-Math.PI)d+=2*Math.PI;if(d>Math.PI)d-=2*Math.PI;ang+=d;prev=an;const R=Math.hypot(x,y);
+  if(R<=RE){const dist=Math.abs(ang)*RE;pts.push([x,y]);return{res:'crash',pts,dist,t}}if(Math.abs(ang)>=2*Math.PI)return{res:'orbit',pts,t};if(R>RE*12)return{res:'escape',pts,t}}return{res:'orbit',pts,t}}
+function orbitScene(cv,v){const g=cv.getContext('2d'),S=orbitSim(v),Wd=cv.width,Hd=cv.height,sc=Hd/(RE*5.2);let i=0;
+ return new Promise(res=>{function f(){if(!cv.isConnected)return res(S);g.fillStyle='#03061a';g.fillRect(0,0,Wd,Hd);for(let s=0;s<40;s++){g.fillStyle='#fff6';g.fillRect((s*97)%Wd,(s*53)%Hd,2,2)}
+  const cx=Wd/2,cy=Hd/2+30;g.fillStyle='#2f6fe0';g.beginPath();g.arc(cx,cy,RE*sc,0,7);g.fill();g.fillStyle='#3ddc84';g.beginPath();g.arc(cx-20,cy-10,RE*sc*.4,0,7);g.fill();g.fillStyle='#8a6';g.fillRect(cx-6,cy-RE*sc-10,12,12);
+  g.strokeStyle='#ffd34d';g.lineWidth=2;g.beginPath();S.pts.slice(0,i).forEach(([x,y],k)=>k?g.lineTo(cx+x*sc,cy-y*sc):g.moveTo(cx+x*sc,cy-y*sc));g.stroke();const p=S.pts[Math.min(i,S.pts.length-1)];g.font='18px serif';g.fillText('🛰️',cx+p[0]*sc-9,cy-p[1]*sc+6);
+  g.fillStyle='#fff';g.font='14px sans-serif';g.fillText(`Launch speed ${v.toFixed(1)} km/s`,10,20);i+=Math.max(2,S.pts.length/150|0);if(i<S.pts.length)requestAnimationFrame(f);else res(S)}f()})}
+function orbitLab(L,li){let v=L&&L.want=='crash'?3:6;app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">${L?`${li+1}. ${L.n}`:'🛰️ Orbit cannon'}</h2><button class="btn alt" id="bk">${L?'Levels':'Menu'}</button></div>${L?`<p><b>${L.goal}</b></p>`:'<p>Newton\'s cannon on a 200 km-tall mountain. Pick a speed and fire!</p>'}
+ <div class="row"><label style="flex:1">Speed: <b id="vv">${v}</b> km/s<input type="range" id="vs" min="1" max="13" step="0.1" value="${v}" style="width:100%"></label><button class="btn" id="go">🔥 Fire</button></div><canvas id="cv" width="640" height="360" style="width:100%;border-radius:14px;margin-top:8px"></canvas><div class="fb" id="fb"></div></div>`;
+ $('#bk').onclick=L?levels:menu;$('#vs').oninput=e=>{v=+e.target.value;$('#vv').textContent=v.toFixed(1)};let tries=0;
+ $('#go').onclick=async()=>{$('#go').disabled=true;tone(120,.5,'sawtooth',.1,300);noise(.3,.2);tries++;const S=await orbitScene($('#cv'),v);if(!$('#fb'))return;$('#go').disabled=false;
+  const msg=S.res=='crash'?`💥 Fell back to Earth ${Math.round(S.dist).toLocaleString()} km away.`:S.res=='orbit'?`🛰️ In orbit! One lap takes ${Math.round(S.t/60)} min.`:'🚀 Escaped Earth\'s gravity!';
+  if(!L){$('#fb').textContent=msg;SFX.good();return}const ok=S.res==L.want&&(L.want!='crash'||S.dist>=2000);if(ok){winLevel(li,tries<=1?3:tries<=3?2:1,msg+`<div class="fact">💡 ${L.fact}</div>`)}else{SFX.bad();flash($('#cv'),0);$('#fb').textContent=msg+' Try a different speed.'}};
+ orbitScene($('#cv'),0.1).then(()=>0)}
+// ---- play ----
+function play(i){const L=LV[i];app.dataset.busy=0;if(L.k=='orbit')return orbitLab(L,i);let tries=0;
+ const head=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">${L.em} ${i+1}. ${L.n}</h2><button class="btn alt" id="bk">Levels</button></div>`;
+ const done=(msg)=>{const st=tries<=1?3:tries<=2?2:1;winLevel(i,st,msg+(L.fact?`<div class="fact">💡 ${L.fact}</div>`:''))};
+ const miss=(m)=>{SFX.bad();$('#fb').textContent='❌ '+m};
+ if(L.k=='drop'){app.innerHTML=head+`<p><b>${L.goal}</b></p><button class="btn" id="go">Drop!</button><canvas id="cv" width="640" height="300" style="width:100%;border-radius:14px;margin-top:8px"></canvas><div id="os"></div><div class="fb" id="fb"></div></div>`;
+  $('#go').onclick=async()=>{$('#go').disabled=true;SFX.drop();await dropScene($('#cv'),'Earth',L.h,[{ob:'ball',vac:true}]);if(!$('#os'))return;$('#os').innerHTML='<h3>How long did it take?</h3>';['about 1 s','about 3 s','about 0.1 s','about 10 s'].forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.textContent=o;b.onclick=()=>{tries++;if(o=='about 1 s'){b.classList.add('ok');done('Right — √(2×5/9.81) ≈ 1.01 s.')}else{b.classList.add('no');miss('Watch the timer again.')}};$('#os').appendChild(b)})}}
+ if(L.k=='pick'||L.k=='pick2'){app.innerHTML=head+`<p><b>${L.q}</b></p><div class="row" id="os"></div><canvas id="cv" width="640" height="300" style="width:100%;border-radius:14px;margin-top:8px"></canvas><div class="fb" id="fb"></div></div>`;
+  L.opts.forEach(o=>{const b=document.createElement('button');b.className='btn alt';b.textContent=W8[o].e+' '+o;b.onclick=async()=>{if(app.dataset.busy==1)return;app.dataset.busy=1;tries++;SFX.drop();const r=await dropScene($('#cv'),o,L.h,[{ob:L.ob||'ball',vac:false}]);app.dataset.busy=0;if(!$('#fb'))return;if(o==L.ans)done(`${o}: ${r[0].t.toFixed(2)} s.`);else miss(`${o}: ${r[0].t.toFixed(2)} s. Try another world.`)};$('#os').appendChild(b)})}
+ if(L.k=='race'){const obs=L.obs||['feather','hammer'];let vac=false,w=L.w;app.innerHTML=head+`<p><b>${L.goal}</b></p><div class="row"><button class="btn alt" id="vc">💨 Air: ON</button><button class="btn alt" id="mw">🌙 Go to the Moon</button><button class="btn" id="go">Drop both!</button></div><canvas id="cv" width="640" height="300" style="width:100%;border-radius:14px;margin-top:8px"></canvas><div class="fb" id="fb"></div></div>`;
+  $('#vc').onclick=()=>{vac=!vac;$('#vc').textContent=vac?'🫙 Air pumped out':'💨 Air: ON';SFX.click()};$('#mw').onclick=()=>{w=w=='Moon'?'Earth':'Moon';$('#mw').textContent=w=='Moon'?'🌍 Back to Earth':'🌙 Go to the Moon';SFX.click()};
+  $('#go').onclick=async()=>{$('#go').disabled=true;tries++;SFX.drop();const r=await dropScene($('#cv'),w,3,obs.map(ob=>({ob,vac})));if(!$('#fb'))return;$('#go').disabled=false;if(Math.abs(r[0].t-r[1].t)<.02)done('They landed together!');else miss(`${OBJ[obs[0]].n} took ${r[0].t.toFixed(2)} s but ${OBJ[obs[1]].n} took ${r[1].t.toFixed(2)} s. Something is slowing one down…`)}}
+ if(L.k=='weigh'){app.innerHTML=head+`<p><b>${L.goal}</b></p><div class="row" id="os"></div><div style="text-align:center;margin:12px"><div style="font-size:60px">🧑‍🚀</div><div style="display:inline-block;background:#111;color:#3ddc84;font:28px monospace;padding:8px 18px;border-radius:10px;border:4px solid #555" id="sc">— N</div><p>Mass: <b>${L.m} kg</b> (always!)</p></div><div class="fb" id="fb"></div></div>`;
+  Object.keys(W8).forEach(o=>{const b=document.createElement('button');b.className='btn alt';b.textContent=W8[o].e+' '+o;b.onclick=()=>{tries++;const wt=L.m*W8[o].g;$('#sc').textContent=Math.round(wt)+' N';flash($('#sc'),1);tone(300+wt/3,.1);if(Math.abs(wt-L.goal.match(/about (\d+)/)[1])<=L.tol)done(`On ${o}: ${L.m} × ${W8[o].g} = ${Math.round(wt)} N.`);else miss(`On ${o}: ${L.m} × ${W8[o].g} = ${Math.round(wt)} N. Not it.`)};$('#os').appendChild(b)});tries=-2}
+ if(L.k=='mc'){app.innerHTML=head+`<h3>${L.q}</h3><div id="os"></div><div class="fb" id="fb"></div></div>`;shuffle(L.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.textContent=o;b.onclick=()=>{tries++;if(o==L.ans){b.classList.add('ok');done('Correct!')}else{b.classList.add('no');miss('Not quite — think about what changes and what doesn\'t.')}};$('#os').appendChild(b)})}
+ if(L.k=='height'){let h=5;app.innerHTML=head+`<p><b>${L.goal}</b></p><div class="row"><label style="flex:1">Height: <b id="hv">5.0</b> m<input type="range" id="hs" min="0.5" max="30" step="0.1" value="5" style="width:100%"></label><button class="btn" id="go">Drop!</button></div><canvas id="cv" width="640" height="300" style="width:100%;border-radius:14px;margin-top:8px"></canvas><div class="fb" id="fb"></div></div>`;
+  $('#hs').oninput=e=>{h=+e.target.value;$('#hv').textContent=h.toFixed(1)};$('#go').onclick=async()=>{$('#go').disabled=true;tries++;SFX.drop();const r=await dropScene($('#cv'),L.w,h,[{ob:'ball',vac:true}]);if(!$('#fb'))return;$('#go').disabled=false;const t=r[0].t;if(Math.abs(t-L.target)<=.1)done(`${t.toFixed(2)} s — bang on!`);else miss(`${t.toFixed(2)} s — ${t<L.target?'go higher':'go lower'}. Hint: h = ½ g t².`)}}
+ $('#bk').onclick=levels}
+menu();
+</script></body></html>

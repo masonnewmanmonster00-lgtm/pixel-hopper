@@ -32,6 +32,9 @@ Open `edu/index.html`. The lab includes the original eight, plus more games adde
 - Calendar Quest
 - Instrument Families
 - Road Safety Squad
+- Sense Squad
+- Sink or Float
+- Heat Travel
 
 Each game has Easy, Medium, and Hard, keeps a best score on this device, and links back to the Learning Lab home. That home links back to the arcade.
 

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#efe6d2">
+<title>Learning Lab</title>
+<link rel="icon" href="../icon.svg">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<a class="skip" href="#games">Skip to games</a>
+<div class="page">
+<header class="hero">
+<p class="eyebrow">Practice that feels like play</p>
+<h1>Learning Lab</h1>
+<p class="lede">Eight short games for math, fractions, flags, time, science, spelling, and money. Each one has Easy, Medium, and Hard. Your best score stays on this device.</p>
+<div class="hero-links">
+<a class="arcade" href="../index.html">Back to Pixel Arcade</a>
+</div>
+</header>
+<main id="games" class="grid">
+<a class="card" href="./math-facts.html">
+<div class="art math" aria-hidden="true"><span>6</span><span>+</span><span>3</span></div>
+<div class="info"><span class="tag">Math</span><h2>Math Facts</h2><p>Add, subtract, multiply, and divide.</p><p class="best" data-best="math">Best —</p></div>
+</a>
+<a class="card" href="./times-race.html">
+<div class="art times" aria-hidden="true"><span>4×7</span></div>
+<div class="info"><span class="tag">Math</span><h2>Times Race</h2><p>Answer products before the clock runs out.</p><p class="best" data-best="times">Best —</p></div>
+</a>
+<a class="card" href="./fractions.html">
+<div class="art fractions" aria-hidden="true"><span class="pie"></span></div>
+<div class="info"><span class="tag">Math</span><h2>Pizza Fractions</h2><p>Top the slices to match the fraction.</p><p class="best" data-best="fractions">Best —</p></div>
+</a>
+<a class="card" href="./flags.html">
+<div class="art flags" aria-hidden="true"><span class="mini-flag fr"><i></i><i></i><i></i></span><span class="mini-flag jp"><b></b></span><span class="mini-flag de"><i></i><i></i><i></i></span></div>
+<div class="info"><span class="tag">Geography</span><h2>Flag Quiz</h2><p>Name the country, then try the capital.</p><p class="best" data-best="flags">Best —</p></div>
+</a>
+<a class="card" href="./telling-time.html">
+<div class="art clock" aria-hidden="true"><span class="css-clock"></span></div>
+<div class="info"><span class="tag">Math</span><h2>Telling Time</h2><p>Read the hour and minute hands.</p><p class="best" data-best="clock">Best —</p></div>
+</a>
+<a class="card" href="./science.html">
+<div class="art science" aria-hidden="true"><span class="tf"><span>T</span><span>F</span></span></div>
+<div class="info"><span class="tag">Science</span><h2>Science Check</h2><p>True or false, plus a short why.</p><p class="best" data-best="science">Best —</p></div>
+</a>
+<a class="card" href="./spelling-bee.html">
+<div class="art spelling" aria-hidden="true"><span class="tile">B</span><span class="tile">E</span><span class="tile">E</span></div>
+<div class="info"><span class="tag">Words</span><h2>Spelling Bee</h2><p>Spell the word from a picture and a clue.</p><p class="best" data-best="spelling">Best —</p></div>
+</a>
+<a class="card" href="./money.html">
+<div class="art money" aria-hidden="true"><span class="coin-art"></span><span class="coin-art n"></span><span class="coin-art q"></span></div>
+<div class="info"><span class="tag">Math</span><h2>Money Count</h2><p>Add up the coins and bills.</p><p class="best" data-best="money">Best —</p></div>
+</a>
+</main>
+<p class="footer">The rest of the cabinet lives in the <a href="../index.html">Pixel Arcade</a>.</p>
+</div>
+<script src="./common.js"></script>
+<script>
+"use strict";
+document.querySelectorAll("[data-best]").forEach(function (el) {
+  const n = Edu.loadBest(el.getAttribute("data-best"));
+  el.textContent = n > 0 ? "Best " + n : "Best —";
+});
+</script>
+<noscript><p>These games need JavaScript in your browser. Nothing is sent to a server.</p></noscript>
+</body>
+</html>

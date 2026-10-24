@@ -1,0 +1,173 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>Rainforest Explorer</title>
+<style>
+:root{--bg:#0f1530;--card:#1b2350;--ink:#f4f6ff;--mut:#9aa6d8;--acc:#7ad0ff;--good:#3ddc84;--bad:#ff5c7a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:"Trebuchet MS",system-ui,sans-serif;background:radial-gradient(circle at 20% 0%,#2a3480,var(--bg) 60%);color:var(--ink);min-height:100vh;user-select:none;-webkit-user-select:none;overflow-x:hidden}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0008;position:sticky;top:0;z-index:5;backdrop-filter:blur(4px)}
+header a{color:var(--ink);text-decoration:none;background:#fff1;padding:6px 12px;border-radius:20px;font-weight:bold}
+header h1{font-size:20px;margin:0;flex:1;color:var(--acc);text-shadow:0 2px 0 #0006}
+.pill{background:#fff1;padding:5px 10px;border-radius:14px;font-size:14px}
+main{max-width:980px;margin:0 auto;padding:14px}
+.btn{font:inherit;font-weight:bold;border:0;border-radius:14px;padding:10px 16px;background:var(--acc);color:#111;cursor:pointer;box-shadow:0 4px 0 #0007;transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #0007}.btn.alt{background:#2c3770;color:var(--ink)}.btn.sel{outline:3px solid #fff}
+.btn:disabled{opacity:.4}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border-radius:18px;padding:14px;box-shadow:0 6px 18px #0005;border:2px solid #ffffff10}
+.tile{cursor:pointer;transition:transform .15s}.tile:hover{transform:translateY(-4px) rotate(-1deg)}
+.tile .em{font-size:40px}.tile h3{margin:6px 0}.tile p{margin:0;color:var(--mut);font-size:14px}
+.stars{color:#ffd34d;letter-spacing:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fb{min-height:28px;font-weight:bold;font-size:18px;margin:8px 0}
+.opt{display:block;width:100%;margin:6px 0;text-align:left;background:#2c3770;color:var(--ink)}
+.opt.ok{background:var(--good);color:#111}.opt.no{background:var(--bad)}
+.pop{animation:pop .35s}@keyframes pop{50%{transform:scale(1.12)}}
+.shake{animation:shk .35s}@keyframes shk{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:9}
+.bar{height:10px;background:#fff2;border-radius:6px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--acc);transition:width .3s}
+.fact{background:#ffd34d22;border-left:4px solid #ffd34d;padding:8px 12px;border-radius:8px;margin:8px 0}
+svg text{font-family:inherit}
+</style></head><body>
+<header><a href="./index.html">← Learning Lab</a><h1>Rainforest Explorer</h1><span class="pill" id="starTotal">⭐ 0</span><button class="btn alt" id="snd" style="padding:6px 10px">🔊</button></header>
+<main id="app"></main><canvas id="fx"></canvas>
+<script>
+// ---- shared helpers ----
+const $=s=>document.querySelector(s),app=$('#app');
+const SAVEKEY='g1_rainforest';let SAVE=JSON.parse(localStorage.getItem(SAVEKEY)||'{}');SAVE.stars=SAVE.stars||{};SAVE.best=SAVE.best||{};
+function save(){localStorage.setItem(SAVEKEY,JSON.stringify(SAVE));$('#starTotal').textContent='⭐ '+Object.values(SAVE.stars).reduce((a,b)=>a+b,0)}
+let AC=null,muted=!!SAVE.muted;$('#snd').textContent=muted?'🔇':'🔊';
+$('#snd').onclick=()=>{muted=!muted;SAVE.muted=muted;save();$('#snd').textContent=muted?'🔇':'🔊'};
+function tone(f,d=.12,type='sine',v=.15,slide=0,delay=0){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.02)}catch(e){}}
+function noise(d=.4,v=.2,lp=800){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const n=AC.sampleRate*d,b=AC.createBuffer(1,n,AC.sampleRate),c=b.getChannelData(0);for(let i=0;i<n;i++)c[i]=(Math.random()*2-1)*(1-i/n);const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();f.type='lowpass';f.frequency.value=lp;g.gain.value=v;s.buffer=b;s.connect(f);f.connect(g);g.connect(AC.destination);s.start()}catch(e){}}
+const SFX={click:()=>tone(660,.05,'square',.06),good:()=>{tone(523,.1,'triangle');tone(784,.15,'triangle',.15,0,.08)},bad:()=>tone(200,.25,'sawtooth',.08,-80),
+win:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.15,0,i*.1)),pick:()=>tone(440,.06,'sine',.1,200),drop:()=>tone(330,.08,'sine',.12,-100)};
+// confetti
+const cv=$('#fx'),cx=cv.getContext('2d');let fxp=[];function rs(){cv.width=innerWidth;cv.height=innerHeight}rs();addEventListener('resize',rs);
+function confetti(x=innerWidth/2,y=innerHeight/3,n=60){for(let i=0;i<n;i++)fxp.push({x,y,vx:(Math.random()-.5)*10,vy:-Math.random()*9-2,c:`hsl(${Math.random()*360},90%,60%)`,l:90});}
+(function loop(){cx.clearRect(0,0,cv.width,cv.height);fxp=fxp.filter(p=>p.l-->0);for(const p of fxp){p.vy+=.3;p.x+=p.vx;p.y+=p.vy;cx.fillStyle=p.c;cx.fillRect(p.x,p.y,7,7)}requestAnimationFrame(loop)})();
+function flash(el,ok){el.classList.remove('pop','shake');void el.offsetWidth;el.classList.add(ok?'pop':'shake')}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function award(id,n){if((SAVE.stars[id]||0)<n)SAVE.stars[id]=n;save()}
+// generic timed quiz: qs=[{q,opts,a,fact}] ; a is correct string
+let __QZ=0;function runQuiz(id,title,qs,secs,back){let i=0,score=0,t=secs,timer;const tok=++__QZ;clearInterval(window.__qt);const alive=()=>tok===__QZ&&!!document.getElementById("qz"+tok);qs=shuffle(qs).slice(0,10);
+ function end(){clearInterval(timer);if(!alive())return;const st=score>=9?3:score>=7?2:score>=5?1:0;award(id,st);if(score>(SAVE.best[id]||0))SAVE.best[id]=score;save();if(st)SFX.win(),confetti();
+  app.innerHTML=`<div class="card" style="text-align:center"><h2>${title} — done!</h2><div style="font-size:48px" class="stars">${starStr(st)}</div><p>You got <b>${score}/${qs.length}</b>. Best: ${SAVE.best[id]}</p><div class="row" style="justify-content:center"><button class="btn" id="ag">Play again</button><button class="btn alt" id="bk">Back</button></div></div>`;$('#ag').onclick=()=>runQuiz(id,title,qs,secs,back);$('#bk').onclick=back}
+ function show(){if(i>=qs.length)return end();const q=qs[i];app.innerHTML=`<div class="card" id="qz${tok}"><div class="row"><b style="flex:1">${title} · Q${i+1}/${qs.length}</b>${secs?`<span class="pill">⏱ <span id="tm">${t}</span>s</span>`:''}<span class="pill">✅ ${score}</span></div><div class="bar" style="margin:8px 0"><i style="width:${i/qs.length*100}%"></i></div>${q.svg||''}<h2>${q.q}</h2><div id="os"></div><div class="fb" id="fb"></div></div>`;
+  shuffle(q.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.innerHTML=o;b.onclick=()=>{if(b.parentNode.dataset.done)return;b.parentNode.dataset.done=1;const ok=o==q.a;if(ok){score++;SFX.good();confetti(innerWidth/2,innerHeight/2,20)}else SFX.bad();[...$('#os').children].forEach(x=>{if(x.innerHTML==q.a)x.classList.add('ok')});if(!ok)b.classList.add('no');flash(b,ok);$('#fb').innerHTML=(ok?'✅ Correct! ':'❌ Not quite. ')+(q.fact?`<div class="fact">💡 ${q.fact}</div>`:'');setTimeout(()=>{if(!alive())return;i++;show()},q.fact?2200:1100)};$('#os').appendChild(b)})}
+ if(secs)window.__qt=timer=setInterval(()=>{if(!alive()){clearInterval(timer);return}t--;const e=$('#tm');if(e)e.textContent=t;if(t<=5&&t>0)tone(880,.05);if(t<=0)end()},1000);show()}
+save();
+</script>
+<script>
+// common menu/learn/levels helpers for g1 games
+function learnPage(i){const m=LEARN[i];app.innerHTML=`<div class="card"><div class="row"><b style="flex:1">📖 ${i+1} / ${LEARN.length}</b><button class="btn alt" id="bk">Menu</button></div><div style="text-align:center"><canvas id="lc" width="440" height="200" style="max-width:100%;background:#05081a;border-radius:14px"></canvas></div><h2>${m.h}</h2><p style="line-height:1.5">${m.p}</p>
+ <div class="row"><button class="btn alt" id="pv" ${i?'':'disabled'}>← Prev</button><span style="flex:1"></span><button class="btn" id="nx">${i<LEARN.length-1?'Next →':'Done ✓'}</button></div></div>`;
+ $('#bk').onclick=menu;$('#pv').onclick=()=>learnPage(i-1);$('#nx').onclick=()=>{SFX.click();if(i<LEARN.length-1)learnPage(i+1);else{SAVE.learned=1;save();SFX.win();confetti();menu()}};
+ const c=$('#lc'),g=c.getContext('2d'),t0=performance.now();(function f(n){if(!c.isConnected)return;g.clearRect(0,0,440,200);g.save();m.d(g,(n-t0)/1000);g.restore();requestAnimationFrame(f)})(t0)}
+function unlocked(i){return i==0||(SAVE.stars[LV[i-1].id]||0)>0}
+function levelGrid(title){app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">${title}</h2><button class="btn alt" id="bk">Menu</button></div><p style="color:var(--mut)">Earn a star to unlock the next level.</p><div class="grid" id="lg"></div></div>`;$('#bk').onclick=menu;
+ LV.forEach((l,i)=>{const d=document.createElement('div'),u=unlocked(i);d.className='card tile lv'+i;d.style.opacity=u?1:.45;d.innerHTML=`<div class="em">${u?l.em||'🎯':'🔒'}</div><h3>${i+1}. ${l.n}</h3><p class="stars">${starStr(SAVE.stars[l.id]||0)}</p>`;d.onclick=()=>{if(!u){SFX.bad();flash(d,0);return}SFX.click();play(i)};$('#lg').appendChild(d)})}
+function winLevel(i,st,msg){award(LV[i].id,st);SFX.win();confetti();const last=i>=LV.length-1;
+ $('#fb').innerHTML=`🎉 ${msg} <span class="stars">${starStr(st)}</span><div class="row" style="margin-top:6px"><button class="btn" id="nl">${last?'All levels ✓':'Next level →'}</button><button class="btn alt" id="rl">Retry</button></div>`;
+ $('#nl').onclick=()=>last?levels():play(i+1);$('#rl').onclick=()=>play(i)}
+function mainMenu(em,name,blurb,tiles){const tot=LV.length*3,got=LV.reduce((a,l)=>a+(SAVE.stars[l.id]||0),0);
+ app.innerHTML=`<div class="card" style="text-align:center"><div style="font-size:54px">${em}</div><h2 style="margin:4px">${name}</h2><p style="color:var(--mut)">${blurb}</p><div class="bar"><i style="width:${got/tot*100}%"></i></div><p class="stars">${got}/${tot} ★</p></div><div class="grid" style="margin-top:12px" id="mg"></div>`;
+ tiles.forEach(([id,e,h,p,fn])=>{const d=document.createElement('div');d.className='card tile';d.id=id;d.innerHTML=`<div class="em">${e}</div><h3>${h}</h3><p>${p}</p>`;d.onclick=()=>{SFX.click();fn()};$('#mg').appendChild(d)})}
+function stdTiles(qtitle){return[['mQ','❓','Quiz',`10 questions. <span class="stars">${starStr(SAVE.stars.quiz||0)}</span>`,()=>runQuiz('quiz',qtitle,QS,0,menu)],['mT','⏱️','Timed challenge',`60 seconds! <span class="stars">${starStr(SAVE.stars.timed||0)}</span>`,()=>runQuiz('timed','Timed Challenge',QS,60,menu)]]}
+// ---- shared level kinds (g1r) ----
+function anim(c,fn){const g=c.getContext('2d'),t0=performance.now();(function f(n){if(!c.isConnected)return;g.clearRect(0,0,c.width,c.height);g.save();fn(g,(n-t0)/1000);g.restore();requestAnimationFrame(f)})(t0)}
+function lvHead(L,i){return `<div class="card"><div class="row"><h2 style="flex:1;margin:0">${L.em} ${i+1}. ${L.n}</h2><button class="btn alt" id="bk">Levels</button></div>`}
+const CVS='width:100%;max-width:620px;display:block;margin:8px auto 0;border-radius:14px;touch-action:manipulation';
+function mcLevel(L,i){let tries=0;app.innerHTML=lvHead(L,i)+`${L.svg||''}<h3>${L.q}</h3><div id="os"></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=levels;
+ shuffle(L.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.textContent=o;b.onclick=()=>{if(b.disabled||$('#nl'))return;tries++;if(o==L.ans){b.classList.add('ok');winLevel(i,tries<=1?3:tries<=2?2:1,`Correct!<div class="fact">💡 ${L.fact}</div>`)}else{b.classList.add('no');b.disabled=true;SFX.bad();flash(b,0);$('#fb').textContent='❌ Not quite — try again.'}};$('#os').appendChild(b)})}
+function orderLevel(L,i){let n=0,miss=0;app.innerHTML=lvHead(L,i)+`<p><b>${L.goal}</b></p><div id="ol" style="margin-bottom:8px"></div><div id="os"></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=levels;
+ shuffle(L.items).forEach(it=>{const b=document.createElement('button');b.className='btn opt';b.textContent=it;b.onclick=()=>{if(b.disabled)return;if(it==L.items[n]){n++;b.disabled=true;b.classList.add('ok');SFX.good();const d=document.createElement('div');d.className='card pop';d.style.margin='4px 0';d.style.padding='8px 12px';d.textContent=n+'. '+it;$('#ol').appendChild(d);if(n==L.items.length)winLevel(i,miss==0?3:miss<=1?2:1,`Perfect order!<div class="fact">💡 ${L.fact}</div>`)}else{miss++;SFX.bad();flash(b,0);$('#fb').textContent='❌ Not next — think again.'}};$('#os').appendChild(b)})}
+function matchLevel(L,i){let n=0,miss=0;const ord=shuffle(L.pairs);app.innerHTML=lvHead(L,i)+`<p><b>${L.goal}</b></p><div class="card" style="text-align:center;font-size:22px;background:#2c3770" id="mq"></div><div class="grid" id="os" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:8px"></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=levels;
+ const ask=()=>{$('#mq').innerHTML=`${ord[n][0]} <span style="color:var(--mut)">→ ?</span>`;flash($('#mq'),1)};ask();
+ shuffle(L.pairs).forEach(([a,r])=>{const b=document.createElement('button');b.className='btn opt';b.style.textAlign='center';b.textContent=r;b.onclick=()=>{if(b.disabled||n>=ord.length)return;if(r==ord[n][1]){b.disabled=true;b.classList.add('ok');SFX.good();b.textContent=r+' ✓ '+ord[n][0].split(' ')[0];n++;if(n==ord.length){$('#mq').textContent='All matched!';winLevel(i,miss==0?3:miss<=2?2:1,`Great matching!<div class="fact">💡 ${L.fact}</div>`)}else ask()}else{miss++;SFX.bad();flash(b,0);$('#fb').textContent='❌ Not a match — try another.'}};$('#os').appendChild(b)})}
+// ---- Rainforest Explorer ----
+const LAYERS=[['emergent','Emergent',0,50,'#5aa9e6'],['canopy','Canopy',50,110,'#2e8b3e'],['under','Understory',110,170,'#1f6b33'],['floor','Forest floor',170,240,'#4a3320']];
+const SP={harpy:['🦅','Harpy eagle','emergent'],kapok:['🌳','Kapok tree crown','emergent'],macaw:['🦜','Scarlet macaw','emergent'],morpho:['🦋','Blue morpho butterfly','under'],
+ toucan:['🐦','Toucan','canopy'],howler:['🐒','Howler monkey','canopy'],sloth:['🦥','Three-toed sloth','canopy'],brom:['🌺','Bromeliad','canopy'],orang:['🦧','Orangutan','canopy'],
+ frog:['🐸','Red-eyed tree frog','under'],boa:['🐍','Emerald tree boa','under'],helic:['🌿','Heliconia','under'],
+ jaguar:['🐆','Jaguar','floor'],tapir:['🐗','Tapir','floor'],ants:['🐜','Leafcutter ants','floor'],fungi:['🍄','Fungi','floor'],gorilla:['🦍','Gorilla','floor'],anteater:['🐾','Giant anteater','floor']};
+function drawForest(g,t,hi){LAYERS.forEach(([k,n,y0,y1,c])=>{g.fillStyle=c;g.fillRect(0,y0,440,y1-y0);if(hi==k){g.fillStyle='#fff3';g.fillRect(0,y0,440,y1-y0)}});
+ g.fillStyle='#5a3b1e';[[90,8],[300,14]].forEach(([x,w])=>g.fillRect(x,30,w,210));g.fillStyle='#3f8f3a';[[97,30,40],[307,25,45]].forEach(([x,y,r])=>{g.beginPath();g.arc(x+Math.sin(t)*1.5,y,r,0,7);g.fill()});
+ g.fillStyle='#2a7a35';for(let x=0;x<440;x+=38){g.beginPath();g.arc(x+19,70,28,0,7);g.fill()}g.fillStyle='#185c2a';for(let x=10;x<440;x+=55){g.beginPath();g.arc(x+20,140,18,0,7);g.fill()}
+ g.fillStyle='#7a5a32';[90,300].forEach(x=>{g.beginPath();g.moveTo(x-18,240);g.lineTo(x+4,190);g.lineTo(x+26,240);g.fill()});
+ LAYERS.forEach(([k,n,y0])=>{g.font='bold 12px sans-serif';const w=g.measureText(n).width;g.fillStyle='#000a';g.fillRect(3,y0+3,w+8,15);g.fillStyle='#fff';g.fillText(n,7,y0+14)});for(let k=0;k<12;k++){g.fillStyle='#8fd3ff66';const x=(k*37+t*15)%440,y=(t*120+k*50)%240;g.fillRect(x,y,1.5,7)}}
+function placeLevel(L,i){let sel=null,done={},miss=0;app.innerHTML=lvHead(L,i)+`<p><b>${L.goal||'Tap a living thing, then tap the layer where it lives.'}</b></p><div class="row" id="lb"></div><canvas id="cv" width="440" height="240" style="${CVS};cursor:pointer"></canvas><div class="fb" id="fb"></div></div>`;$('#bk').onclick=levels;
+ shuffle(L.sp).forEach(s=>{const b=document.createElement('button');b.className='btn alt';b.dataset.s=s;b.textContent=SP[s][0]+' '+SP[s][1];b.onclick=()=>{if(done[s])return;SFX.pick();sel=s;[...$('#lb').children].forEach(x=>x.classList.remove('sel'));b.classList.add('sel')};$('#lb').appendChild(b)});
+ const pos={};let hi=null;const c=$('#cv');anim(c,(g,t)=>{drawForest(g,t,hi);for(const s in done){const[x,y]=pos[s];g.font='22px serif';g.fillText(SP[s][0],x-11,y+8+Math.sin(t*3+x)*2)}});
+ c.addEventListener('click',e=>{const b=c.getBoundingClientRect(),x=(e.clientX-b.left)*440/b.width,y=(e.clientY-b.top)*240/b.height;const lay=LAYERS.find(l=>y>=l[2]&&y<l[3]);if(!lay)return;if(!sel){$('#fb').textContent='Pick a living thing first.';return}hi=lay[0];
+  if(SP[sel][2]==lay[0]){done[sel]=1;pos[sel]=[Math.max(30,Math.min(420,x)),Math.min(lay[3]-14,Math.max(lay[2]+14,y))];SFX.good();const bb=$('#lb').querySelector(`[data-s="${sel}"]`);bb.disabled=true;bb.classList.remove('sel');$('#fb').innerHTML='✅ '+SP[sel][1]+' lives in the '+lay[1].toLowerCase()+'.';sel=null;if(Object.keys(done).length==L.sp.length)winLevel(i,miss==0?3:miss<=2?2:1,`Everyone is home!<div class="fact">💡 ${L.fact}</div>`)}else{miss++;SFX.bad();$('#fb').textContent=`❌ The ${SP[sel][1].toLowerCase()} doesn't usually live in the ${lay[1].toLowerCase()}.`}})}
+// ---- land-use planner ----
+const OPT={clear:{n:'Clear-cut logging',e:'🪓',inc:6,f:-30,w:-25},cattle:{n:'Cattle ranch',e:'🐄',inc:5,f:-25,w:-20},palm:{n:'Palm oil plantation',e:'🌴',inc:6,f:-30,w:-30},
+ select:{n:'Careful (selective) logging',e:'🌲',inc:3,f:-5,w:-3},eco:{n:'Ecotourism lodge',e:'🛖',inc:3,f:0,w:2},agro:{n:'Shade-grown cocoa',e:'🍫',inc:2,f:-2,w:0},nuts:{n:'Brazil nut harvest',e:'🌰',inc:2,f:0,w:0},
+ reserve:{n:'Protected reserve',e:'🛡️',inc:0,f:5,w:15},replant:{n:'Replant native trees',e:'🌱',inc:-1,f:12,w:5},ranger:{n:'Anti-poaching rangers',e:'👮',inc:-1,f:0,w:10}};
+function planEval(L,ch){let inc=0,f=L.f0,w=L.w0;ch.forEach(k=>{inc+=OPT[k].inc;f+=OPT[k].f;w+=OPT[k].w});f=Math.min(100,Math.max(0,f));w=Math.min(100,Math.max(0,w+(f-L.f0)*.3));return{inc,f:Math.round(f),w:Math.round(w)}}
+function planOK(L,r){return r.inc>=L.inc&&r.f>=L.fmin&&r.w>=L.wmin}
+function solvePlan(L){const ks=L.opts,sols=[];for(let m=1;m<1<<ks.length;m++){const ch=ks.filter((k,j)=>m>>j&1);if(ch.length>L.slots)continue;if(planOK(L,planEval(L,ch)))sols.push(ch)}return sols}
+function planner(L,i){let ch=[],tries=0;const LL=L||{n:'Sandbox',f0:80,w0:60,inc:0,fmin:0,wmin:0,slots:5,opts:Object.keys(OPT)};
+ app.innerHTML=(L?lvHead(L,i):`<div class="card"><div class="row"><h2 style="flex:1;margin:0">🗺️ Forest Planner</h2><button class="btn alt" id="bk">Menu</button></div>`)+`<p><b>${L?L.goal:'Try any mix of land uses and see what happens to people, trees and wildlife.'}</b></p>
+ ${L?`<p>Goals: 💰 income ≥ <b>${L.inc}</b> · 🌳 forest ≥ <b>${L.fmin}%</b> · 🐾 wildlife ≥ <b>${L.wmin}</b> · pick up to <b>${L.slots}</b></p>`:''}<div class="row" id="ol"></div>
+ <div class="row" style="margin-top:8px"><span class="pill" id="st"></span><span style="flex:1"></span><button class="btn" id="go">Run 10 years ⏩</button></div><canvas id="cv" width="440" height="200" style="${CVS}"></canvas><div class="fb" id="fb"></div></div>`;$('#bk').onclick=L?levels:menu;
+ let shown=planEval(LL,[]),anim0=0;const upd=()=>{$('#st').textContent=`Chosen ${ch.length}/${LL.slots}`};upd();
+ LL.opts.forEach(k=>{const m=OPT[k],b=document.createElement('button');b.className='btn alt';b.id='o_'+k;b.innerHTML=`${m.e} ${m.n}<br><small>💰${m.inc>=0?'+':''}${m.inc} 🌳${m.f>=0?'+':''}${m.f}</small>`;b.onclick=()=>{if(ch.includes(k))ch=ch.filter(x=>x!=k);else{if(ch.length>=LL.slots){SFX.bad();$('#fb').textContent='No more room — remove one first.';return}ch.push(k)}SFX.pick();b.classList.toggle('sel',ch.includes(k));upd()};$('#ol').appendChild(b)});
+ let tgt=shown,cur={...shown};anim($('#cv'),(g,t)=>{for(const q of['f','w','inc'])cur[q]+=(tgt[q]-cur[q])*.05;g.fillStyle='#8fd3ff';g.fillRect(0,0,440,200);g.fillStyle='#7a5a32';g.fillRect(0,150,440,50);
+  const nT=Math.round(cur.f/100*22);for(let k=0;k<22;k++){const x=10+k*19.5;if(k<nT){g.fillStyle='#5a3b1e';g.fillRect(x+6,100,5,50);g.fillStyle='#2e8b3e';g.beginPath();g.arc(x+8,95,13,0,7);g.fill()}else{g.fillStyle='#5a3b1e';g.fillRect(x+4,142,9,8)}}
+  g.font='18px serif';const nA=Math.round(cur.w/100*8);for(let k=0;k<nA;k++)g.fillText(['🦜','🐒','🐆','🦥','🐸','🦋','🐍','🦅'][k],20+k*52,40+Math.sin(t*2+k)*6);
+  g.fillStyle='#000a';g.fillRect(0,170,440,30);g.fillStyle='#fff';g.font='bold 13px sans-serif';g.fillText(`💰 income ${cur.inc.toFixed(0)}   🌳 forest ${cur.f.toFixed(0)}%   🐾 wildlife ${cur.w.toFixed(0)}`,10,190)});
+ $('#go').onclick=()=>{tries++;const r=planEval(LL,ch);tgt=r;if(!L){SFX.good();$('#fb').textContent=r.f<40?'⚠️ Most of the forest is gone — rain and animals will disappear too.':'🌳 Nice balance!';return}
+  const miss=[];if(r.inc<L.inc)miss.push('💰 the village needs more income');if(r.f<L.fmin)miss.push('🌳 too much forest was lost');if(r.w<L.wmin)miss.push('🐾 wildlife is struggling');
+  if(!miss.length)winLevel(i,tries<=1?3:tries<=2?2:1,`People and forest both thrive!<div class="fact">💡 ${L.fact}</div>`);else{SFX.bad();$('#fb').textContent='❌ Not yet: '+miss.join(', ')+'.'}}}
+const LV=[
+{n:'Four layers',em:'🌳',k:'place',sp:['harpy','toucan','frog','jaguar'],fact:'The emergent layer has the tallest trees, poking up to 60 m or more above the forest floor.'},
+{n:'Which layer?',em:'☀️',k:'mc',q:'Which layer is the darkest, with only about 2% of sunlight reaching it?',ans:'the forest floor',opts:['the forest floor','the emergent layer','the canopy','the understory'],fact:'So little light reaches the floor that few plants grow there. Fallen leaves rot fast in the warm, wet air.'},
+{n:'Canopy crowd',em:'🐒',k:'place',sp:['howler','sloth','brom','kapok','tapir','helic'],fact:'The canopy is like a living roof. Most rainforest animals live up here, where there is the most food.'},
+{n:'Super adaptations',em:'🧬',k:'match',pairs:[['🍃 Drip-tip leaves','shed heavy rain quickly'],['🌳 Buttress roots','prop up tall trees in thin soil'],['🐒 Prehensile tail','grips branches like a hand'],['🐸 Bright colours','warn predators of poison'],['🦥 Green algae fur','camouflage in the leaves']],goal:'Match each adaptation to how it helps.',fact:'Sloths move so slowly that algae grows in their fur, helping them blend in.'},
+{n:'Save the village',em:'🏘️',k:'plan',f0:90,w0:70,inc:6,fmin:80,wmin:60,slots:3,opts:['clear','cattle','select','eco','nuts','reserve'],goal:'The village needs income, but keep most of the forest.',fact:'Sustainable choices like ecotourism and nut harvesting earn money while the forest stays standing.'},
+{n:'Around the world',em:'🌍',k:'place',sp:['orang','gorilla','macaw','morpho','fungi','boa'],goal:'Rainforests are on many continents! Place each living thing in its layer.',fact:'Orangutans live in Borneo and Sumatra, gorillas in Africa, and macaws in Central and South America.'},
+{n:'Rain machine',em:'🌧️',k:'mc',q:'Why are rainforests so important for the whole planet?',ans:'they store carbon and make rain',opts:['they store carbon and make rain','they keep the oceans salty','they cause earthquakes','they make the Moon bright'],fact:'Trees release water vapour that forms clouds and rain. Trees also lock up carbon, which slows climate change.'},
+{n:'Biggest threat',em:'🪓',k:'mc',q:'Clearing forest for what is the biggest cause of Amazon deforestation?',ans:'cattle ranching',opts:['cattle ranching','building schools','picking fruit','camping'],fact:'Large areas are cleared for cattle pasture, plus farms for crops like soy. Palm oil is a big driver in Southeast Asia.'},
+{n:'Floor detectives',em:'🍄',k:'place',sp:['ants','fungi','anteater','jaguar','frog','harpy','sloth'],fact:'Leafcutter ants don\'t eat leaves — they use them to grow a fungus garden underground, and eat the fungus!'},
+{n:'Bring it back',em:'🌱',k:'plan',f0:55,w0:35,inc:3,fmin:70,wmin:55,slots:4,opts:['palm','select','eco','agro','reserve','replant','ranger'],goal:'This forest was damaged. Restore it while the town still earns money.',fact:'Replanting native trees and protecting land lets damaged forests slowly recover.'},
+{n:'Rainforest records',em:'🏆',k:'mc',q:'Rainforests cover only about 6% of Earth\'s land. About how many of all land plant and animal species live there?',ans:'about half',opts:['about half','about 1%','none','about 10 animals'],fact:'Scientists think more than half of the world\'s land species live in tropical rainforests, many still undiscovered.'},
+{n:'Who eats whom?',em:'🍃',k:'order',items:['☀️ Sun','🍃 Leaves','🐛 Caterpillar','🐸 Tree frog','🐍 Emerald tree boa','🦅 Harpy eagle'],goal:'Build a food chain from the energy source up to the top predator.',fact:'Harpy eagles are top predators that catch monkeys and sloths from the canopy.'},
+{n:'Tough choices',em:'⚖️',k:'plan',f0:80,w0:55,inc:8,fmin:75,wmin:65,slots:5,opts:['clear','cattle','palm','select','eco','agro','nuts','reserve','replant','ranger'],goal:'A big town needs lots of income. Can you meet every goal?',fact:'Mixing many small sustainable incomes often beats one big destructive one in the long run.'},
+{n:'Master explorer',em:'🧭',k:'place',sp:['harpy','kapok','macaw','toucan','howler','orang','brom','frog','boa','helic','morpho','jaguar','tapir','ants','gorilla'],goal:'Place all 15 living things in the right layer!',fact:'Each layer is like a different neighbourhood with its own light, temperature and residents.'}];
+LV.forEach((l,i)=>l.id='f'+i);
+const LEARN=[
+{h:'🌍 What is a rainforest?',p:'A <b>tropical rainforest</b> is a hot, wet forest near the equator that gets over 2 metres of rain a year. The biggest is the <b>Amazon</b> in South America; others are in Central Africa (the Congo) and Southeast Asia.',d:(g,t)=>{g.scale(1,200/240);drawForest(g,t)}},
+{h:'🦅 Emergent layer',p:'The tallest trees, like the <b>kapok</b>, poke up above everything — up to about 60 m. It is sunny, windy and hot. <b>Harpy eagles</b> nest here and macaws fly over.',d:(g,t)=>{g.scale(1,200/240);drawForest(g,t,'emergent')}},
+{h:'🐒 Canopy',p:'The <b>canopy</b> is a thick roof of leaves 30–45 m up. It has the most food and most animals: <b>toucans</b>, <b>howler monkeys</b>, <b>sloths</b> and <b>bromeliads</b> — plants that grow on branches and hold little pools of water.',d:(g,t)=>{g.scale(1,200/240);drawForest(g,t,'canopy')}},
+{h:'🐸 Understory',p:'Below the canopy it is dim and humid. Plants here have big leaves to catch the little light. <b>Red-eyed tree frogs</b>, <b>emerald tree boas</b> and <b>blue morpho butterflies</b> live here.',d:(g,t)=>{g.scale(1,200/240);drawForest(g,t,'under')}},
+{h:'🍄 Forest floor',p:'Only about 2% of sunlight reaches the dark floor. <b>Fungi</b>, <b>insects</b> and <b>leafcutter ants</b> break down dead leaves fast. Big animals like <b>jaguars</b>, <b>tapirs</b> and <b>gorillas</b> roam here.',d:(g,t)=>{g.scale(1,200/240);drawForest(g,t,'floor')}},
+{h:'🧬 Adaptations',p:'<b>Drip-tip leaves</b> shed heavy rain. <b>Buttress roots</b> prop up giant trees in thin soil. Monkeys use <b>prehensile tails</b> to grip. <b>Poison dart frogs</b> are brightly coloured to warn predators.',d:(g,t)=>{['🍃','🌳','🐒','🐸','🦥'].forEach((e,k)=>{g.font='40px serif';g.fillText(e,30+k*85,110+Math.sin(t*2+k)*10)})}},
+{h:'🪓 Deforestation',p:'Forests are cut down for <b>cattle ranches</b>, <b>farms</b> (like soy and palm oil), <b>logging</b>, mining and roads. This destroys animal homes, releases carbon that warms the planet, and can reduce rainfall.',d:(g,t)=>{for(let k=0;k<10;k++){const x=20+k*42,gone=k<(t*2)%11;g.fillStyle='#5a3b1e';g.fillRect(x+6,gone?160:100,6,gone?10:70);if(!gone){g.fillStyle='#2e8b3e';g.beginPath();g.arc(x+9,95,16,0,7);g.fill()}}g.font='30px serif';g.fillText('🪓',(t*84)%440,140)}},
+{h:'🌱 Conservation',p:'We can help by <b>protecting reserves</b>, <b>replanting</b> native trees, supporting <b>Indigenous peoples</b> who look after their lands, <b>ecotourism</b>, and buying products with <b>sustainable</b> labels like FSC wood or certified cocoa.',d:(g,t)=>{for(let k=0;k<10;k++){const s=Math.min(1,Math.max(0,t*.6-k*.1));g.fillStyle='#5a3b1e';g.fillRect(25+k*42,170-60*s,6,60*s);g.fillStyle='#3ddc84';g.beginPath();g.arc(28+k*42,170-60*s,16*s+1,0,7);g.fill()}}}];
+const QS=[
+{q:'The tallest rainforest layer is the…',a:'emergent layer',opts:['emergent layer','canopy','understory','forest floor']},
+{q:'Where do most rainforest animals live?',a:'the canopy',opts:['the canopy','the forest floor','underground','the emergent layer']},
+{q:'The darkest layer is the…',a:'forest floor',opts:['forest floor','canopy','emergent layer','understory']},
+{q:'The world\'s largest rainforest is the…',a:'Amazon',opts:['Amazon','Sahara','Congo','Black Forest']},
+{q:'Harpy eagles nest in the…',a:'emergent layer',opts:['emergent layer','forest floor','understory','river']},
+{q:'Drip-tip leaves help plants…',a:'shed heavy rain',opts:['shed heavy rain','catch insects','store sand','grow fruit']},
+{q:'Buttress roots help trees…',a:'stay upright in thin soil',opts:['stay upright in thin soil','drink sea water','walk','make seeds']},
+{q:'Poison dart frogs are bright to…',a:'warn predators',opts:['warn predators','hide','stay warm','attract rain']},
+{q:'A prehensile tail can…',a:'grip branches',opts:['grip branches','sting','glow','swim fast']},
+{q:'Why does algae grow on sloths?',a:'they move very slowly',opts:['they move very slowly','they live underwater','they eat algae','they are cold']},
+{q:'Leafcutter ants use leaves to…',a:'grow fungus to eat',opts:['grow fungus to eat','build boats','make honey','wear as hats']},
+{q:'Bromeliads are plants that…',a:'grow on branches and hold water',opts:['grow on branches and hold water','live in deserts','eat monkeys','grow underground']},
+{q:'Rainforests are found mostly near the…',a:'equator',opts:['equator','North Pole','South Pole','Moon']},
+{q:'Which is a big cause of Amazon deforestation?',a:'cattle ranching',opts:['cattle ranching','penguins','skiing','fishing']},
+{q:'Cutting down rainforest releases…',a:'carbon dioxide',opts:['carbon dioxide','fresh oxygen only','gold','snow']},
+{q:'Which choice helps the forest AND earns money?',a:'ecotourism',opts:['ecotourism','clear-cut logging','burning','palm oil clearing']},
+{q:'Orangutans live in rainforests of…',a:'Borneo and Sumatra',opts:['Borneo and Sumatra','Brazil','Canada','Antarctica']},
+{q:'Rainforests get more than about how much rain a year?',a:'2 metres',opts:['2 metres','2 centimetres','2 millimetres','none']},
+{q:'Jaguars mostly hunt on the…',a:'forest floor',opts:['forest floor','emergent treetops','clouds','ocean']},
+{q:'The canopy is about how high up?',a:'30–45 m',opts:['30–45 m','1–2 m','500 m','5 km']}];
+function menu(){mainMenu('🌳🦜🐸','Rainforest Explorer','Climb from the dark forest floor to the sunny emergent layer, meet amazing animals and make choices that save the forest!',[['mL','📖','Learn','Layers, animals, adaptations, threats.',()=>learnPage(0)],['mB','🗺️','Forest Planner','Try land-use choices freely.',()=>planner(null)],['mP','🧩','Levels',`${LV.length} jungle challenges.`,()=>levels()],...stdTiles('Rainforest Quiz')])}
+function levels(){levelGrid('🧩 Rainforest challenges')}
+function play(i){const L=LV[i];({place:placeLevel,plan:planner,order:orderLevel,match:matchLevel,mc:mcLevel})[L.k](L,i)}
+menu();
+</script></body></html>

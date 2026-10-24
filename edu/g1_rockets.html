@@ -1,0 +1,178 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>Rocket Mission</title>
+<style>
+:root{--bg:#0f1530;--card:#1b2350;--ink:#f4f6ff;--mut:#9aa6d8;--acc:#7ad0ff;--good:#3ddc84;--bad:#ff5c7a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:"Trebuchet MS",system-ui,sans-serif;background:radial-gradient(circle at 20% 0%,#2a3480,var(--bg) 60%);color:var(--ink);min-height:100vh;user-select:none;-webkit-user-select:none;overflow-x:hidden}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0008;position:sticky;top:0;z-index:5;backdrop-filter:blur(4px)}
+header a{color:var(--ink);text-decoration:none;background:#fff1;padding:6px 12px;border-radius:20px;font-weight:bold}
+header h1{font-size:20px;margin:0;flex:1;color:var(--acc);text-shadow:0 2px 0 #0006}
+.pill{background:#fff1;padding:5px 10px;border-radius:14px;font-size:14px}
+main{max-width:980px;margin:0 auto;padding:14px}
+.btn{font:inherit;font-weight:bold;border:0;border-radius:14px;padding:10px 16px;background:var(--acc);color:#111;cursor:pointer;box-shadow:0 4px 0 #0007;transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #0007}.btn.alt{background:#2c3770;color:var(--ink)}.btn.sel{outline:3px solid #fff}
+.btn:disabled{opacity:.4}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border-radius:18px;padding:14px;box-shadow:0 6px 18px #0005;border:2px solid #ffffff10}
+.tile{cursor:pointer;transition:transform .15s}.tile:hover{transform:translateY(-4px) rotate(-1deg)}
+.tile .em{font-size:40px}.tile h3{margin:6px 0}.tile p{margin:0;color:var(--mut);font-size:14px}
+.stars{color:#ffd34d;letter-spacing:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fb{min-height:28px;font-weight:bold;font-size:18px;margin:8px 0}
+.opt{display:block;width:100%;margin:6px 0;text-align:left;background:#2c3770;color:var(--ink)}
+.opt.ok{background:var(--good);color:#111}.opt.no{background:var(--bad)}
+.pop{animation:pop .35s}@keyframes pop{50%{transform:scale(1.12)}}
+.shake{animation:shk .35s}@keyframes shk{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:9}
+.bar{height:10px;background:#fff2;border-radius:6px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--acc);transition:width .3s}
+.fact{background:#ffd34d22;border-left:4px solid #ffd34d;padding:8px 12px;border-radius:8px;margin:8px 0}
+svg text{font-family:inherit}
+</style></head><body>
+<header><a href="./index.html">← Learning Lab</a><h1>Rocket Mission</h1><span class="pill" id="starTotal">⭐ 0</span><button class="btn alt" id="snd" style="padding:6px 10px">🔊</button></header>
+<main id="app"></main><canvas id="fx"></canvas>
+<script>
+// ---- shared helpers ----
+const $=s=>document.querySelector(s),app=$('#app');
+const SAVEKEY='g1_rocketMission';let SAVE=JSON.parse(localStorage.getItem(SAVEKEY)||'{}');SAVE.stars=SAVE.stars||{};SAVE.best=SAVE.best||{};
+function save(){localStorage.setItem(SAVEKEY,JSON.stringify(SAVE));$('#starTotal').textContent='⭐ '+Object.values(SAVE.stars).reduce((a,b)=>a+b,0)}
+let AC=null,muted=!!SAVE.muted;$('#snd').textContent=muted?'🔇':'🔊';
+$('#snd').onclick=()=>{muted=!muted;SAVE.muted=muted;save();$('#snd').textContent=muted?'🔇':'🔊'};
+function tone(f,d=.12,type='sine',v=.15,slide=0,delay=0){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.02)}catch(e){}}
+function noise(d=.4,v=.2,lp=800){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const n=AC.sampleRate*d,b=AC.createBuffer(1,n,AC.sampleRate),c=b.getChannelData(0);for(let i=0;i<n;i++)c[i]=(Math.random()*2-1)*(1-i/n);const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();f.type='lowpass';f.frequency.value=lp;g.gain.value=v;s.buffer=b;s.connect(f);f.connect(g);g.connect(AC.destination);s.start()}catch(e){}}
+const SFX={click:()=>tone(660,.05,'square',.06),good:()=>{tone(523,.1,'triangle');tone(784,.15,'triangle',.15,0,.08)},bad:()=>tone(200,.25,'sawtooth',.08,-80),
+win:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.15,0,i*.1)),pick:()=>tone(440,.06,'sine',.1,200),drop:()=>tone(330,.08,'sine',.12,-100)};
+// confetti
+const cv=$('#fx'),cx=cv.getContext('2d');let fxp=[];function rs(){cv.width=innerWidth;cv.height=innerHeight}rs();addEventListener('resize',rs);
+function confetti(x=innerWidth/2,y=innerHeight/3,n=60){for(let i=0;i<n;i++)fxp.push({x,y,vx:(Math.random()-.5)*10,vy:-Math.random()*9-2,c:`hsl(${Math.random()*360},90%,60%)`,l:90});}
+(function loop(){cx.clearRect(0,0,cv.width,cv.height);fxp=fxp.filter(p=>p.l-->0);for(const p of fxp){p.vy+=.3;p.x+=p.vx;p.y+=p.vy;cx.fillStyle=p.c;cx.fillRect(p.x,p.y,7,7)}requestAnimationFrame(loop)})();
+function flash(el,ok){el.classList.remove('pop','shake');void el.offsetWidth;el.classList.add(ok?'pop':'shake')}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function award(id,n){if((SAVE.stars[id]||0)<n)SAVE.stars[id]=n;save()}
+// generic timed quiz: qs=[{q,opts,a,fact}] ; a is correct string
+let __QZ=0;function runQuiz(id,title,qs,secs,back){let i=0,score=0,t=secs,timer;const tok=++__QZ;clearInterval(window.__qt);const alive=()=>tok===__QZ&&!!document.getElementById("qz"+tok);qs=shuffle(qs).slice(0,10);
+ function end(){clearInterval(timer);if(!alive())return;const st=score>=9?3:score>=7?2:score>=5?1:0;award(id,st);if(score>(SAVE.best[id]||0))SAVE.best[id]=score;save();if(st)SFX.win(),confetti();
+  app.innerHTML=`<div class="card" style="text-align:center"><h2>${title} — done!</h2><div style="font-size:48px" class="stars">${starStr(st)}</div><p>You got <b>${score}/${qs.length}</b>. Best: ${SAVE.best[id]}</p><div class="row" style="justify-content:center"><button class="btn" id="ag">Play again</button><button class="btn alt" id="bk">Back</button></div></div>`;$('#ag').onclick=()=>runQuiz(id,title,qs,secs,back);$('#bk').onclick=back}
+ function show(){if(i>=qs.length)return end();const q=qs[i];app.innerHTML=`<div class="card" id="qz${tok}"><div class="row"><b style="flex:1">${title} · Q${i+1}/${qs.length}</b>${secs?`<span class="pill">⏱ <span id="tm">${t}</span>s</span>`:''}<span class="pill">✅ ${score}</span></div><div class="bar" style="margin:8px 0"><i style="width:${i/qs.length*100}%"></i></div>${q.svg||''}<h2>${q.q}</h2><div id="os"></div><div class="fb" id="fb"></div></div>`;
+  shuffle(q.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.innerHTML=o;b.onclick=()=>{if(b.parentNode.dataset.done)return;b.parentNode.dataset.done=1;const ok=o==q.a;if(ok){score++;SFX.good();confetti(innerWidth/2,innerHeight/2,20)}else SFX.bad();[...$('#os').children].forEach(x=>{if(x.innerHTML==q.a)x.classList.add('ok')});if(!ok)b.classList.add('no');flash(b,ok);$('#fb').innerHTML=(ok?'✅ Correct! ':'❌ Not quite. ')+(q.fact?`<div class="fact">💡 ${q.fact}</div>`:'');setTimeout(()=>{if(!alive())return;i++;show()},q.fact?2200:1100)};$('#os').appendChild(b)})}
+ if(secs)window.__qt=timer=setInterval(()=>{if(!alive()){clearInterval(timer);return}t--;const e=$('#tm');if(e)e.textContent=t;if(t<=5&&t>0)tone(880,.05);if(t<=0)end()},1000);show()}
+save();
+</script>
+<script>
+// common menu/learn/levels helpers for g1 games
+function learnPage(i){const m=LEARN[i];app.innerHTML=`<div class="card"><div class="row"><b style="flex:1">📖 ${i+1} / ${LEARN.length}</b><button class="btn alt" id="bk">Menu</button></div><div style="text-align:center"><canvas id="lc" width="440" height="200" style="max-width:100%;background:#05081a;border-radius:14px"></canvas></div><h2>${m.h}</h2><p style="line-height:1.5">${m.p}</p>
+ <div class="row"><button class="btn alt" id="pv" ${i?'':'disabled'}>← Prev</button><span style="flex:1"></span><button class="btn" id="nx">${i<LEARN.length-1?'Next →':'Done ✓'}</button></div></div>`;
+ $('#bk').onclick=menu;$('#pv').onclick=()=>learnPage(i-1);$('#nx').onclick=()=>{SFX.click();if(i<LEARN.length-1)learnPage(i+1);else{SAVE.learned=1;save();SFX.win();confetti();menu()}};
+ const c=$('#lc'),g=c.getContext('2d'),t0=performance.now();(function f(n){if(!c.isConnected)return;g.clearRect(0,0,440,200);g.save();m.d(g,(n-t0)/1000);g.restore();requestAnimationFrame(f)})(t0)}
+function unlocked(i){return i==0||(SAVE.stars[LV[i-1].id]||0)>0}
+function levelGrid(title){app.innerHTML=`<div class="card"><div class="row"><h2 style="flex:1;margin:0">${title}</h2><button class="btn alt" id="bk">Menu</button></div><p style="color:var(--mut)">Earn a star to unlock the next level.</p><div class="grid" id="lg"></div></div>`;$('#bk').onclick=menu;
+ LV.forEach((l,i)=>{const d=document.createElement('div'),u=unlocked(i);d.className='card tile lv'+i;d.style.opacity=u?1:.45;d.innerHTML=`<div class="em">${u?l.em||'🎯':'🔒'}</div><h3>${i+1}. ${l.n}</h3><p class="stars">${starStr(SAVE.stars[l.id]||0)}</p>`;d.onclick=()=>{if(!u){SFX.bad();flash(d,0);return}SFX.click();play(i)};$('#lg').appendChild(d)})}
+function winLevel(i,st,msg){award(LV[i].id,st);SFX.win();confetti();const last=i>=LV.length-1;
+ $('#fb').innerHTML=`🎉 ${msg} <span class="stars">${starStr(st)}</span><div class="row" style="margin-top:6px"><button class="btn" id="nl">${last?'All levels ✓':'Next level →'}</button><button class="btn alt" id="rl">Retry</button></div>`;
+ $('#nl').onclick=()=>last?levels():play(i+1);$('#rl').onclick=()=>play(i)}
+function mainMenu(em,name,blurb,tiles){const tot=LV.length*3,got=LV.reduce((a,l)=>a+(SAVE.stars[l.id]||0),0);
+ app.innerHTML=`<div class="card" style="text-align:center"><div style="font-size:54px">${em}</div><h2 style="margin:4px">${name}</h2><p style="color:var(--mut)">${blurb}</p><div class="bar"><i style="width:${got/tot*100}%"></i></div><p class="stars">${got}/${tot} ★</p></div><div class="grid" style="margin-top:12px" id="mg"></div>`;
+ tiles.forEach(([id,e,h,p,fn])=>{const d=document.createElement('div');d.className='card tile';d.id=id;d.innerHTML=`<div class="em">${e}</div><h3>${h}</h3><p>${p}</p>`;d.onclick=()=>{SFX.click();fn()};$('#mg').appendChild(d)})}
+function stdTiles(qtitle){return[['mQ','❓','Quiz',`10 questions. <span class="stars">${starStr(SAVE.stars.quiz||0)}</span>`,()=>runQuiz('quiz',qtitle,QS,0,menu)],['mT','⏱️','Timed challenge',`60 seconds! <span class="stars">${starStr(SAVE.stars.timed||0)}</span>`,()=>runQuiz('timed','Timed Challenge',QS,60,menu)]]}
+// ---- shared level kinds (g1r) ----
+function anim(c,fn){const g=c.getContext('2d'),t0=performance.now();(function f(n){if(!c.isConnected)return;g.clearRect(0,0,c.width,c.height);g.save();fn(g,(n-t0)/1000);g.restore();requestAnimationFrame(f)})(t0)}
+function lvHead(L,i){return `<div class="card"><div class="row"><h2 style="flex:1;margin:0">${L.em} ${i+1}. ${L.n}</h2><button class="btn alt" id="bk">Levels</button></div>`}
+const CVS='width:100%;max-width:620px;display:block;margin:8px auto 0;border-radius:14px;touch-action:manipulation';
+function mcLevel(L,i){let tries=0;app.innerHTML=lvHead(L,i)+`${L.svg||''}<h3>${L.q}</h3><div id="os"></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=levels;
+ shuffle(L.opts).forEach(o=>{const b=document.createElement('button');b.className='btn opt';b.textContent=o;b.onclick=()=>{if(b.disabled||$('#nl'))return;tries++;if(o==L.ans){b.classList.add('ok');winLevel(i,tries<=1?3:tries<=2?2:1,`Correct!<div class="fact">💡 ${L.fact}</div>`)}else{b.classList.add('no');b.disabled=true;SFX.bad();flash(b,0);$('#fb').textContent='❌ Not quite — try again.'}};$('#os').appendChild(b)})}
+function orderLevel(L,i){let n=0,miss=0;app.innerHTML=lvHead(L,i)+`<p><b>${L.goal}</b></p><div id="ol" style="margin-bottom:8px"></div><div id="os"></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=levels;
+ shuffle(L.items).forEach(it=>{const b=document.createElement('button');b.className='btn opt';b.textContent=it;b.onclick=()=>{if(b.disabled)return;if(it==L.items[n]){n++;b.disabled=true;b.classList.add('ok');SFX.good();const d=document.createElement('div');d.className='card pop';d.style.margin='4px 0';d.style.padding='8px 12px';d.textContent=n+'. '+it;$('#ol').appendChild(d);if(n==L.items.length)winLevel(i,miss==0?3:miss<=1?2:1,`Perfect order!<div class="fact">💡 ${L.fact}</div>`)}else{miss++;SFX.bad();flash(b,0);$('#fb').textContent='❌ Not next — think again.'}};$('#os').appendChild(b)})}
+function matchLevel(L,i){let n=0,miss=0;const ord=shuffle(L.pairs);app.innerHTML=lvHead(L,i)+`<p><b>${L.goal}</b></p><div class="card" style="text-align:center;font-size:22px;background:#2c3770" id="mq"></div><div class="grid" id="os" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:8px"></div><div class="fb" id="fb"></div></div>`;$('#bk').onclick=levels;
+ const ask=()=>{$('#mq').innerHTML=`${ord[n][0]} <span style="color:var(--mut)">→ ?</span>`;flash($('#mq'),1)};ask();
+ shuffle(L.pairs).forEach(([a,r])=>{const b=document.createElement('button');b.className='btn opt';b.style.textAlign='center';b.textContent=r;b.onclick=()=>{if(b.disabled||n>=ord.length)return;if(r==ord[n][1]){b.disabled=true;b.classList.add('ok');SFX.good();b.textContent=r+' ✓ '+ord[n][0].split(' ')[0];n++;if(n==ord.length){$('#mq').textContent='All matched!';winLevel(i,miss==0?3:miss<=2?2:1,`Great matching!<div class="fact">💡 ${L.fact}</div>`)}else ask()}else{miss++;SFX.bad();flash(b,0);$('#fb').textContent='❌ Not a match — try another.'}};$('#os').appendChild(b)})}
+// ---- Rocket Mission ----
+const G0=9.81,ENG=[{n:'Booster engine',T:1500,isp:290,m:2},{n:'Vacuum engine',T:400,isp:340,m:1}],TANK=0.08;
+const GOALS={space:{n:'Reach space (100 km)',dv:2000,e:'🌌'},orbit:{n:'Low Earth orbit',dv:9400,e:'🛰️'},moon:{n:'Fly to the Moon',dv:12600,e:'🌕'}};
+function rocketCalc(d,pay){let above=pay;const st=[];for(let s=d.length-1;s>=0;s--){const E=ENG[s?1:0],F=d[s].F,n=d[s].n,m0=above+F*(1+TANK)+n*E.m,mf=m0-F;st[s]={m0,mf,dv:E.isp*G0*Math.log(m0/mf),twr:n*E.T/(m0*G0)};above=m0}
+ return{st,mass:above,dv:st.reduce((a,b)=>a+b.dv,0),twr:st[0].twr}}
+function rocketOK(L,d){const r=rocketCalc(d,L.pay);if(r.twr<1.2)return[0,'twr',r];if(r.st.slice(1).some(s=>s.twr<.4))return[0,'upper',r];if(L.maxM&&r.mass>L.maxM)return[0,'mass',r];if(r.dv<GOALS[L.goal].dv)return[0,'dv',r];return[1,'ok',r]}
+function solveRocket(L){const sols=[];const Fs=[];for(let f=5;f<=500;f+=5)Fs.push(f);const ns=[1,2,3,4,5,6,7,8,9];const ss=L.stages?[L.stages]:[1,2,3];
+ for(const S of ss){const rec=(d)=>{if(sols.length>50)return;if(d.length==S){if(rocketOK(L,d)[0])sols.push(JSON.parse(JSON.stringify(d)));return}for(const F of Fs.filter((x,j)=>j%(S>2?3:1)==0))for(const n of ns.filter(x=>x<=(d.length?3:9)))rec([...d,{F,n}])};rec([])}return sols}
+function drawLaunch(g,t,st,info){const W=440,H=240;g.fillStyle='#05081a';g.fillRect(0,0,W,H);for(let k=0;k<50;k++){g.fillStyle='#fff8';g.fillRect((k*97)%W,(k*53)%H,1.5,1.5)}
+ const ex=110,ey=150,R=60;g.fillStyle='#1e6fd9';g.beginPath();g.arc(ex,ey,R,0,7);g.fill();g.fillStyle='#3ddc84';g.beginPath();g.arc(ex-15,ey-15,22,0,7);g.arc(ex+20,ey+20,15,0,7);g.fill();g.font='26px serif';g.fillText('🌕',380,50);
+ if(!info){g.save();g.translate(ex,ey-R-8);drawStack(g,st,0,1);g.restore();return}
+ const p=Math.min(1,t/4),frac=info.frac,goal=info.goal,ok=info.ok;let x,y,ang;
+ // path param u in 0..1 of achieved
+ const u=p*Math.min(1,frac);let fall=0;
+ if(goal=='moon'&&ok){const a=-Math.PI/2+u*1.2;const rr=R+10+u*u*290;x=ex+Math.cos(a)*rr*1.05;y=ey+Math.sin(a)*rr*.62;}else{const alt=Math.min(1,frac)*(goal=='space'?40:goal=='orbit'?28:28);const a=-Math.PI/2+(goal=='space'?u*.4:u*Math.PI*2*(ok?1.3:.6));const rr=R+8+alt*Math.min(1,u*3);x=ex+Math.cos(a)*rr;y=ey+Math.sin(a)*rr}
+ if(!ok&&p>=1){fall=Math.min(1,(t-4)/1.5)}if(fall){const dx=x-ex,dy=y-ey,d=Math.hypot(dx,dy),nd=d-(d-R)*fall;x=ex+dx/d*nd;y=ey+dy/d*nd}
+ if(ok&&goal=='orbit'&&p>=1){const a=-Math.PI/2+Math.PI*2*1.3+(t-4)*1.2;x=ex+Math.cos(a)*(R+36);y=ey+Math.sin(a)*(R+36)}
+ g.strokeStyle='#ffd34d55';g.setLineDash([3,4]);g.beginPath();g.arc(ex,ey,R+36,0,7);g.stroke();g.setLineDash([]);
+ const stagesLeft=st.length-info.cuts.filter(c=>u>=c).length;g.save();g.translate(x,y);g.rotate(Math.atan2(y-ey,x-ex)+Math.PI/2+(goal!='space'&&u>.1?Math.PI/2*Math.min(1,u*3):0));drawStack(g,st.slice(st.length-Math.max(1,stagesLeft)),p<1&&!fall,.6);g.restore();
+ if(fall>=1){g.font='22px serif';g.fillText('💥',x-10,y+8)}
+ g.fillStyle='#fff';g.font='bold 12px sans-serif';g.fillText(`Δv used ${Math.round(u*info.dv)} m/s`,250,220);}
+function drawStack(g,st,flame,sc){g.scale(sc,sc);let y=0;const segs=st.slice().reverse();g.fillStyle='#ddd';g.beginPath();g.moveTo(-7,-y-0);g.lineTo(0,-y-16);g.lineTo(7,-y);g.fill();y=0;
+ segs.forEach((s,k)=>{const h=8+Math.sqrt(s.F)*2.2,w=10+k*3;g.fillStyle=['#e8e8f0','#c9d3ff','#ffd2d2'][k%3];g.fillRect(-w/2,y,w,h);g.fillStyle='#555';g.fillRect(-w/2,y+h-3,w,3);y+=h});
+ if(flame){g.fillStyle='#ffb02e';g.beginPath();g.moveTo(-6,y);g.lineTo(0,y+14+Math.random()*10);g.lineTo(6,y);g.fill()}}
+function designer(L,i){let S=L&&L.stages?L.stages:2,d=[{F:60,n:2},{F:20,n:1},{F:10,n:1}],tries=0,busy=0;const LL=L||{pay:2,goal:'orbit'};
+ app.innerHTML=(L?lvHead(L,i):`<div class="card"><div class="row"><h2 style="flex:1;margin:0">🛠️ Rocket Workshop</h2><button class="btn alt" id="bk">Menu</button></div>`)+`<p><b>${L?L.desc:'Design any rocket, pick a goal and launch.'}</b></p>
+ <p>${GOALS[LL.goal].e} Goal: <b>${GOALS[LL.goal].n}</b> (needs ${GOALS[LL.goal].dv.toLocaleString()} m/s of Δv) · 📦 payload <b>${LL.pay} t</b>${LL.maxM?` · ⚖️ launch mass ≤ <b>${LL.maxM} t</b>`:''}</p>
+ ${L?'':`<div class="row" id="gl">${Object.entries(GOALS).map(([k,g])=>`<button class="btn alt${k==LL.goal?' sel':''}" data-g="${k}">${g.e} ${g.n}</button>`).join('')}</div>`}
+ ${L&&L.stages?'':`<div class="row" style="margin:6px 0">Stages: ${[1,2,3].map(n=>`<button class="btn alt" id="s${n}">${n}</button>`).join('')}</div>`}
+ <div id="sr"></div><div class="row" style="margin-top:6px"><span class="pill" id="sum"></span><span style="flex:1"></span><button class="btn" id="go">Launch 🚀</button></div>
+ <canvas id="cv" width="440" height="240" style="${CVS}"></canvas><div class="fb" id="fb"></div></div>`;$('#bk').onclick=L?levels:menu;
+ if(!L)[...$('#gl').children].forEach(b=>b.onclick=()=>{LL.goal=b.dataset.g;designer(null)});
+ let info=null,t0=0,now=0;const rows=()=>{$('#sr').innerHTML=d.slice(0,S).map((s,k)=>`<div class="card" style="padding:8px;margin:4px 0;background:#2c3770"><b>Stage ${k+1}</b> <small>(${ENG[k?1:0].n}: ${ENG[k?1:0].T} kN, Isp ${ENG[k?1:0].isp} s)</small><div class="row">⛽ Fuel <input type="range" id="f${k}" min="5" max="500" step="5" value="${s.F}" style="flex:1;min-width:120px"><span id="fv${k}">${s.F} t</span> 🔥 Engines <input type="range" id="n${k}" min="1" max="${k?3:9}" value="${Math.min(s.n,k?3:9)}" style="width:80px"><span id="nv${k}">${s.n}</span></div><small id="sv${k}"></small></div>`).join('');
+  for(let k=0;k<S;k++){$('#f'+k).oninput=e=>{d[k].F=+e.target.value;upd()};$('#n'+k).oninput=e=>{d[k].n=+e.target.value;upd()}}
+  [1,2,3].forEach(n=>{const b=$('#s'+n);if(b){b.classList.toggle('sel',n==S);b.onclick=()=>{if(busy)return;S=n;SFX.click();rows()}}});upd()};
+ const upd=()=>{info=null;for(let k=0;k<3;k++)d[k].n=Math.min(d[k].n,k?3:9);const r=rocketCalc(d.slice(0,S),LL.pay);for(let k=0;k<S;k++){$('#fv'+k).textContent=d[k].F+' t';$('#nv'+k).textContent=d[k].n;$('#sv'+k).textContent=`Δv ${Math.round(r.st[k].dv)} m/s · TWR ${r.st[k].twr.toFixed(2)}`}
+  const need=GOALS[LL.goal].dv;$('#sum').innerHTML=`⚖️ ${r.mass.toFixed(1)} t · TWR <b style="color:${r.twr>=1.2?'#3ddc84':'#ff5c7a'}">${r.twr.toFixed(2)}</b> · Δv <b style="color:${r.dv>=need?'#3ddc84':'#ffd34d'}">${Math.round(r.dv)}</b>/${need}`};rows();
+ anim($('#cv'),(g,t)=>{now=t;const st=d.slice(0,S);drawLaunch(g,t-t0,st,info)});
+ $('#go').onclick=()=>{if(busy)return;tries++;const res=rocketOK(LL,d.slice(0,S)),r=res[2];busy=1;$('#go').disabled=true;
+  if(res[1]=='twr'||res[1]=='mass'){busy=0;$('#go').disabled=false;SFX.bad();$('#fb').innerHTML=res[1]=='twr'?`❌ Liftoff TWR is ${r.twr.toFixed(2)}. Thrust must beat weight — aim for at least 1.2! Add engines or cut weight.`:`❌ Launch mass ${r.mass.toFixed(1)} t is over the ${LL.maxM} t limit.`;return}
+  let acc=0;const cuts=r.st.slice(0,-1).map(s=>(acc+=s.dv)/r.dv);info={frac:r.dv/GOALS[LL.goal].dv,goal:LL.goal,ok:res[0],dv:r.dv,cuts};if(res[1]=='upper')info.frac=Math.min(info.frac,.5),info.ok=0;t0=now;noise(3.5,.15,500);tone(80,3.5,'sawtooth',.05,60);
+  const myc=$('#cv');setTimeout(()=>{if(!myc.isConnected)return;busy=0;$('#go').disabled=false;if(info.ok){$('#fb').innerHTML=`✅ ${GOALS[LL.goal].e} Mission success! Δv ${Math.round(r.dv)} m/s.`;if(L)winLevel(i,tries<=1?3:tries<=3?2:1,`Mission success!<div class="fact">💡 ${L.fact}</div>`);else{SFX.win();confetti()}}else{SFX.bad();$('#fb').innerHTML=res[1]=='upper'?'❌ An upper stage is too weak (TWR under 0.4) to keep climbing. Give it more engines or less fuel.':`❌ Out of fuel! Only ${Math.round(r.dv)} of ${GOALS[LL.goal].dv} m/s. ${S<2&&LL.goal!='space'?'Try adding a stage — dropping empty tanks makes you lighter!':'Add fuel or stages, or cut weight.'}`}},4300)}}
+const LV=[
+{n:'First hop',em:'🌌',k:'rocket',goal:'space',pay:1,stages:1,desc:'A small science payload must reach space, 100 km up. One stage is enough!',fact:'The edge of space is often set at 100 km — the Kármán line. Going up there is easy compared with staying in orbit.'},
+{n:'Push and pull',em:'⚖️',k:'mc',q:'A rocket weighs 1,000 kN and its engines push with 900 kN. What happens at launch?',ans:'it stays on the pad',opts:['it stays on the pad','it flies to orbit','it goes sideways','it flies twice as fast'],fact:'Thrust-to-weight ratio (TWR) = thrust ÷ weight. It must be above 1 to lift off; real rockets use about 1.2–1.5.'},
+{n:'Heavy lift-off',em:'🔥',k:'rocket',goal:'space',pay:5,stages:1,maxM:20,desc:'A heavier payload, and launch mass is limited. Balance engines and fuel!',fact:'More engines add thrust but also weight. Engineers balance them carefully.'},
+{n:'Newton\'s law',em:'🍎',k:'mc',q:'Which law explains how a rocket moves?',ans:'every action has an equal and opposite reaction',opts:['every action has an equal and opposite reaction','what goes up never comes down','heavy things fall faster','air pushes rockets from below'],fact:'Newton\'s third law: the rocket pushes hot gas down, so the gas pushes the rocket up. It works even in empty space.'},
+{n:'Space race',em:'📜',k:'order',items:['🛰️ Sputnik 1, first satellite (1957)','👨‍🚀 Yuri Gagarin, first human in space (1961)','🌕 Apollo 11 Moon landing (1969)','🚀 First Space Shuttle flight (1981)','🏗️ First ISS module launched (1998)'],goal:'Put these space milestones in order, earliest first.',fact:'The Soviet Union launched Sputnik 1 on 4 October 1957, starting the Space Race with the USA.'},
+{n:'Make it to orbit',em:'🛰️',k:'rocket',goal:'orbit',pay:2,desc:'Put a 2 t satellite in orbit. Can one stage do it? (Hint: try staging!)',fact:'To stay in low orbit you must fly sideways at about 7.8 km/s. Fighting gravity and air on the way up makes the total nearer 9.4 km/s.'},
+{n:'Why stages?',em:'🧩',k:'mc',q:'Why do rockets drop empty stages?',ans:'so the rest has less dead weight to push',opts:['so the rest has less dead weight to push','to make it look cool','to steer','because they get too hot'],fact:'Every empty tank you drop means the remaining fuel accelerates a lighter rocket — that\'s why almost all orbital rockets have 2 or 3 stages.'},
+{n:'Apollo 11',em:'👨‍🚀',k:'match',pairs:[['🧑‍🚀 Neil Armstrong','first person on the Moon'],['🧑‍🚀 Buzz Aldrin','second person on the Moon'],['🧑‍🚀 Michael Collins','orbited in the command module'],['🚀 Saturn V','the giant rocket'],['🦅 Eagle','the lunar module']],goal:'Match each Apollo 11 name to its role.',fact:'On 20 July 1969, Armstrong stepped out and said: "That\'s one small step for man, one giant leap for mankind."'},
+{n:'Big satellite',em:'📡',k:'rocket',goal:'orbit',pay:8,maxM:400,desc:'An 8 t space telescope needs orbit, and the launch pad can hold at most 400 t.',fact:'The Hubble Space Telescope weighs about 11 tonnes and was carried to orbit by Space Shuttle Discovery in 1990.'},
+{n:'Living in space',em:'🏗️',k:'mc',q:'Since 2000, the International Space Station has…',ans:'always had astronauts on board',opts:['always had astronauts on board','been on the Moon','been empty','stayed on the ground'],fact:'The ISS orbits about 400 km up, circling Earth about every 90 minutes — around 16 times a day.'},
+{n:'To the Moon!',em:'🌕',k:'rocket',goal:'moon',pay:3,desc:'Send a 3 t lunar probe to the Moon. You\'ll need a lot of Δv!',fact:'Apollo\'s Saturn V had three stages. It stood 111 m tall and weighed about 2,900 tonnes at launch.'},
+{n:'Rocket science',em:'🧪',k:'mc',q:'Rocket engines carry their own oxidiser (like liquid oxygen). Why?',ans:'there is no air to burn fuel with in space',opts:['there is no air to burn fuel with in space','to keep astronauts cool','to make it lighter','oxygen is the payload'],fact:'Saturn V\'s first stage burned kerosene with liquid oxygen; its upper stages burned liquid hydrogen with liquid oxygen.'},
+{n:'Moon master',em:'🏆',k:'rocket',goal:'moon',pay:4,stages:3,maxM:800,desc:'The final mission: 4 t to the Moon with three stages, under 800 t at launch.',fact:'Reusable rockets like SpaceX\'s Falcon 9 now land their first stage so it can fly again, cutting the cost of reaching space.'}];
+LV.forEach((l,i)=>l.id='k'+i);
+const LEARN=[
+{h:'🚀 How rockets work',p:'A rocket burns fuel to make hot gas and blasts it out the bottom. By <b>Newton\'s third law</b>, pushing gas down pushes the rocket up. It doesn\'t need air to push against, so it works in space.',d:(g,t)=>{g.fillStyle='#05081a';g.fillRect(0,0,440,200);g.save();g.translate(220,140-((t*30)%100));drawStack(g,[{F:60},{F:20}],1,1.4);g.restore()}},
+{h:'⚖️ Thrust-to-weight',p:'<b>Thrust</b> is the engine\'s push. <b>Weight</b> is gravity\'s pull. If thrust ÷ weight (<b>TWR</b>) is less than 1, the rocket sits on the pad. Real rockets lift off at around 1.2–1.5.',d:(g,t)=>{g.fillStyle='#05081a';g.fillRect(0,0,440,200);g.fillStyle='#3ddc84';g.fillRect(150,30,30,70+Math.sin(t)*20);g.fillStyle='#ff5c7a';g.fillRect(260,100,30,70);g.fillStyle='#fff';g.font='14px sans-serif';g.fillText('thrust ↑',140,20);g.fillText('weight ↓',250,190)}},
+{h:'⛽ Δv: your fuel budget',p:'<b>Δv</b> ("delta-v") is how much a rocket can change its speed. It depends on engine efficiency (<b>Isp</b>) and how much of the rocket is fuel — the <b>rocket equation</b>: Δv = Isp × 9.81 × ln(full mass ÷ empty mass). Space needs about 2 km/s, orbit about 9.4 km/s, the Moon about 12.6 km/s.',d:(g,t)=>{g.fillStyle='#05081a';g.fillRect(0,0,440,200);Object.values(GOALS).forEach((G,k)=>{const w=G.dv/12600*360*Math.min(1,t/2);g.fillStyle=['#7ad0ff','#ffd34d','#ff9f43'][k];g.fillRect(40,40+k*45,w,30);g.fillStyle='#fff';g.font='13px sans-serif';g.fillText(G.e+' '+G.dv+' m/s',50,60+k*45)})}},
+{h:'🧩 Staging',p:'A one-stage rocket carries heavy empty tanks all the way. <b>Staging</b> drops each empty stage, so the rest is lighter and goes faster. That\'s why orbital rockets have 2 or 3 stages.',d:(g,t)=>{g.fillStyle='#05081a';g.fillRect(0,0,440,200);const p=(t%3)/3;g.save();g.translate(220,150-p*100);drawStack(g,[{F:20}],1,1.4);g.restore();g.save();g.translate(220,170-p*40+p*p*80);g.rotate(p);g.fillStyle='#e8e8f0';g.fillRect(-10,0,20,30);g.restore()}},
+{h:'🛰️ Orbit',p:'Orbiting means falling around Earth while moving sideways so fast (about <b>7.8 km/s</b> in low orbit) that you keep missing the ground. Rockets go up, then tilt over to build sideways speed.',d:(g,t)=>{g.fillStyle='#05081a';g.fillRect(0,0,440,200);g.fillStyle='#1e6fd9';g.beginPath();g.arc(220,100,50,0,7);g.fill();g.font='20px serif';g.fillText('🛰️',220+Math.cos(t)*80-10,100+Math.sin(t)*80+6)}},
+{h:'🛰️ Sputnik and the Space Race',p:'On <b>4 October 1957</b>, the Soviet Union launched <b>Sputnik 1</b>, the first artificial satellite. In <b>1961</b> <b>Yuri Gagarin</b> became the first human in space. The USA and USSR raced to do bigger things in space.',d:(g,t)=>{g.fillStyle='#05081a';g.fillRect(0,0,440,200);g.fillStyle='#ccc';const x=220+Math.cos(t)*120,y=100+Math.sin(t)*50;g.beginPath();g.arc(x,y,8,0,7);g.fill();g.strokeStyle='#ccc';for(let k=0;k<4;k++){g.beginPath();g.moveTo(x,y);g.lineTo(x-20-k*3,y+10-k*6);g.stroke()}}},
+{h:'🌕 Apollo 11',p:'On <b>20 July 1969</b>, <b>Neil Armstrong</b> and <b>Buzz Aldrin</b> landed on the Moon in the lunar module <b>Eagle</b>, while <b>Michael Collins</b> orbited above. They launched on the huge three-stage <b>Saturn V</b>. Twelve people walked on the Moon between 1969 and 1972.',d:(g,t)=>{g.fillStyle='#05081a';g.fillRect(0,0,440,200);g.fillStyle='#bbb';g.beginPath();g.arc(220,330,200,0,7);g.fill();g.font='30px serif';g.fillText('🧑‍🚀',200,140+Math.abs(Math.sin(t*2))*-15);g.fillText('🌍',60,50)}},
+{h:'🏗️ The ISS and beyond',p:'The <b>International Space Station</b>\'s first module launched in <b>1998</b>, and astronauts have lived there non-stop since November 2000. It is built by 15 countries, including Canada, whose <b>Canadarm2</b> robot arm helps build and fix it. Today reusable rockets land and fly again.',d:(g,t)=>{g.fillStyle='#05081a';g.fillRect(0,0,440,200);g.save();g.translate(220,100);g.rotate(Math.sin(t*.5)*.1);g.fillStyle='#ccc';g.fillRect(-80,-4,160,8);g.fillStyle='#2a6fdb';[-80,-50,40,70].forEach(x=>g.fillRect(x,-40,22,80));g.fillStyle='#eee';g.fillRect(-20,-10,40,20);g.restore()}}];
+const QS=[
+{q:'Which law of motion explains rockets?',a:'Newton\'s third law',opts:['Newton\'s third law','Newton\'s first law','the law of gravity only','Ohm\'s law']},
+{q:'To lift off, thrust-to-weight must be…',a:'more than 1',opts:['more than 1','exactly 0','less than 1','negative']},
+{q:'Why do rockets use stages?',a:'to drop empty weight',opts:['to drop empty weight','to look taller','to slow down','to carry more air']},
+{q:'The first artificial satellite was…',a:'Sputnik 1',opts:['Sputnik 1','Apollo 11','Hubble','the ISS']},
+{q:'Sputnik 1 launched in…',a:'1957',opts:['1957','1969','1998','1903']},
+{q:'The first human in space was…',a:'Yuri Gagarin',opts:['Yuri Gagarin','Neil Armstrong','Buzz Aldrin','Chris Hadfield']},
+{q:'Apollo 11 landed on the Moon in…',a:'1969',opts:['1969','1957','1981','2000']},
+{q:'The first person to walk on the Moon was…',a:'Neil Armstrong',opts:['Neil Armstrong','Buzz Aldrin','Michael Collins','Yuri Gagarin']},
+{q:'Apollo 11 launched on a…',a:'Saturn V',opts:['Saturn V','Space Shuttle','Falcon 9','Sputnik']},
+{q:'The Apollo 11 lunar module was called…',a:'Eagle',opts:['Eagle','Columbia','Falcon','Hawk']},
+{q:'The ISS orbits about how high?',a:'400 km',opts:['400 km','40 km','4,000 km','384,000 km']},
+{q:'About how long does the ISS take to circle Earth?',a:'90 minutes',opts:['90 minutes','1 day','1 week','1 year']},
+{q:'Canada\'s robot arm on the ISS is…',a:'Canadarm2',opts:['Canadarm2','Robo-Maple','Moonbot','Hubble']},
+{q:'Speed needed to stay in low orbit is about…',a:'7.8 km/s',opts:['7.8 km/s','100 km/h','1 m/s','300,000 km/s']},
+{q:'Δv (delta-v) measures…',a:'how much a rocket can change its speed',opts:['how much a rocket can change its speed','how tall it is','its colour','how loud it is']},
+{q:'Why carry liquid oxygen?',a:'no air in space to burn fuel',opts:['no air in space to burn fuel','for astronauts to drink','to cool the paint','it is lighter than air']},
+{q:'The edge of space (Kármán line) is about…',a:'100 km up',opts:['100 km up','10 km up','1,000 km up','1 km up']},
+{q:'A rocket that is mostly fuel will have…',a:'more Δv',opts:['more Δv','less Δv','no thrust','zero mass']},
+{q:'Reusable rockets save money by…',a:'landing so they can fly again',opts:['landing so they can fly again','having no engines','being made of paper','never launching']},
+{q:'How many people have walked on the Moon?',a:'12',opts:['12','1','100','0']}];
+function menu(){mainMenu('🚀🛰️🌕','Rocket Mission','Design rockets with stages, fuel and engines, fight gravity with the rocket equation, and relive Sputnik, Apollo 11 and the ISS!',[['mL','📖','Learn','Thrust, Δv, staging, orbits and history.',()=>learnPage(0)],['mB','🛠️','Rocket Workshop','Build anything and launch.',()=>designer(null)],['mP','🧩','Levels',`${LV.length} missions.`,()=>levels()],...stdTiles('Rocket Quiz')])}
+function levels(){levelGrid('🧩 Missions')}
+function play(i){const L=LV[i];({rocket:designer,order:orderLevel,match:matchLevel,mc:mcLevel})[L.k](L,i)}
+menu();
+</script></body></html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Code Bot – Learning Zone</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#101a2e;color:#eef4ff;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none}
+#top{position:fixed;left:0;right:0;top:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;background:linear-gradient(#2b3f7a,#1a2850);border-bottom:2px solid #5ee0c0;z-index:20;gap:4px}
+#top a{color:#e8fff8;text-decoration:none;font:600 14px system-ui,sans-serif;padding:6px 8px;border-radius:8px;background:#34509a;white-space:nowrap}
+#mid{font:600 15px system-ui,sans-serif;color:#e8fff8;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.tb{background:#34509a;color:#e8fff8;border:1px solid #5ee0c0;border-radius:8px;font:600 14px system-ui,sans-serif;padding:6px 9px;cursor:pointer}
+#app{position:fixed;left:0;right:0;top:44px;bottom:0;display:flex}
+#boardW{flex:1.2;position:relative;min-width:0;min-height:0}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+#info{position:absolute;left:8px;right:8px;top:6px;font-size:14px;color:#d9f7ee;text-shadow:0 1px 2px #000;pointer-events:none}
+#toast{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);background:#000c;border:2px solid #ffcf5a;color:#fff;padding:7px 12px;border-radius:12px;font-weight:700;font-size:14px;display:none;text-align:center;max-width:94%}
+#panel{width:min(430px,48%);display:flex;flex-direction:column;background:#17243f;border-left:2px solid #2d4372;min-height:0}
+@media (max-aspect-ratio:1/1){#app{flex-direction:column}#boardW{flex:none;height:38%}#panel{width:100%;flex:1;border-left:none;border-top:2px solid #2d4372}}
+#pal{display:flex;flex-wrap:wrap;gap:5px;padding:6px;border-bottom:1px solid #2d4372}
+.pb{border:none;border-radius:10px;padding:7px 9px;font:700 14px system-ui,sans-serif;cursor:pointer;color:#fff;box-shadow:0 3px 0 #0006}
+.pb:active{transform:translateY(2px)}
+.cF{background:#2f9e5b}.cL,.cR{background:#3779d6}.cloop{background:#d9882b}.cuntil{background:#c0503f}.cif{background:#8f55d6}.cP{background:#d14d9a}
+#prog{flex:1;overflow:auto;padding:6px;min-height:0}
+.sec{border:2px dashed #3d5a92;border-radius:10px;padding:5px;margin-bottom:6px}
+.sec.tgt,.body.tgt{border-color:#5ee0c0;border-style:solid;background:#5ee0c014}
+.sech{font-size:13px;font-weight:700;color:#9fc3ff;margin-bottom:4px;cursor:pointer}
+.blk{border-radius:9px;margin:3px 0;padding:5px 7px;font-weight:700;font-size:14px;display:flex;flex-direction:column;color:#fff;box-shadow:0 2px 0 #0005}
+.bh{display:flex;align-items:center;gap:6px;cursor:pointer}
+.bh .lab{flex:1}
+.x{background:#0004;border:none;color:#fff;border-radius:6px;font-size:13px;padding:2px 7px;cursor:pointer}
+.cyc{background:#fff3;border:1px solid #fff8;color:#fff;border-radius:6px;font:700 13px system-ui;padding:2px 7px;cursor:pointer}
+.body{margin:4px 0 2px 10px;padding:4px;border:2px dashed #ffffff55;border-radius:8px;min-height:26px;background:#0002}
+.blk.run{outline:3px solid #ffe45a;outline-offset:1px;filter:brightness(1.25)}
+.empty{font-size:12px;color:#ffffffaa;font-weight:500}
+#ctl{display:flex;gap:5px;padding:6px;border-top:1px solid #2d4372;flex-wrap:wrap;justify-content:center}
+#cnt{font-size:13px;color:#bfe;align-self:center;margin-right:auto}
+.ov{position:fixed;inset:44px 0 0 0;display:none;flex-direction:column;align-items:center;justify-content:safe center;text-align:center;padding:12px;z-index:30;background:radial-gradient(#22406fee,#070d18f5);overflow:auto}
+.ov h1{font-size:clamp(38px,9vw,80px);margin:0;color:#fff;text-shadow:0 4px 0 #2fae8a,0 0 26px #5ee0c088}
+.ov h2{margin:4px 0 6px;color:#e8fff8;font-size:clamp(22px,5.5vw,36px)}
+.ov p{max-width:620px;color:#dbe7fb;margin:5px 0;font-size:15px;line-height:1.4}
+.big{font:800 17px system-ui,sans-serif;background:linear-gradient(#9ff5d9,#2fbf92);color:#04281d;border:none;border-radius:12px;padding:9px 20px;margin:5px;cursor:pointer;box-shadow:0 4px 0 #136650}
+.big.alt{background:linear-gradient(#cfe3ff,#7ea7e6);color:#0d2142;box-shadow:0 4px 0 #3a5d96}
+.big:active{transform:translateY(2px)}
+.row{display:flex;flex-wrap:wrap;justify-content:center}
+.world{margin:6px 0;max-width:640px}
+.world h3{margin:6px 0 4px;color:#ffe9a8;font-size:17px}
+.lv{width:54px;height:54px;margin:3px;border-radius:12px;border:none;font:800 18px system-ui;cursor:pointer;background:#34509a;color:#fff;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 3px 0 #0007}
+.lv small{font-size:10px;color:#ffd84a;letter-spacing:-1px}
+.lv:disabled{opacity:.35;cursor:default}
+.stars{font-size:46px;letter-spacing:6px;color:#ffd84a;text-shadow:0 3px 0 #8a5d00}
+kbd{background:#fff2;border-radius:4px;padding:0 5px}
+</style></head><body>
+<div id="top"><a id="menu" href="../index.html">← Menu</a><a id="lz" href="index.html">🎓 Learning Zone</a><div id="mid">Code Bot</div><div><button class="tb" id="lvB">☰</button> <button class="tb" id="muteB">🔊</button></div></div>
+<div id="app">
+ <div id="boardW"><canvas id="cv"></canvas><div id="info"></div><div id="toast"></div></div>
+ <div id="panel">
+  <div id="pal"></div>
+  <div id="prog"></div>
+  <div id="ctl"><span id="cnt"></span><button class="pb cF" id="runB">▶ Run</button><button class="pb cL" id="stepB">⏭ Step</button><button class="pb cuntil" id="resetB">⟲ Reset</button><button class="pb cP" id="hintB">💡 Hint</button><button class="pb cloop" id="spdB">🐢</button><button class="pb" style="background:#555" id="clrB">🗑</button></div>
+ </div>
+</div>
+<div class="ov" id="title"><h1>🤖 CODE BOT</h1><p>Teach your robot to think! Snap command blocks together to guide Bit to the 🏁 flag and grab every 💎 gem. Use as few blocks as you can for 3 stars.</p>
+<div class="row"><button class="big" id="playB">▶ Play</button><button class="big alt" id="howB">❔ How to play</button></div><p id="tInfo"></p></div>
+<div class="ov" id="howO"><h2>How to play</h2>
+<p>Tap a block at the top to add it to your program. New blocks go into the box with the <b style="color:#5ee0c0">green outline</b>. Tap a 🔁 Repeat, ❓ If or ⭐ Function box to put blocks inside it.</p>
+<p>Tap ✕ to remove a block. Tap the number on a Repeat to change it, and tap the question on an If to change what Bit checks.</p>
+<p><b>▶ Run</b> plays your whole program. <b>⏭ Step</b> runs one command at a time, and the block running now glows yellow.</p>
+<p>Keys: <kbd>↑</kbd> forward, <kbd>←</kbd>/<kbd>→</kbd> turn, <kbd>Backspace</kbd> remove last, <kbd>Enter</kbd> run, <kbd>S</kbd> step, <kbd>H</kbd> hint, <kbd>M</kbd> mute.</p>
+<button class="big" id="howBack">Got it</button></div>
+<div class="ov" id="lvO"><h2>Choose a level</h2><div id="lvG"></div><button class="big alt" id="lvBack">Title</button></div>
+<div class="ov" id="winO"><h2 id="winH">Level complete!</h2><div class="stars" id="winS"></div><p id="winP"></p><div class="row"><button class="big alt" id="againB">⟲ Try again</button><button class="big" id="nextB">Next ▶</button><button class="big alt" id="winLvB">Levels</button></div></div>
+<script>
+const $=id=>document.getElementById(id);
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const SK='codebotSave';
+let save=Object.assign({muted:false,stars:{},progs:{},fast:false},LS.get(SK,null)||{});
+function store(){LS.set(SK,save)}
+// ---------- audio ----------
+let AC=null,muted=!!save.muted;
+function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){AC=null}}if(AC&&AC.state==='suspended')AC.resume();return AC}
+function tone(f,d,type,vol,slide,delay){if(muted)return;const a=ac();if(!a)return;const t=a.currentTime+(delay||0);const o=a.createOscillator(),g=a.createGain();o.type=type||'sine';o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(slide,t+d);g.gain.setValueAtTime(vol||.1,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g).connect(a.destination);o.start(t);o.stop(t+d+.05)}
+const SFX={click(){tone(660,.06,'square',.05)},add(){tone(520,.07,'triangle',.09,780)},del(){tone(300,.09,'triangle',.08,180)},
+step(){tone(440,.05,'square',.035)},turn(){tone(350,.06,'triangle',.05,420)},test(){tone(900,.04,'sine',.04)},
+gem(){tone(988,.1,'sine',.12);tone(1319,.18,'sine',.12,null,.08)},crash(){tone(160,.25,'sawtooth',.12,60)},
+win(){[523,659,784,1047].forEach((f,i)=>tone(f,.22,'triangle',.12,null,i*.11))},fail(){tone(330,.2,'triangle',.1,220)}};
+function setMute(m){muted=m;save.muted=m;store();$('muteB').textContent=m?'🔇':'🔊'}
+$('muteB').onclick=()=>{setMute(!muted);if(!muted)SFX.click()};setMute(muted);
+// ---------- levels ----------
+// ref notation: F L R, n( ), U( ) until goal, ?W( ) if wall ahead, ?L( ) if path left, ?R( ) if path right, {..} function body, P call
+const T1=['F','L','R'],T2=[...T1,'loop'],T3=[...T2,'P'],T4=[...T3,'until','if'];
+const WORLDS=['🌱 Boot Camp – moves','🔁 Loop Lagoon – repeat','⭐ Function Factory','🧠 Sensor Maze – if & until'];
+const LV=[
+{w:0,n:'First Steps',ref:'F F F',g:[],h:'Tap ⬆ Forward three times, then press ▶ Run.'},
+{w:0,n:'Corner',ref:'F F R F F',g:[2],h:'Go forward 2, turn right ↻, then forward 2. Turning does not move Bit, it only changes the way Bit faces.'},
+{w:0,n:'Left & Right',ref:'F L F F R F F',g:[3],h:'Look at which way Bit\'s eye points. "Left" and "right" are from Bit\'s point of view.'},
+{w:0,n:'Gem Hunt',ref:'R F F L F F F',g:[2,5],h:'Bit starts facing right. Turn first, so it faces down the path.'},
+{w:0,n:'U-Turn',ref:'F F R F F R F F',g:[2,4],h:'Two right turns make a U shape.'},
+{w:0,n:'Staircase',ref:'F L F R F L F R F',g:[2,4],h:'Forward, left, forward, right… do you see the pattern?'},
+{w:0,n:'Hook',ref:'F F F L F F L F F R F',g:[3,7],h:'Trace the path with your finger first, then build it block by block.'},
+{w:0,n:'Long Road',ref:'R F F L F F L F F R F F',g:[2,5,7],h:'Use ⏭ Step to test your program one block at a time.'},
+{w:1,n:'Repeat!',ref:'6(F)',g:[3],h:'Add a 🔁 Repeat block, then (with it outlined green) add one ⬆ Forward inside. Tap the number until it says 6.'},
+{w:1,n:'Two Loops',ref:'4(F) R 4(F)',g:[4,8],h:'Use one Repeat for each straight line, with a turn in between.'},
+{w:1,n:'Loop Stairs',ref:'4(F L F R)',g:[2,4,6,8],h:'The steps repeat 4 times: forward, left, forward, right.'},
+{w:1,n:'Horseshoe',ref:'2(3(F) R) 3(F)',g:[3,6,9],h:'A Repeat can go inside another Repeat! "Forward 3 then turn right" happens twice.'},
+{w:1,n:'Big Steps',ref:'3(F F L F F R)',g:[4,8,12],h:'Find the piece of path that repeats, then loop it.'},
+{w:1,n:'Downhill',ref:'4(F R F L)',g:[2,4,6,8],h:'Like the stairs, but going down: forward, right, forward, left.'},
+{w:1,n:'Square Lap',ref:'2(5(F) L) 2(F)',g:[5,10,12],h:'Two long sides with left turns, then a short bit to finish.'},
+{w:1,n:'Giant Stairs',ref:'3(2(F) R 2(F) L)',g:[2,6,10],h:'Inside a Repeat: Repeat 2 forward, right, Repeat 2 forward, left.'},
+{w:2,n:'Meet Functions',ref:'{F F R} P L P',g:[2,4],h:'Put "forward, forward, right" in the ⭐ Function box, then use ⭐ Call wherever you need it.'},
+{w:2,n:'Reuse It',ref:'{F L F R} P P F F P P',g:[2,4,8,10],h:'The function is one stair step. Call it, walk straight, then call it again.'},
+{w:2,n:'Three Hops',ref:'{3(F)} P R P L P',g:[3,6,9],h:'A function can hold a Repeat. Make it "Repeat 3: forward".'},
+{w:2,n:'Zig Zag',ref:'{F F L F F R} P F P',g:[4,5,9],h:'The function is a zig. Call it, step once, call it again.'},
+{w:2,n:'Loop a Function',ref:'{2(F) R 2(F) L} 3(P)',g:[4,8,12],h:'You can call a function inside a Repeat.'},
+{w:2,n:'Mix & Match',ref:'{F R F L} 2(P) 3(F) 2(P)',g:[4,7,11],h:'Function: forward, right, forward, left. Then: call twice, forward 3, call twice.'},
+{w:3,n:'Until the Flag',ref:'U(F)',mv:'FFFFFFFF',g:[4],h:'🏁 "Repeat until goal" keeps going until Bit reaches the flag. Put one Forward inside it.'},
+{w:3,n:'Wall Ahead?',ref:'U(?W(R) F)',mv:'FFFFFFRFFFFFFRFFFFFFRFFFFRFFFFRFF',g:[6,12,18],h:'Inside "Repeat until goal": If wall ahead → turn right. Then move forward.'},
+{w:3,n:'Left Spiral',ref:'U(?W(L) F)',mv:'FFFFFFLFFFFFFLFFFFFFLFFFFLFFFFLFF',g:[6,12,18],h:'Same idea as the last level, but this spiral turns left.'},
+{w:3,n:'Snake Path',ref:'U(?L(L) ?W(R) F)',mv:'FFFRFFFLFFFLFFFRFFRFFLFF',g:[3,9,15],h:'Check two things: If path left → turn left. If wall ahead → turn right. Then forward.'},
+{w:3,n:'Winding Way',ref:'U(?L(L) ?W(R) F)',mv:'FFLFFRFFFRFFLFFLFFFRFFFFRFF',g:[2,7,12,19],h:'The same smart program from the last level can solve any path like this!'},
+{w:3,n:'Right Hand',ref:'U(?R(R) ?W(L) F)',mv:'FFRFFLFFFLFFRFFRFFFLFFFF',g:[4,10,16],h:'Now check the right side: If path right → turn right. If wall ahead → turn left.'},
+{w:3,n:'Long Maze',ref:'U(?L(L) ?R(R) F)',mv:'FFFFLFFRFFRFFFFLFFLFFFFRFFRFFLFFF',g:[4,10,16,22],h:'If path left → left. If path right → right. Then forward.'},
+{w:3,n:'Smart Function',ref:'{?L(L) ?W(R) F} U(P)',mv:'FRFFLFFFLFFRFFFRFFLFFLFF',g:[3,8,12,15],h:'Put the thinking blocks in a function, then call it inside "Repeat until goal".'},
+{w:3,n:'Deep Maze',ref:'U(?R(R) ?W(L) F)',mv:'FFFRFFLFFLFFFRFFFRFFLFFFLFFRFF',g:[3,9,15,20],h:'Follow the walls! Check right first, then the wall ahead.'},
+{w:3,n:'Master Coder',ref:'U(?L(L) ?R(R) F)',mv:'RFFFLFFFLFFRFFFRFFFFLFFLFFRFFFRFFF',g:[3,9,14,19,23],h:'You are a pro now. Any sensor program that follows the path will work!'}
+];
+const DX=[1,0,-1,0],DY=[0,1,0,-1];// 0=east 1=south 2=west 3=north
+let UID=1;
+function parse(s){const tk=s.replace(/([(){}])/g,' $1 ').trim().split(/\s+/);let i=0,fn=[];
+ function list(end){const out=[];while(i<tk.length&&tk[i]!==end){const t=tk[i++];
+  if(t==='{'){fn=list('}');i++;continue}
+  if(/^\d+$/.test(t)){i++;const b={t:'loop',n:+t,body:list(')'),id:UID++};i++;out.push(b)}
+  else if(t==='U'){i++;out.push({t:'until',body:list(')'),id:UID++});i++}
+  else if(t[0]==='?'){i++;out.push({t:'if',c:t[1],body:list(')'),id:UID++});i++}
+  else out.push({t,id:UID++})}return out}
+ const main=list(null);return {main,fn}}
+function count(l){return l.reduce((s,b)=>s+1+(b.body?count(b.body):0),0)}
+function pcount(p){return count(p.main)+count(p.fn)}
+function build(L){// returns grid
+ let mv=L.mv;if(!mv){mv='';const p=parse(L.ref);(function f(l){for(const b of l){if(b.t==='loop')for(let k=0;k<b.n;k++)f(b.body);else if(b.t==='P')f(p.fn);else mv+=b.t}})(p.main)}
+ let x=0,y=0,d=0;const pts=[[0,0]];for(const c of mv){if(c==='F'){x+=DX[d];y+=DY[d];pts.push([x,y])}else if(c==='L')d=(d+3)%4;else d=(d+1)%4}
+ const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),mx=Math.min(...xs)-1,my=Math.min(...ys)-1,W=Math.max(...xs)-mx+2,H=Math.max(...ys)-my+2;
+ const floor=new Set(pts.map(p=>(p[0]-mx)+','+(p[1]-my)));
+ return {W,H,floor,sx:-mx,sy:-my,sd:0,gx:pts[pts.length-1][0]-mx,gy:pts[pts.length-1][1]-my,gems:L.g.map(k=>(pts[k][0]-mx)+','+(pts[k][1]-my))}}
+LV.forEach(L=>{L.par=pcount(parse(L.ref));L.tools=[T1,T2,T3,T4][L.w]});
+// ---------- world + interpreter ----------
+function World(G){this.G=G;this.x=G.sx;this.y=G.sy;this.d=G.sd;this.got=new Set();this.won=false;this.crash=false}
+World.prototype.open=function(x,y){return this.G.floor.has(x+','+y)};
+World.prototype.sense=function(c){const d=c==='W'?this.d:c==='L'?(this.d+3)%4:(this.d+1)%4;const o=this.open(this.x+DX[d],this.y+DY[d]);return c==='W'?!o:o};
+World.prototype.act=function(a){if(a==='L')this.d=(this.d+3)%4;else if(a==='R')this.d=(this.d+1)%4;else if(a==='F'){const nx=this.x+DX[this.d],ny=this.y+DY[this.d];if(!this.open(nx,ny)){this.crash=true;return 'crash'}this.x=nx;this.y=ny;const k=nx+','+ny;let r='move';if(this.G.gems.includes(k)&&!this.got.has(k)){this.got.add(k);r='gem'}if(nx===this.G.gx&&ny===this.G.gy&&this.got.size===this.G.gems.length){this.won=true;r='win'}return r}return a};
+function* run(l,W,fn,depth){if(depth>12)return;for(const b of l){if(W.won||W.crash)return;
+ if(b.t==='loop'){for(let k=0;k<b.n&&!W.won&&!W.crash;k++){yield {b,a:'T'};yield* run(b.body,W,fn,depth+1)}}
+ else if(b.t==='until'){while(!W.won&&!W.crash){yield {b,a:'T'};yield* run(b.body,W,fn,depth+1)}}
+ else if(b.t==='if'){yield {b,a:'T'};if(W.sense(b.c))yield* run(b.body,W,fn,depth+1)}
+ else if(b.t==='P'){yield {b,a:'T'};yield* run(fn,W,fn,depth+1)}
+ else yield {b,a:b.t}}}
+const MAXS=1500;
+function simulate(i,prog){const W=new World(build(LV[i]));const g=run(prog.main,W,prog.fn,0);let n=0;for(const s of g){if(++n>MAXS)return {ok:false,why:'loop'};if(s.a!=='T'&&W.act(s.a)==='crash')return {ok:false,why:'crash'};if(W.won)return {ok:true,n}}return {ok:W.won,why:'stopped'}}
+window.CB={LV,parse,simulate,pcount};
+// ---------- game state ----------
+let cur=0,G=null,prog={main:[],fn:[]},tgt='main',ex=null,fast=!!save.fast;
+const anim={x:0,y:0,a:0,fx:0,fy:0,fa:0,t:1,shake:0,spark:[]};
+function find(id,l){for(const b of l){if(b.id===id)return b;if(b.body){const r=find(id,b.body);if(r)return r}}return null}
+function tgtList(){if(tgt==='main')return prog.main;if(tgt==='fn')return prog.fn;const b=find(tgt,prog.main)||find(tgt,prog.fn);if(b)return b.body;tgt='main';return prog.main}
+function remove(id,l){const k=l.findIndex(b=>b.id===id);if(k>=0){l.splice(k,1);return true}return l.some(b=>b.body&&remove(id,b.body))}
+function strip(l){return l.map(b=>{const o={t:b.t};if(b.n)o.n=b.n;if(b.c)o.c=b.c;if(b.body)o.body=strip(b.body);return o})}
+function dress(l){return (l||[]).map(b=>Object.assign({},b,{id:UID++,body:b.body?dress(b.body):undefined}))}
+function saveProg(){save.progs[cur]={main:strip(prog.main),fn:strip(prog.fn)};store()}
+function loadLevel(i){stopRun();cur=i;G=build(LV[i]);const p=save.progs[i];prog=p?{main:dress(p.main),fn:dress(p.fn)}:{main:[],fn:[]};tgt='main';resetBot();renderPal();renderProg();
+ $('mid').textContent=`Level ${i+1}: ${LV[i].n}`;$('info').textContent=`${WORLDS[LV[i].w]} · 💎 ${G.gems.length} · ⭐ best in ${LV[i].par} blocks`;hideAll();toast('💡 '+LV[i].h,5000);resize()}
+function resetBot(){const W=new World(G);anim.W=W;anim.x=anim.fx=W.x;anim.y=anim.fy=W.y;anim.a=anim.fa=W.d*Math.PI/2;anim.t=1;anim.shake=0;mark(null)}
+const NAMES={F:'⬆ Forward',L:'↺ Turn left',R:'↻ Turn right',loop:'🔁 Repeat',until:'🏁 Repeat until goal',if:'❓ If',P:'⭐ Call function'};
+const COND={W:'wall ahead',L:'path to the left',R:'path to the right'};
+function renderPal(){const p=$('pal');p.innerHTML='';LV[cur].tools.forEach(t=>{const b=document.createElement('button');b.className='pb c'+t;b.dataset.t=t;b.textContent=NAMES[t];b.onclick=()=>addBlock(t);p.appendChild(b)})}
+function addBlock(t){if(ex&&ex.running)return;if(!LV[cur].tools.includes(t))return;if(pcount(prog)>=60){toast('That is a lot of blocks! Try a Repeat.');return}
+ stopRun();resetBot();const b={t,id:UID++};if(t==='loop'){b.n=2;b.body=[]}if(t==='until')b.body=[];if(t==='if'){b.c='W';b.body=[]}
+ tgtList().push(b);if(b.body)tgt=b.id;SFX.add();renderProg();saveProg()}
+function renderProg(){const P=$('prog');P.innerHTML='';
+ const mk=(title,key,list)=>{const s=document.createElement('div');s.className='sec'+(tgt===key?' tgt':'');s.dataset.key=key;const h=document.createElement('div');h.className='sech';h.textContent=title+(tgt===key?'  ← adding here':'');h.onclick=()=>{tgt=key;SFX.click();renderProg()};s.appendChild(h);s.appendChild(blocks(list));if(!list.length){const e=document.createElement('div');e.className='empty';e.textContent='Tap blocks above to add them here.';s.appendChild(e)}P.appendChild(s)};
+ mk('▶ Program','main',prog.main);if(LV[cur].tools.includes('P'))mk('⭐ Function','fn',prog.fn);
+ $('cnt').textContent=`Blocks: ${pcount(prog)} (⭐ ${LV[cur].par})`}
+function blocks(list){const f=document.createDocumentFragment();list.forEach(b=>{const d=document.createElement('div');d.className='blk c'+b.t;d.dataset.id=b.id;
+ const h=document.createElement('div');h.className='bh';const lab=document.createElement('span');lab.className='lab';lab.textContent=NAMES[b.t];h.appendChild(lab);
+ if(b.t==='loop'){const c=document.createElement('button');c.className='cyc';c.textContent=b.n+'×';c.onclick=e=>{e.stopPropagation();if(ex&&ex.running)return;b.n=b.n%9+1;if(b.n<2)b.n=2;SFX.click();resetBot();renderProg();saveProg()};h.appendChild(c)}
+ if(b.t==='if'){const c=document.createElement('button');c.className='cyc';c.textContent=COND[b.c]+' ▾';c.onclick=e=>{e.stopPropagation();if(ex&&ex.running)return;b.c={W:'L',L:'R',R:'W'}[b.c];SFX.click();resetBot();renderProg();saveProg()};h.appendChild(c)}
+ const x=document.createElement('button');x.className='x';x.textContent='✕';x.setAttribute('aria-label','remove');x.onclick=e=>{e.stopPropagation();if(ex&&ex.running)return;remove(b.id,prog.main)||remove(b.id,prog.fn);SFX.del();resetBot();renderProg();saveProg()};h.appendChild(x);
+ if(b.body)h.onclick=()=>{tgt=b.id;SFX.click();renderProg()};d.appendChild(h);
+ if(b.body){const bd=document.createElement('div');bd.className='body'+(tgt===b.id?' tgt':'');bd.appendChild(blocks(b.body));if(!b.body.length){const e=document.createElement('div');e.className='empty';e.textContent=tgt===b.id?'Add blocks inside ✓':'(empty – tap to fill)';bd.appendChild(e)}bd.onclick=e=>{if(e.target===bd||e.target.className==='empty'){tgt=b.id;SFX.click();renderProg()}};d.appendChild(bd)}
+ f.appendChild(d)});return f}
+function mark(id){document.querySelectorAll('.blk.run').forEach(e=>e.classList.remove('run'));if(id!=null){const e=document.querySelector(`.blk[data-id="${id}"]`);if(e){e.classList.add('run');e.scrollIntoView({block:'nearest'})}}}
+// ---------- execution ----------
+function startEx(){resetBot();const W=anim.W;ex={W,g:run(prog.main,W,prog.fn,0),n:0,running:false,done:false,timer:0}}
+function stopRun(){if(ex){clearTimeout(ex.timer);ex.running=false}ex=null;$('runB').textContent='▶ Run'}
+function stepOnce(){if(!ex||ex.done)return;const r=ex.g.next();if(r.done){finish(ex.W.won);return}
+ if(++ex.n>MAXS){ex.done=true;ex.running=false;$('runB').textContent='▶ Run';SFX.fail();toast('🔄 Bit got stuck going round and round! Does your loop ever reach the goal?');return}
+ const s=r.value,W=ex.W;mark(s.b.id);anim.fx=anim.x;anim.fy=anim.y;anim.fa=anim.a;anim.t=0;
+ if(s.a==='T'){SFX.test();anim.t=1;ex.wait=fast?60:180;return}
+ const res=W.act(s.a);ex.wait=fast?140:380;
+ if(res==='crash'){anim.shake=1;SFX.crash();ex.done=true;ex.running=false;$('runB').textContent='▶ Run';toast('💥 Bonk! Bit bumped into a wall. Press ⏭ Step to see where it went wrong.');return}
+ if(s.a==='L'||s.a==='R'){SFX.turn();anim.ta=anim.a+(s.a==='L'?-1:1)*Math.PI/2}else{anim.ta=anim.a;SFX.step()}
+ if(res==='gem'){setTimeout(SFX.gem,100);for(let k=0;k<14;k++)anim.spark.push({x:W.x,y:W.y,vx:Math.cos(k)*.05,vy:Math.sin(k*1.7)*.05-.03,l:1})}
+ if(res==='win'){ex.done=true;ex.running=false;setTimeout(()=>finish(true),ex.wait+100)}}
+function finish(won){if(!ex)return;ex.done=true;ex.running=false;$('runB').textContent='▶ Run';mark(null);
+ if(!won){SFX.fail();const W=ex.W;toast(W.got.size<G.gems.length?`💎 Bit still needs ${G.gems.length-W.got.size} more gem${G.gems.length-W.got.size>1?'s':''}!`:'🏁 The program ended before Bit reached the flag. Add more blocks!');return}
+ const n=pcount(prog),par=LV[cur].par,st=n<=par?3:n<=par+2?2:1;save.stars[cur]=Math.max(save.stars[cur]||0,st);store();SFX.win();
+ $('winS').textContent='★'.repeat(st)+'☆'.repeat(3-st);$('winH').textContent=cur===LV.length-1?'🏆 You beat Code Bot!':'Level complete!';
+ $('winP').textContent=`You used ${n} block${n>1?'s':''}. `+(st===3?(n<par?'Wow, even fewer than our best answer!':'Perfect, that\'s the fewest blocks!'):`Can you do it in ${par}? Try a 🔁 Repeat${LV[cur].w>=2?' or a ⭐ Function':''}.`);
+ $('nextB').style.display=cur<LV.length-1?'':'none';show('winO')}
+function loopRun(){if(!ex||!ex.running)return;stepOnce();if(ex&&ex.running)ex.timer=setTimeout(loopRun,ex.wait)}
+$('runB').onclick=()=>{ac();if(ex&&ex.running){ex.running=false;clearTimeout(ex.timer);$('runB').textContent='▶ Run';return}
+ if(!pcount(prog)){toast('Add some blocks first!');return}if(!ex||ex.done)startEx();ex.running=true;$('runB').textContent='⏸ Pause';loopRun()};
+$('stepB').onclick=()=>{ac();if(!pcount(prog)){toast('Add some blocks first!');return}if(!ex||ex.done)startEx();if(ex.running){ex.running=false;clearTimeout(ex.timer);$('runB').textContent='▶ Run'}stepOnce()};
+$('resetB').onclick=()=>{SFX.click();stopRun();resetBot()};
+let clrT=0;$('clrB').onclick=()=>{if(!pcount(prog))return;if(Date.now()-clrT>2500){clrT=Date.now();toast('Tap 🗑 again to clear the whole program.');return}clrT=0;stopRun();prog={main:[],fn:[]};tgt='main';resetBot();SFX.del();renderProg();saveProg()};
+let hintN=0;$('hintB').onclick=()=>{SFX.click();hintN++;const L=LV[cur];toast('💡 '+L.h+(hintN%2===0?` (Our best answer uses ${L.par} blocks.)`:''),7000)};
+function setSpd(){$('spdB').textContent=fast?'🐇':'🐢';$('spdB').title=fast?'Fast':'Slow'}
+$('spdB').onclick=()=>{fast=!fast;save.fast=fast;store();setSpd();SFX.click()};setSpd();
+let tt=0;function toast(m,ms){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(tt);tt=setTimeout(()=>t.style.display='none',ms||3500)}
+// ---------- screens ----------
+const OVS=['title','howO','lvO','winO'];function hideAll(){OVS.forEach(o=>$(o).style.display='none')}
+function show(o){hideAll();$(o).style.display='flex'}
+function unlocked(i){return i===0||!!save.stars[i-1]||!!save.stars[i]}
+function renderLv(){const g=$('lvG');g.innerHTML='';WORLDS.forEach((w,wi)=>{const d=document.createElement('div');d.className='world';d.innerHTML=`<h3>${w}</h3>`;LV.forEach((L,i)=>{if(L.w!==wi)return;const b=document.createElement('button');b.className='lv';b.dataset.lv=i;const s=save.stars[i]||0;b.innerHTML=`${i+1}<small>${'★'.repeat(s)}${'☆'.repeat(3-s)}</small>`;b.disabled=!unlocked(i);b.title=L.n;b.onclick=()=>{SFX.click();loadLevel(i)};d.appendChild(b)});g.appendChild(d)})}
+function totalStars(){return Object.values(save.stars).reduce((a,b)=>a+b,0)}
+function toTitle(){stopRun();$('tInfo').textContent=`⭐ ${totalStars()} / ${LV.length*3} stars · ${Object.keys(save.stars).length} / ${LV.length} levels solved`;show('title')}
+$('playB').onclick=()=>{ac();SFX.click();renderLv();show('lvO')};
+$('howB').onclick=()=>{SFX.click();show('howO')};$('howBack').onclick=()=>{SFX.click();toTitle()};
+$('lvB').onclick=()=>{SFX.click();stopRun();renderLv();show('lvO')};$('lvBack').onclick=()=>{SFX.click();toTitle()};
+$('againB').onclick=()=>{SFX.click();hideAll();stopRun();resetBot()};
+$('nextB').onclick=()=>{SFX.click();loadLevel(cur+1)};$('winLvB').onclick=()=>{SFX.click();renderLv();show('lvO')};
+addEventListener('keydown',e=>{const k=e.key;if(k==='m'||k==='M'){setMute(!muted);return}
+ if($('title').style.display==='flex'&&(k==='Enter'||k===' ')){e.preventDefault();$('playB').click();return}
+ if(OVS.some(o=>$(o).style.display==='flex')){if(k==='Enter'&&$('winO').style.display==='flex'&&cur<LV.length-1){e.preventDefault();$('nextB').click()}if(k==='Escape')toTitle();return}
+ if(k==='ArrowUp'){e.preventDefault();addBlock('F')}else if(k==='ArrowLeft'){e.preventDefault();addBlock('L')}else if(k==='ArrowRight'){e.preventDefault();addBlock('R')}
+ else if(k==='Backspace'){e.preventDefault();const l=tgtList();if(l.length&&!(ex&&ex.running)){l.pop();SFX.del();resetBot();renderProg();saveProg()}}
+ else if(k==='Enter'){e.preventDefault();$('runB').click()}else if(k==='s'||k==='S')$('stepB').click();else if(k==='h'||k==='H')$('hintB').click();
+ else if(k==='Escape'){stopRun();renderLv();show('lvO')}});
+// ---------- drawing ----------
+const cv=$('cv'),cx=cv.getContext('2d');let DPR=1,CW=0,CH=0;
+function resize(){const r=$('boardW').getBoundingClientRect();DPR=Math.min(2,devicePixelRatio||1);CW=r.width;CH=r.height;cv.width=CW*DPR;cv.height=CH*DPR}
+addEventListener('resize',resize);
+const THEME=[['#3f8f4a','#c9a46a','#2c6b36'],['#2b7fa8','#e3d29a','#1f5f80'],['#5b5870','#c8b48a','#403d52'],['#3b2f5e','#a89bd0','#291f45']];
+function rr(x,y,w,h,r){cx.beginPath();cx.moveTo(x+r,y);cx.arcTo(x+w,y,x+w,y+h,r);cx.arcTo(x+w,y+h,x,y+h,r);cx.arcTo(x,y+h,x,y,r);cx.arcTo(x,y,x+w,y,r);cx.closePath()}
+function draw(t){requestAnimationFrame(draw);if(!G)return;if(!CW)resize();cx.setTransform(DPR,0,0,DPR,0,0);const th=THEME[LV[cur].w];
+ cx.fillStyle=th[0];cx.fillRect(0,0,CW,CH);
+ const top=26,s=Math.min((CW-16)/G.W,(CH-top-8)/G.H,72),ox=(CW-s*G.W)/2,oy=top+(CH-top-s*G.H)/2;
+ let sh=anim.shake>0?Math.sin(t/20)*anim.shake*5:0;anim.shake=Math.max(0,anim.shake-.03);
+ for(let y=0;y<G.H;y++)for(let x=0;x<G.W;x++){const px=ox+x*s,py=oy+y*s;
+  if(G.floor.has(x+','+y)){cx.fillStyle=th[1];rr(px+1,py+1,s-2,s-2,s*.15);cx.fill();cx.fillStyle='#ffffff18';cx.fillRect(px+s*.15,py+s*.15,s*.2,s*.08)}
+  else{cx.fillStyle=th[2];cx.beginPath();cx.arc(px+s/2,py+s/2,s*.38,0,7);cx.fill();cx.fillStyle='#ffffff14';cx.beginPath();cx.arc(px+s*.4,py+s*.4,s*.16,0,7);cx.fill()}}
+ // goal
+ {const px=ox+G.gx*s,py=oy+G.gy*s;cx.fillStyle='#fff';cx.fillRect(px+s*.3,py+s*.15,s*.06,s*.7);cx.fillStyle=(anim.W&&anim.W.got.size<G.gems.length)?'#999':'#ff4d6d';cx.beginPath();cx.moveTo(px+s*.36,py+s*.15);cx.lineTo(px+s*.78,py+s*.28);cx.lineTo(px+s*.36,py+s*.42);cx.fill()}
+ G.gems.forEach(k=>{if(anim.W&&anim.W.got.has(k))return;const [x,y]=k.split(',').map(Number),px=ox+x*s+s/2,py=oy+y*s+s/2+Math.sin(t/300+x)*s*.04;cx.fillStyle='#4de3ff';cx.beginPath();cx.moveTo(px,py-s*.25);cx.lineTo(px+s*.2,py-s*.05);cx.lineTo(px,py+s*.25);cx.lineTo(px-s*.2,py-s*.05);cx.fill();cx.fillStyle='#d8fbff';cx.beginPath();cx.moveTo(px,py-s*.25);cx.lineTo(px+s*.08,py-s*.05);cx.lineTo(px-s*.08,py-s*.05);cx.fill()});
+ // robot anim
+ if(anim.t<1){anim.t=Math.min(1,anim.t+(fast?.12:.05));const e=anim.t<.5?2*anim.t*anim.t:1-Math.pow(-2*anim.t+2,2)/2;const W=anim.W;if(W){anim.x=anim.fx+(W.x-anim.fx)*e;anim.y=anim.fy+(W.y-anim.fy)*e;if(anim.ta!=null)anim.a=anim.fa+(anim.ta-anim.fa)*e}}
+ const rx=ox+anim.x*s+s/2+sh,ry=oy+anim.y*s+s/2;cx.save();cx.translate(rx,ry);
+ cx.fillStyle='#0003';cx.beginPath();cx.ellipse(0,s*.3,s*.3,s*.09,0,0,7);cx.fill();
+ const bob=Math.sin(t/200)*s*.02;cx.fillStyle='#e8eef7';rr(-s*.3,-s*.3+bob,s*.6,s*.56,s*.14);cx.fill();cx.strokeStyle='#5a6b85';cx.lineWidth=2;cx.stroke();
+ cx.strokeStyle='#5a6b85';cx.beginPath();cx.moveTo(0,-s*.3+bob);cx.lineTo(0,-s*.42+bob);cx.stroke();cx.fillStyle='#ff5a5a';cx.beginPath();cx.arc(0,-s*.44+bob,s*.05,0,7);cx.fill();
+ cx.fillStyle='#1d2a44';rr(-s*.22,-s*.2+bob,s*.44,s*.24,s*.08);cx.fill();
+ const ex2=Math.cos(anim.a)*s*.09,ey=Math.sin(anim.a)*s*.06;cx.fillStyle='#5ee0c0';cx.beginPath();cx.arc(ex2,-s*.08+ey+bob,s*.07,0,7);cx.fill();
+ cx.rotate(anim.a);cx.fillStyle='#ffcf5a';cx.beginPath();cx.moveTo(s*.42,0);cx.lineTo(s*.3,-s*.08);cx.lineTo(s*.3,s*.08);cx.fill();cx.restore();
+ anim.spark=anim.spark.filter(p=>(p.l-=.02)>0);anim.spark.forEach(p=>{p.x+=p.vx;p.y+=p.vy;cx.fillStyle=`rgba(180,250,255,${p.l})`;cx.fillRect(ox+p.x*s+s/2,oy+p.y*s+s/2,4,4)})}
+requestAnimationFrame(draw);
+toTitle();
+</script></body></html>

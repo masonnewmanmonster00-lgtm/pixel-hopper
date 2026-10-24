@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Grammar Quest – Learning Zone</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#1b1430;color:#f5efff;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none}
+#top{position:fixed;left:0;right:0;top:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;background:linear-gradient(#5a2f8a,#3a1d5e);border-bottom:2px solid #ffc94a;z-index:20;gap:4px}
+#top a{color:#fff3c4;text-decoration:none;font:600 14px system-ui,sans-serif;padding:6px 8px;border-radius:8px;background:#6d3fa3;white-space:nowrap}
+#mid{font:600 15px system-ui,sans-serif;color:#fff3c4;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.tb{background:#6d3fa3;color:#fff3c4;border:1px solid #ffc94a;border-radius:8px;font:600 14px system-ui,sans-serif;padding:6px 9px;cursor:pointer}
+#bg{position:fixed;inset:44px 0 0 0;display:block}
+#game{position:fixed;inset:44px 0 0 0;display:none;flex-direction:column;align-items:center;padding:10px;overflow:auto}
+#hud{width:100%;max-width:720px;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:14px;color:#fff3c4}
+#bar{width:100%;max-width:720px;height:10px;background:#0005;border-radius:6px;margin:6px 0 8px;overflow:hidden}#barF{height:100%;width:0;background:linear-gradient(90deg,#7ef29a,#ffd84a);transition:width .3s}
+#card{width:100%;max-width:720px;background:#fffaf0;color:#2a1d3d;border-radius:18px;padding:14px;box-shadow:0 8px 0 #0006,0 0 0 4px #ffc94a inset}
+#kind{font-size:13px;font-weight:800;letter-spacing:1px;color:#8a4fd1;text-transform:uppercase}
+#q{font-size:clamp(17px,4.4vw,24px);font-weight:700;margin:6px 0 10px;line-height:1.4}
+#q .hl{background:#ffe46b;border-bottom:3px solid #e0a000;padding:0 4px;border-radius:4px}
+#opts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.op{border:none;border-radius:12px;padding:10px 14px;font:700 clamp(15px,3.8vw,19px) system-ui,sans-serif;cursor:pointer;background:#e9dcff;color:#2a1d3d;box-shadow:0 4px 0 #a98be0;text-align:left}
+.op.full{width:100%}
+.op:active{transform:translateY(2px)}
+.op.sel{outline:3px solid #8a4fd1}
+.op.ok{background:#9ff0b0;box-shadow:0 4px 0 #3c9b55}.op.bad{background:#ffb3b3;box-shadow:0 4px 0 #c54b4b}
+.op:disabled{cursor:default}
+.wd{display:inline-block;border-radius:8px;padding:5px 8px;margin:3px 2px;background:#efe6ff;cursor:pointer;box-shadow:0 3px 0 #c5b0ec;font-weight:700}
+#line{min-height:52px;border:3px dashed #c5b0ec;border-radius:12px;padding:6px;margin-bottom:10px;font-size:clamp(16px,4vw,21px)}
+#tiles{font-size:clamp(16px,4vw,21px);text-align:center}
+.tile{display:inline-block;border:none;border-radius:10px;padding:8px 11px;margin:4px;background:#ffd56b;color:#3b2500;font:800 clamp(15px,4vw,20px) system-ui;box-shadow:0 4px 0 #b07c00;cursor:pointer}
+.tile.used{visibility:hidden}
+#fb{margin-top:10px;border-radius:12px;padding:10px;font-size:15px;line-height:1.4;display:none}
+#fb.good{background:#dcfbe3;color:#145a26}#fb.bad{background:#ffe5e5;color:#6b1717}
+#acts{margin-top:10px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.big{font:800 17px system-ui,sans-serif;background:linear-gradient(#ffe066,#f59f1c);color:#3b1d00;border:none;border-radius:12px;padding:9px 20px;margin:5px;cursor:pointer;box-shadow:0 4px 0 #9b4d00}
+.big.alt{background:linear-gradient(#e6d6ff,#a98be0);color:#2a1d3d;box-shadow:0 4px 0 #5f3c99}
+.big:active{transform:translateY(2px)}
+.ov{position:fixed;inset:44px 0 0 0;display:none;flex-direction:column;align-items:center;justify-content:safe center;text-align:center;padding:12px;z-index:30;background:radial-gradient(#4a2b78ee,#120a22f5);overflow:auto}
+.ov h1{font-size:clamp(36px,8.5vw,76px);margin:0;color:#fff;text-shadow:0 4px 0 #e09a00,0 0 26px #ffd84a88}
+.ov h2{margin:4px 0 6px;color:#fff3c4;font-size:clamp(22px,5.5vw,36px)}
+.ov p{max-width:620px;color:#eadcff;margin:5px 0;font-size:15px;line-height:1.4}
+.row{display:flex;flex-wrap:wrap;justify-content:center}
+.wcard{width:min(640px,100%);margin:6px 0;padding:8px;border-radius:14px;background:#ffffff14;border:2px solid #ffffff22}
+.wcard h3{margin:2px 0 6px;font-size:17px;color:#ffe9a8}
+.lv{width:64px;height:58px;margin:3px;border-radius:12px;border:none;font:800 15px system-ui;cursor:pointer;background:#6d3fa3;color:#fff;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 3px 0 #0007}
+.lv small{font-size:11px;color:#ffd84a}.lv:disabled{opacity:.35;cursor:default}
+.stars{font-size:46px;letter-spacing:6px;color:#ffd84a;text-shadow:0 3px 0 #8a5d00}
+kbd{background:#fff2;border-radius:4px;padding:0 5px}
+</style></head><body>
+<div id="top"><a id="menu" href="../index.html">← Menu</a><a id="lz" href="index.html">🎓 Learning Zone</a><div id="mid">Grammar Quest</div><div><button class="tb" id="mapB">🗺</button> <button class="tb" id="muteB">🔊</button></div></div>
+<canvas id="bg"></canvas>
+<div id="game"><div id="hud"><span id="hL"></span><span id="hR"></span></div><div id="bar"><div id="barF"></div></div>
+<div id="card"><div id="kind"></div><div id="q"></div><div id="area"></div><div id="fb"></div><div id="acts"></div></div></div>
+<div class="ov" id="title"><h1>📜 GRAMMAR QUEST</h1><p>Journey through five lands, from the Word Meadow to Dragon Peak! Sort words, fix punctuation, build sentences and spot sneaky mistakes to earn stars and wake the sleeping dragon.</p>
+<div class="row"><button class="big" id="playB">⚔ Start quest</button><button class="big alt" id="howB">❔ How to play</button></div><p id="tInfo"></p></div>
+<div class="ov" id="howO"><h2>How to play</h2>
+<p>Each level has 8 challenges. Get them right on the first try for the most stars. A wrong answer is fine: you'll see a friendly explanation so you learn why.</p>
+<p><b>🏷 Word Sort:</b> what part of speech is the yellow word? <b>✒ Punctuation Fix:</b> pick the sentence that is written correctly. <b>🧱 Sentence Builder:</b> tap word tiles in order. <b>🔍 Spot the Mistake:</b> tap the one wrong word.</p>
+<p>Keys: <kbd>1</kbd>–<kbd>6</kbd> choose an answer, <kbd>Enter</kbd> check / next, <kbd>Backspace</kbd> undo a tile, <kbd>M</kbd> mute.</p><button class="big" id="howBack">Got it</button></div>
+<div class="ov" id="mapO"><h2>🗺 Quest Map</h2><div id="mapG"></div><button class="big alt" id="mapBack">Title</button></div>
+<div class="ov" id="endO"><h2 id="endH"></h2><div class="stars" id="endS"></div><p id="endP"></p><div class="row"><button class="big alt" id="retryB">⟲ Play again</button><button class="big" id="nextB">Next ▶</button><button class="big alt" id="endMapB">Map</button></div></div>
+<script>
+const $=id=>document.getElementById(id);
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const SK='grammarSave';let save=Object.assign({muted:false,stars:{},answered:0,correct:0},LS.get(SK,null)||{});function store(){LS.set(SK,save)}
+let AC=null,muted=!!save.muted;
+function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){AC=null}}if(AC&&AC.state==='suspended')AC.resume();return AC}
+function tone(f,d,type,vol,slide,delay){if(muted)return;const a=ac();if(!a)return;const t=a.currentTime+(delay||0);const o=a.createOscillator(),g=a.createGain();o.type=type||'sine';o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(slide,t+d);g.gain.setValueAtTime(vol||.1,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g).connect(a.destination);o.start(t);o.stop(t+d+.05)}
+const SFX={click(){tone(700,.05,'square',.045)},tile(){tone(520,.06,'triangle',.08,640)},ok(){tone(660,.1,'triangle',.12);tone(990,.18,'triangle',.12,null,.09)},bad(){tone(240,.22,'sawtooth',.07,170)},
+win(){[523,659,784,1047,1319].forEach((f,i)=>tone(f,.22,'triangle',.11,null,i*.1))}};
+function setMute(m){muted=m;save.muted=m;store();$('muteB').textContent=m?'🔇':'🔊'}$('muteB').onclick=()=>{setMute(!muted);if(!muted)SFX.click()};setMute(muted);
+// ================= QUESTION BANK =================
+// POS: "sentence with *word*|pos|reason"  tier = first char
+const POSN={n:'noun',v:'verb',a:'adjective',d:'adverb',p:'pronoun',r:'preposition',c:'conjunction',i:'interjection'};
+const POSDEF={n:'A noun names a person, place, thing or idea.',v:'A verb is an action or a state of being (like is, are, was).',a:'An adjective describes a noun: what kind, which one, how many.',d:'An adverb describes a verb, an adjective or another adverb: how, when, where or how much.',p:'A pronoun takes the place of a noun (I, you, he, she, it, we, they, me, him, her, us, them).',r:'A preposition shows how a noun is related to other words, often where or when (in, on, under, after).',c:'A conjunction joins words or parts of a sentence (and, but, or, so, because).',i:'An interjection shows a sudden feeling, like Wow! or Oops!'};
+const POS=`1|The *cat* slept on the warm rug.|n|“cat” names an animal.
+1|My sister *jumps* over the puddle.|v|“jumps” tells what my sister does.
+1|We ate *pizza* for dinner.|n|“pizza” names a thing (a food).
+1|The birds *sing* every morning.|v|“sing” is the action the birds do.
+1|Grandpa *planted* tomatoes in the garden.|v|“planted” is what Grandpa did.
+1|The *library* opens at nine.|n|“library” names a place.
+1|Mia *reads* a book before bed.|v|“reads” is Mia's action.
+1|A big *truck* rumbled down the road.|n|“truck” names a thing.
+1|The children *laughed* at the clown.|v|“laughed” is what the children did.
+1|Our *teacher* loves science.|n|“teacher” names a person.
+1|The frog *hopped* onto a lily pad.|v|“hopped” is the frog's action.
+1|I lost my *pencil* today.|n|“pencil” names a thing.
+1|Dad *cooks* pancakes on Sundays.|v|“cooks” is Dad's action.
+1|The *ocean* is very deep.|n|“ocean” names a place.
+2|The *fluffy* puppy wagged its tail.|a|“fluffy” describes what kind of puppy.
+2|She wore a *red* scarf.|a|“red” describes the scarf's colour.
+2|*Three* ducks swam past.|a|“Three” tells how many ducks.
+2|The soup was *hot*.|a|“hot” describes the soup, even though it comes after the verb “was”.
+2|We climbed a *tall* mountain.|a|“tall” describes the mountain.
+2|My brother *is* nine years old.|v|“is” is a being verb. It links “my brother” to “nine years old”.
+2|The *happy* baby giggled.|a|“happy” describes the baby.
+2|Leo found a *shiny* coin.|a|“shiny” describes the coin.
+2|The wind *blew* the leaves away.|v|“blew” is what the wind did.
+2|Their *friendship* lasted for years.|n|“friendship” is an idea. Nouns can name ideas and feelings too.
+2|The *brave* knight crossed the bridge.|a|“brave” describes the knight.
+2|My kitten has *soft* fur.|a|“soft” describes the fur.
+2|We felt *joy* when we won.|n|“joy” names a feeling, so it is a noun.
+3|The turtle moved *slowly*.|d|“slowly” tells how the turtle moved.
+3|*She* rode her bike to school.|p|“She” takes the place of a girl's or woman's name.
+3|We will leave *soon*.|d|“soon” tells when we will leave.
+3|Max gave *them* some apples.|p|“them” stands in for a group of people.
+3|The dog barked *loudly*.|d|“loudly” tells how the dog barked.
+3|*They* built a sandcastle.|p|“They” replaces the names of the people who built it.
+3|Please speak *quietly* in the library.|d|“quietly” tells how to speak.
+3|The test was *very* easy.|d|“very” tells how easy. Adverbs can describe adjectives too.
+3|Can you help *me*?|p|“me” stands for the person speaking.
+3|*We* love camping.|p|“We” stands for the speaker and others.
+3|The kids played *outside*.|d|“outside” tells where the kids played.
+3|Ella *carefully* carried the eggs.|d|“carefully” tells how Ella carried them.
+3|The *noisy* crowd cheered.|a|“noisy” describes the crowd.
+3|Tom kicked the ball, and *it* flew over the fence.|p|“it” takes the place of “the ball”.
+3|Owls hunt *quietly* at night.|d|“quietly” tells how owls hunt.
+4|The cat hid *under* the bed.|r|“under” shows where the cat is compared to the bed.
+4|I like apples *and* pears.|c|“and” joins two words.
+4|We played inside *because* it was raining.|c|“because” joins two ideas and tells why.
+4|The book is *on* the table.|r|“on” shows where the book is.
+4|She was tired, *but* she kept running.|c|“but” joins two ideas that contrast.
+4|We walked *across* the bridge.|r|“across” shows where we walked in relation to the bridge.
+4|Do you want milk *or* juice?|c|“or” joins two choices.
+4|We had lunch *after* the game.|r|“after” shows when lunch happened in relation to “the game”.
+4|The bird flew *over* the house.|r|“over” shows where the bird flew.
+4|It was cold, *so* we wore mittens.|c|“so” joins two ideas and shows a result.
+4|A note was hidden *inside* the box.|r|“inside” shows where the note was, compared to the box.
+4|The *gentle* giant smiled.|a|“gentle” describes the giant.
+4|He spoke *softly* to the baby.|d|“softly” tells how he spoke.
+4|The fox ran *behind* the barn.|r|“behind” shows where the fox ran.
+5|*Wow*! That rocket is fast!|i|“Wow” shows a sudden feeling of surprise.
+5|*Oops*, I dropped my spoon.|i|“Oops” shows a quick feeling about a small mistake.
+5|The *swim* across the lake took an hour.|n|Here “swim” is a thing (“the swim”), so it is a noun. Words can change jobs!
+5|We *swim* in the lake every summer.|v|Here “swim” is the action we do, so it is a verb.
+5|The kite flew *high* in the sky.|d|“high” tells where the kite flew, so here it is an adverb.
+5|*Hooray*! We won the match!|i|“Hooray” shows excitement.
+5|*Ouch*! That bee stung me!|i|“Ouch” shows sudden pain.
+5|Nobody saw the deer *except* me.|r|“except” is a preposition here. It links “nobody” to “me”.
+5|The dinner smelled *delicious*.|a|“delicious” describes the dinner. “Smelled” works like “was” here.
+5|I will call you *when* I get home.|c|“when” joins two parts of the sentence and tells when.
+5|*Honesty* is important.|n|“Honesty” names an idea, so it is a noun.
+5|The sun *rose* over the hills.|v|“rose” is the past form of “rise”, the sun's action.
+5|They waited *patiently* for the bus.|d|“patiently” tells how they waited.
+5|*Everyone* clapped at the end.|p|“Everyone” is a pronoun that stands for all the people.`;
+// PUNCT: tier|correct||wrong1||wrong2||wrong3|explanation
+const PUN=`1|The dog ran to the park.||the dog ran to the park.||The dog ran to the park||the dog ran to the park|A sentence starts with a capital letter and ends with a full stop (period).
+1|Where is my hat?||Where is my hat.||where is my hat?||Where is my hat!|A question ends with a question mark, and every sentence starts with a capital letter.
+1|I love ice cream.||i love ice cream.||I love ice cream?||I Love ice cream.|The word “I” is always a capital letter. Telling sentences end with a full stop.
+1|What a huge wave!||What a huge wave?||what a huge wave!||What a huge wave|This shows strong feeling, so it ends with an exclamation mark.
+1|My friend Sam lives in Ottawa.||My friend sam lives in ottawa.||my friend Sam lives in Ottawa.||My Friend Sam lives in Ottawa.|Names of people and places (proper nouns) start with capital letters. “friend” is a common noun, so it stays small.
+1|Can we go swimming?||Can we go swimming.||can we go swimming?||Can we go swimming!|This asks something, so it needs a question mark.
+1|Today is Monday.||today is monday.||Today is monday.||Today is Monday|Days of the week always begin with a capital letter, and so does the first word.
+1|Stop right there!||stop right there!||Stop right there?||Stop right there|A strong command or warning can end with an exclamation mark.
+2|We visited Paris in July.||We visited paris in july.||we visited Paris in July.||We visited Paris in july.|Cities and months are proper nouns, so they get capital letters.
+2|I bought apples, pears, and grapes.||I bought apples pears and grapes.||I bought, apples, pears, and grapes.||I bought apples, pears, and, grapes.|Use commas to separate three or more things in a list. (The comma before “and” is optional, but it is never wrong.)
+2|Dr. Lee works at Maple Hospital.||dr. Lee works at maple hospital.||Dr. lee works at Maple Hospital.||Dr. Lee works at maple Hospital.|Titles like “Dr.” and names of people and places start with capitals.
+2|Is your birthday in May?||Is your birthday in may?||is your birthday in May?||Is your birthday in May.|Months are capitalised, and questions end with a question mark.
+2|We need eggs, milk, butter, and flour.||We need eggs milk butter and flour.||We need, eggs, milk, butter, and flour.||We need eggs, milk, butter, and, flour.|Commas go between items in a list, not after “need” or after “and”.
+2|My dog, Biscuit, loves bones.||My dog Biscuit, loves bones.||My dog, Biscuit loves bones.||My, dog Biscuit loves bones.|Here the extra information “Biscuit” is set off with a comma on both sides.
+2|On Saturday we went to the Rocky Mountains.||On saturday we went to the rocky mountains.||on Saturday we went to the Rocky Mountains.||On Saturday we went to the Rocky mountains.|Days and the names of places like the Rocky Mountains are capitalised.
+2|Yes, I would like some juice.||Yes I would like, some juice.||yes, I would like some juice.||Yes, i would like some juice.|Put a comma after words like “Yes” or “No” at the start of a sentence.
+3|The cat's bowl is empty.||The cats bowl is empty.||The cats' bowl is empty.||The cat,s bowl is empty.|One cat owns the bowl, so we write cat + 's = cat's.
+3|I can't find my shoes.||I cant find my shoes.||I ca'nt find my shoes.||I can't find my shoe's.|“can't” is short for “cannot”, so the apostrophe goes where letters are missing. “shoes” is just a plural and needs no apostrophe.
+3|It's raining, so bring an umbrella.||Its raining, so bring an umbrella.||It's raining so, bring an umbrella.||Its' raining, so bring an umbrella.|“It's” means “it is”. Put the comma before “so” when it joins two sentences.
+3|The girls' team won the cup.||The girls team won the cup.||The girl's' team won the cup.||The girls's team won the cup.|The team belongs to many girls. For a plural ending in s, add just an apostrophe: girls'.
+3|We're going to the zoo.||Were going to the zoo.||We'r going to the zoo.||Wer'e going to the zoo.|“We're” is short for “we are”. The apostrophe replaces the missing letter “a”.
+3|After lunch, we played tag.||After lunch we, played tag.||After, lunch we played tag.||After lunch we played, tag.|A comma often follows an opening phrase like “After lunch”.
+3|Mom, can you help me?||Mom can you help me?||Mom, can you help me.||Mom can, you help me?|When you speak to someone by name, put a comma after the name. Questions end with a question mark.
+3|They don't like spiders.||They dont like spiders.||They do'nt like spiders.||They don't like spider's.|“don't” is short for “do not”, so the apostrophe replaces the missing “o”.
+4|“Let's play outside,” said Ana.||“Let's play outside.” said Ana.||“Let's play outside” said Ana.||Let's play outside,” said Ana.|When a quote comes before “said”, end it with a comma inside the quotation marks, and use both opening and closing marks.
+4|Ben asked, “Where is the map?”||Ben asked “Where is the map?”||Ben asked, “where is the map?”||Ben asked, “Where is the map”?|Put a comma before the quote, start the quote with a capital, and keep the question mark inside the quotation marks.
+4|I wanted to play, but it was too late.||I wanted to play but, it was too late.||I wanted to play, but, it was too late.||I wanted, to play but it was too late.|When “but” joins two full sentences, the comma goes before “but”.
+4|The children's books are on the shelf.||The childrens books are on the shelf.||The childrens' books are on the shelf.||The children's book's are on the shelf.|“children” is already plural without an s, so add 's: children's.
+4|“Watch out!” shouted the guard.||“Watch out”! shouted the guard.||“Watch out!,” shouted the guard.||Watch out! shouted the guard.|The exclamation mark goes inside the closing quotation mark, with no extra comma.
+4|We packed snacks, maps, and a flashlight.||We packed snacks maps, and a flashlight.||We packed, snacks, maps and, a flashlight.||We packed snacks, maps, and, a flashlight.|Commas go between list items, but never right after “and”.
+4|Because it snowed, school was closed.||Because it snowed school, was closed.||Because, it snowed school was closed.||Because it snowed school was closed,|When a sentence starts with a “because” part, put a comma after that part.
+5|Grandma said, “You've grown so tall!”||Grandma said “You've grown so tall!”||Grandma said, “Youve grown so tall!”||Grandma said, “You've grown so tall”!|Comma before the quote, an apostrophe in “You've” (you have), and the exclamation mark inside the quotes.
+5|The dogs' leashes hang by the door.||The dog's leashes' hang by the door.||The dogs leashes hang by the door.||The dogs's leashes hang by the door.|Several dogs own the leashes, so the apostrophe goes after the s: dogs'.
+5|“If you finish early,” said Mr. Cho, “you may read.”||“If you finish early.” said Mr. Cho, “You may read.”||“If you finish early,” said Mr. Cho “you may read.”||“If you finish early,” said mr. Cho, “you may read.”|One sentence is split by “said Mr. Cho”, so there are commas on both sides of it, and “you” stays lowercase.
+5|Wow, it's a double rainbow!||Wow its a double rainbow!||Wow, its' a double rainbow!||Wow, it's a double rainbow?|A comma follows the interjection “Wow”. “it's” means “it is”, and the excited sentence ends with “!”.
+5|My brother, who is six, loves trains.||My brother who is six, loves trains.||My brother, who is six loves trains.||My brother, who, is six, loves trains.|Extra information in the middle (“who is six”) needs a comma on both sides.
+5|We'll visit Lisbon, Portugal, in April.||Well visit Lisbon, Portugal, in April.||We'll visit lisbon, portugal, in april.||We'll visit Lisbon Portugal in April.|“We'll” means “we will”. Put commas around the country after a city, and capitalise places and months.`;
+// BUILD: tier|sentence (space-separated tiles)|alt1||alt2
+const BLD=`1|The cat is sleeping.
+1|I like red apples.
+1|We play in the park.
+1|The sun is hot.
+1|My dog can run fast.
+1|She has a blue bike.
+1|Birds can fly.
+1|The baby is crying.
+2|The tall boy kicked the ball.
+2|My mom bakes yummy cookies.
+2|Is the shop open today?
+2|Where did you put my book?
+2|The little frog jumped into the pond.
+2|We saw three brown horses.
+2|Can you swim in the lake?
+2|The old clock stopped ticking.
+3|The puppy wagged its tail happily.|The puppy happily wagged its tail.
+3|They quietly opened the old door.|They opened the old door quietly.
+3|He did not want to go home.
+3|Why are you so excited?
+3|The children are playing on the beach.
+3|We went to the museum on Friday.|On Friday we went to the museum.
+4|I wanted pizza, but we had soup.
+4|She smiled because she won the race.|Because she won the race she smiled.
+4|The keys are under the blue mat.
+4|We can watch a movie or play a game.|We can play a game or watch a movie.
+4|The dragon flew over the dark castle.
+4|My cousin and I built a treehouse.
+5|After the storm, we looked for rainbows.|We looked for rainbows after the storm.
+5|The knight, who was very brave, saved the town.
+5|Although it was late, we kept reading.|We kept reading, although it was late.
+5|“Look at the stars!” said Grandpa.
+5|Before you leave, please close the window.|Please close the window before you leave.
+5|The wizard's cat slept on a velvet pillow.`;
+// SPOT: tier|sentence with [wrong=right]|explanation
+const SPT=`1|The dog [run=runs] to the gate every morning.|One dog is doing it, so we say “runs”.
+1|I have two [cat=cats] at home.|“two” means more than one, so we need the plural “cats”.
+1|She [are=is] my best friend.|With “she” we use “is”: she is.
+1|We [is=are] going to the fair.|With “we” we use “are”: we are.
+1|Yesterday I [play=played] soccer.|“Yesterday” is in the past, so use the past tense “played”.
+1|I ate [a=an] apple for lunch.|Use “an” before a vowel sound, like “an apple”.
+1|They [was=were] very hungry.|With “they” we use “were”: they were.
+1|The birds [sings=sing] in the trees.|More than one bird, so we say “sing” without the s.
+1|He saw [an=a] big bear.|Use “a” before a consonant sound, like “a big bear”.
+1|My little brother [have=has] a red wagon.|With one person (he), we say “has”.
+2|Last night we [goed=went] to a movie.|“go” is irregular: its past tense is “went”, not “goed”.
+2|There are three [mouses=mice] in the barn.|The plural of “mouse” is “mice”.
+2|The [childs=children] built a snowman.|The plural of “child” is “children”.
+2|I [seen=saw] a shooting star last night.|The simple past of “see” is “saw”. Use “seen” only with helpers like “have seen”.
+2|My feet are cold, so I need two warm [sock=socks].|“two” means more than one, so use the plural “socks”.
+2|She [catched=caught] the ball with one hand.|The past tense of “catch” is “caught”.
+2|We picked lots of [berrys=berries] today.|For words ending in consonant + y, change y to i and add es: berries.
+2|My [tooths=teeth] are clean and shiny.|The plural of “tooth” is “teeth”.
+2|The wolf [runned=ran] into the forest.|The past tense of “run” is “ran”.
+2|I put three [boxs=boxes] in the car.|Words ending in x add “es”: boxes.
+3|The dog wagged [it's=its] tail.|“its” (no apostrophe) means belonging to it. “it's” means “it is”.
+3|[Their=There] is a snake in the grass!|“There” points to a place or says something exists. “Their” means belonging to them.
+3|I want to come [to=too]!|“too” means also. “to” shows direction, like “to school”.
+3|We left [are=our] bags on the bus.|“our” means belonging to us. “are” is a verb.
+3|[Your=You're] going to love this book.|“You're” is short for “you are”.
+3|Can you [here=hear] the music?|“hear” is what your ears do. “here” is a place.
+3|The kids put on [there=their] coats.|“their” means belonging to them.
+3|She has [to=two] brothers and one sister.|“two” is the number 2.
+3|I [knew=know] the answer right now!|“right now” is the present, so use “know”.
+3|Please [right=write] your name at the top.|“write” means putting words on paper. “right” is a direction or means correct.
+4|Mia is [more taller=taller] than her brother.|Use “taller” on its own. Don't add “more” to an -er word.
+4|This is the [goodest=best] cake ever!|The forms are good, better, best. “Goodest” is not a word.
+4|Each of the puppies [are=is] asleep.|“Each” is singular, so we say “is”.
+4|I didn't eat [no=any] carrots.|Avoid two negatives. “didn't … any” is correct.
+4|This box is [heavyer=heavier] than that one.|For words ending in y, change y to i and add er: heavier.
+4|My grandma is the [most kindest=kindest] person I know.|Use “kindest” on its own. Don't add “most” to an -est word.
+5|[Me=I] and Leo went to the park.|“I” is used for the person doing the action. Test it: “I went to the park”, not “Me went”. (Even better: “Leo and I”.)
+5|Grandpa gave the cookies to Ava and [I=me].|After “to”, use “me”. Test it: “gave the cookies to me”.
+5|If I [was=were] a bird, I would fly south.|For wishes and imaginary “if” ideas, we use “were”: If I were…
+5|The flowers smell [beautifully=beautiful].|“smell” works like “are” here, so it needs an adjective: beautiful.
+5|She sings [good=well] in the choir.|“well” is the adverb that describes how she sings. “good” is an adjective.
+5|Between you and [I=me], this puzzle is hard.|After “between”, use “me”: between you and me.
+5|There [is=are] many stars in the sky tonight.|“stars” is plural, so we say “there are”.
+5|Who [has took=has taken] my pencil?|With “has”, use “taken”: has taken.
+5|Everybody [have=has] a turn on the slide.|“Everybody” is singular, so we say “has”.`;
+function lines(s){return s.split('\n').map(l=>l.trim()).filter(l=>l&&!/\|x$/.test(l))}
+const BANK=[];
+lines(POS).forEach(l=>{const [t,s,a,why]=l.split('|');BANK.push({k:'pos',t:+t,s,a,why})});
+lines(PUN).forEach(l=>{const p=l.split('|');const t=+p[0],e=p.pop();const opts=p.slice(1).join('|').split('||');BANK.push({k:'pun',t,c:opts[0],w:opts.slice(1),e})});
+lines(BLD).forEach(l=>{const p=l.split('|');BANK.push({k:'bld',t:+p[0],s:p[1],alts:(p[2]||'').split('||').filter(Boolean)})});
+lines(SPT).forEach(l=>{const [t,s,e]=l.split('|');BANK.push({k:'spt',t:+t,s,e})});
+// ================= WORLDS =================
+const WORLDS=[{n:'Word Meadow',e:'🌼',c:['#6fd36b','#2e8b57','#bdf5a8']},{n:'Whisper Woods',e:'🌲',c:['#2f6b3f','#173d24','#7fc28d']},{n:'Crystal Caves',e:'💎',c:['#3a3f8f','#1c1d4a','#8fa3ff']},{n:'Castle Comma',e:'🏰',c:['#8a6d4f','#4a3624','#e8c99a']},{n:'Dragon Peak',e:'🐉',c:['#8f2f3a','#3d0f16','#ff9a6b']}];
+const LT=[{n:'Word Sort',k:['pos'],e:'🏷'},{n:'Punctuation Fix',k:['pun'],e:'✒'},{n:'Sentence Builder',k:['bld'],e:'🧱'},{n:'Spot the Mistake',k:['spt'],e:'🔍'},{n:'Boss Battle',k:['pos','pun','bld','spt'],e:'⚔'}];
+const KN={pos:'🏷 Word Sort – what part of speech is the yellow word?',pun:'✒ Punctuation Fix – which sentence is written correctly?',bld:'🧱 Sentence Builder – tap the tiles in order',spt:'🔍 Spot the Mistake – tap the wrong word'};
+const QN=8;
+function shuf(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function pickQs(w,l){const tier=w+1,kinds=LT[l].k;let out=[];
+ if(kinds.length===1){const pool=BANK.filter(q=>q.k===kinds[0]&&q.t<=tier);const hi=shuf(pool.filter(q=>q.t===tier)),lo=shuf(pool.filter(q=>q.t<tier));out=hi.slice(0,6).concat(lo).slice(0,QN);if(out.length<QN)out=out.concat(shuf(hi.slice(6))).slice(0,QN)}
+ else{kinds.forEach(k=>{const pool=shuf(BANK.filter(q=>q.k===k&&q.t===tier));out.push(...pool.slice(0,2))})}
+ return shuf(out)}
+// ================= PLAY =================
+let S=null;
+function startLevel(w,l){S={w,l,qs:pickQs(w,l),i:0,first:0,tried:false,ans:false};hideAll();$('game').style.display='flex';$('mid').textContent=`${WORLDS[w].e} ${WORLDS[w].n} · ${LT[l].n}`;showQ()}
+function hud(){$('hL').textContent=`${LT[S.l].e} Question ${S.i+1} of ${S.qs.length}`;$('hR').textContent=`✅ ${S.first} first try`;$('barF').style.width=(S.i/S.qs.length*100)+'%'}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;')}
+function showQ(){const q=S.qs[S.i];S.tried=false;S.ans=false;hud();$('kind').textContent=KN[q.k];const A=$('area');A.innerHTML='';$('fb').style.display='none';$('acts').innerHTML='';
+ if(q.k==='pos'){$('q').innerHTML=esc(q.s).replace(/\*(.+?)\*/,'<span class="hl">$1</span>');const tier=S.w+1;const all=tier===1?['n','v']:tier===2?['n','v','a']:tier===3?['n','v','a','d','p']:tier===4?['n','v','a','d','p','r','c']:['n','v','a','d','p','r','c','i'];
+  if(!all.includes(q.a))all.push(q.a);const o=document.createElement('div');o.id='opts';all.forEach(k=>{const b=mkOpt(POSN[k],k===q.a,()=>wrongPos(q,k));o.appendChild(b)});A.appendChild(o)}
+ else if(q.k==='pun'){$('q').textContent='Tap the sentence with correct capitals and punctuation:';const o=document.createElement('div');o.id='opts';shuf([q.c,...q.w]).forEach(s=>o.appendChild(mkOpt(s,s===q.c,null,true)));A.appendChild(o)}
+ else if(q.k==='spt'){$('q').textContent='One word is wrong. Tap it!';const o=document.createElement('div');o.style.fontSize='clamp(18px,4.6vw,24px)';o.style.lineHeight='2';
+  const parts=q.s.match(/\[[^\]]+\]|[^\s\[]+/g);parts.forEach(p=>{const m=p.match(/^\[(.+)=(.+)\]$/);const sp=document.createElement('span');sp.className='wd op';sp.textContent=m?m[1]:p;sp.dataset.ok=m?1:0;sp.onclick=()=>{if(S.ans)return;if(m)correct(sp);else{sp.classList.add('bad');wrong(`“${p}” is fine. Look again for the word that breaks a grammar rule.`)}};o.appendChild(sp);o.appendChild(document.createTextNode(' '))});A.appendChild(o)}
+ else{$('q').textContent='Build the sentence by tapping the tiles in order.';const line=document.createElement('div');line.id='line';const tl=document.createElement('div');tl.id='tiles';A.appendChild(line);A.appendChild(tl);
+  const words=q.s.split(' ');let order;do{order=shuf(words.map((w,i)=>i))}while(words.length>2&&order.every((v,i)=>v===i));S.pick=[];
+  order.forEach(i=>{const b=document.createElement('button');b.className='tile';b.textContent=words[i];b.dataset.w=words[i];b.onclick=()=>{if(S.ans||b.classList.contains('used'))return;SFX.tile();b.classList.add('used');S.pick.push(b);drawLine()};tl.appendChild(b)});
+  const und=document.createElement('button');und.className='big alt';und.textContent='↶ Undo';und.id='undoB';und.onclick=undo;const chk=document.createElement('button');chk.className='big';chk.textContent='✔ Check';chk.id='chkB';chk.onclick=checkBuild;$('acts').append(und,chk);drawLine()}}
+function undo(){if(S.ans||!S.pick.length)return;S.pick.pop().classList.remove('used');SFX.click();drawLine()}
+function drawLine(){const L=$('line');L.innerHTML='';if(!S.pick.length){L.innerHTML='<span style="color:#9a88bb;font-size:15px">Your sentence appears here…</span>';return}S.pick.forEach(b=>{const s=document.createElement('span');s.className='wd';s.textContent=b.dataset.w;s.onclick=()=>{if(S.ans)return;const k=S.pick.indexOf(b);S.pick.splice(k).forEach(x=>x.classList.remove('used'));SFX.click();drawLine()};L.appendChild(s)})}
+function norm(s){return s.replace(/[.,!?“”"]/g,'').toLowerCase().replace(/\s+/g,' ').trim()}
+function checkBuild(){if(S.ans)return;const q=S.qs[S.i],words=q.s.split(' ');if(S.pick.length<words.length){toastFb('Use all the tiles first!');return}
+ const got=S.pick.map(b=>b.dataset.w).join(' ');const okList=[q.s,...q.alts];
+ const mt=okList.find(s=>norm(s)===norm(got));S.match=mt;if(mt)correct(null,norm(got)!==norm(q.s)?`Another correct way is: “${q.s}”`:'');
+ else{wrong(buildHint(q,got));S.pick.splice(0).forEach(x=>x.classList.remove('used'));drawLine()}}
+function sameTiles(a,b){return a.split(' ').sort().join()===b.split(' ').sort().join()}
+function buildHint(q,got){const w=q.s.split(' ');if(got.split(' ')[0]!==w[0]&&!q.alts.some(a=>a.split(' ')[0]===got.split(' ')[0]))return `Hint: the tile with a capital letter, “${w[0]}”, starts the sentence. The one with the end mark (. ? !) goes last.`;return 'Close! Read it out loud. Does it sound right? Remember: describing words (adjectives) usually come right before the noun they describe.'}
+function toastFb(m){const f=$('fb');f.className='bad';f.textContent=m;f.style.display='block'}
+function mkOpt(txt,ok,whyFn,full){const b=document.createElement('button');b.className='op'+(full?' full':'');b.textContent=txt;b.dataset.ok=ok?1:0;b.onclick=()=>{if(S.ans)return;if(ok)correct(b);else{b.classList.add('bad');b.disabled=true;wrong(whyFn?whyFn():punWhy())}};return b}
+function wrongPos(q,k){const w=q.s.match(/\*(.+?)\*/)[1];return `Not quite. “${w}” is not a ${POSN[k]} here. Hint: ${POSDEF[q.a]}`}
+function punWhy(){return 'Not this one. Check the capital letters, the end mark and any commas or apostrophes.'}
+function wrong(msg){SFX.bad();S.tried=true;const f=$('fb');f.className='bad';f.innerHTML='🙂 '+esc(msg)+'<br><b>Try again!</b>';f.style.display='block'}
+function correct(el,extra){const q=S.qs[S.i];S.ans=true;SFX.ok();if(el)el.classList.add('ok');if(!S.tried)S.first++;save.answered++;if(!S.tried)save.correct++;store();
+ let ex='';if(q.k==='pos')ex=`Yes! “${q.s.match(/\*(.+?)\*/)[1]}” is a ${POSN[q.a]}. ${q.why}`;else if(q.k==='pun')ex='Correct! '+q.e;else if(q.k==='spt'){const m=q.s.match(/\[(.+)=(.+)\]/);ex=`Good eye! “${m[1]}” should be “${m[2]}”. ${q.e}`;el.textContent=m[2]}else{const L=$('line');if(L)L.innerHTML='<span class="wd" style="background:#9ff0b0">'+esc(S.match||q.s)+'</span>';ex='Great sentence! '+(extra||'')}
+ const f=$('fb');f.className='good';f.textContent='⭐ '+ex;f.style.display='block';$('acts').innerHTML='';const n=document.createElement('button');n.className='big';n.id='contB';n.textContent=S.i<S.qs.length-1?'Next ▶':'Finish 🏁';n.onclick=next;$('acts').appendChild(n);hud();n.focus()}
+function next(){SFX.click();S.i++;if(S.i>=S.qs.length)endLevel();else showQ()}
+function endLevel(){const n=S.qs.length,f=S.first,st=f>=n-1?3:f>=Math.ceil(n*.6)?2:1,key=S.w*5+S.l;save.stars[key]=Math.max(save.stars[key]||0,st);store();SFX.win();$('game').style.display='none';
+ $('endH').textContent=S.l===4?(S.w===4?'🐉 The dragon bows to you, Grammar Hero!':`⚔ ${WORLDS[S.w].n} boss defeated!`):'Level complete!';$('endS').textContent='★'.repeat(st)+'☆'.repeat(3-st);
+ $('endP').textContent=`${f} of ${n} right on the first try. `+(st===3?'Amazing work!':'Play again to earn more stars!');$('nextB').style.display=key<24?'':'none';show('endO')}
+// ================= SCREENS =================
+const OVS=['title','howO','mapO','endO'];function hideAll(){OVS.forEach(o=>$(o).style.display='none')}
+function show(o){hideAll();$('game').style.display='none';$(o).style.display='flex'}
+function unlocked(k){return k===0||!!save.stars[k-1]||!!save.stars[k]}
+function renderMap(){const g=$('mapG');g.innerHTML='';WORLDS.forEach((W,w)=>{const d=document.createElement('div');d.className='wcard';d.style.background=`linear-gradient(135deg,${W.c[0]}aa,${W.c[1]}cc)`;d.innerHTML=`<h3>${W.e} World ${w+1}: ${W.n}</h3>`;
+ LT.forEach((L,l)=>{const k=w*5+l,s=save.stars[k]||0,b=document.createElement('button');b.className='lv';b.dataset.k=k;b.innerHTML=`${L.e} ${l+1}<small>${'★'.repeat(s)}${'☆'.repeat(3-s)}</small>`;b.title=L.n;b.disabled=!unlocked(k);b.onclick=()=>{SFX.click();startLevel(w,l)};d.appendChild(b)});g.appendChild(d)})}
+function toTitle(){const t=Object.values(save.stars).reduce((a,b)=>a+b,0);$('tInfo').textContent=`⭐ ${t} / 75 stars · ${save.correct} right first try`;$('mid').textContent='Grammar Quest';show('title')}
+$('playB').onclick=()=>{ac();SFX.click();renderMap();show('mapO')};$('howB').onclick=()=>{SFX.click();show('howO')};$('howBack').onclick=()=>{SFX.click();toTitle()};
+$('mapB').onclick=()=>{SFX.click();renderMap();show('mapO')};$('mapBack').onclick=()=>{SFX.click();toTitle()};
+$('retryB').onclick=()=>{startLevel(S.w,S.l)};$('nextB').onclick=()=>{const k=S.w*5+S.l+1;startLevel(k/5|0,k%5)};$('endMapB').onclick=()=>{SFX.click();renderMap();show('mapO')};
+addEventListener('keydown',e=>{const k=e.key;if(k==='m'||k==='M'){setMute(!muted);return}
+ if($('title').style.display==='flex'&&k==='Enter'){$('playB').click();return}
+ if($('game').style.display!=='flex')return;
+ if(k==='Enter'){e.preventDefault();if(S.ans)$('contB').click();else if($('chkB'))$('chkB').click();return}
+ if(k==='Backspace'){e.preventDefault();if(S.pick)undo();return}
+ if(/^[1-9]$/.test(k)&&!S.ans){const q=S.qs[S.i];const els=q.k==='bld'?[...document.querySelectorAll('.tile:not(.used)')]:[...document.querySelectorAll('#area .op:not(:disabled)')].filter(x=>!x.classList.contains('bad'));const el=els[+k-1];if(el)el.click()}});
+// background
+const cv=$('bg'),cx=cv.getContext('2d');let CW,CH;function rs(){CW=innerWidth;CH=innerHeight-44;cv.width=CW;cv.height=CH}addEventListener('resize',rs);rs();
+function bg(t){requestAnimationFrame(bg);const W=WORLDS[S?S.w:0],g=cx.createLinearGradient(0,0,0,CH);g.addColorStop(0,W.c[0]);g.addColorStop(1,W.c[1]);cx.fillStyle=g;cx.fillRect(0,0,CW,CH);
+ cx.fillStyle=W.c[2]+'55';for(let i=0;i<4;i++){cx.beginPath();cx.moveTo(0,CH);for(let x=0;x<=CW;x+=20)cx.lineTo(x,CH*(.62+i*.1)-Math.sin(x/(120+i*40)+i+t/9000)*30);cx.lineTo(CW,CH);cx.fill()}
+ for(let i=0;i<20;i++){const x=(i*137+t/40*(i%3+1))%CW,y=(i*71)%(CH*.5);cx.fillStyle='#ffffff'+(i%2?'55':'33');cx.beginPath();cx.arc(x,y+Math.sin(t/700+i)*6,2+i%3,0,7);cx.fill()}}
+requestAnimationFrame(bg);
+window.GQ={BANK,pickQs};
+toTitle();
+</script></body></html>

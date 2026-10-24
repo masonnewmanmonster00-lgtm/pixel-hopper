@@ -1,0 +1,119 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Bug Lab</title><style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;height:100%;background:#1d1630;color:#eef;font-family:system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden;user-select:none}
+#top{position:absolute;top:0;left:0;right:0;height:40px;display:flex;align-items:center;gap:6px;padding:0 8px;background:#0008;z-index:3}
+#top a,#top button{color:#fff;background:#283070;border:0;border-radius:8px;padding:6px 10px;font-size:13px;text-decoration:none;cursor:pointer;white-space:nowrap}
+#title{flex:1;font-weight:800;white-space:nowrap;overflow:hidden}#title b{color:#ffcf5a}#st{font-size:13px;white-space:nowrap}
+canvas{position:absolute;top:40px;left:0;touch-action:none}
+.btn{background:linear-gradient(#ffb340,#e07a10);color:#fff;border:0;border-radius:12px;padding:9px 13px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 #8a4a00;margin:3px}
+.btn:active{transform:translateY(2px)}
+#ov{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:9}
+#ov>div{background:#121a4a;border:2px solid #ffcf5a;border-radius:16px;padding:12px 16px;text-align:center;max-width:96%;max-height:94%;overflow:auto}
+#ov h2{margin:4px 0}#ov p{margin:6px 0;font-size:14px}
+.lv{display:inline-block;margin:3px;padding:5px 8px;border-radius:8px;background:#283070;font-size:13px;cursor:pointer;min-width:120px}
+.lv:hover{background:#e07a10}.lv.lock{opacity:.45;cursor:default}.stars{font-size:34px;color:#ffd54a}
+</style></head><body>
+<div id="top"><a id="lz" href="./index.html">◀ Learning Lab</a><a id="menu" href="../index.html">🏠</a><div id="title">🐞 Bug <b>Lab</b></div><span id="st"></span><button id="lvB">Levels</button><button id="pB">⏸</button><button id="mu">🔊</button></div>
+<canvas id="c"></canvas><div id="ov"><div id="ovc"></div></div>
+<script>
+const SAVEKEY='g3BugsSave',TITLE='🐞 Bug Lab',INTRO='Become a bug scientist! Learn the parts of an insect, sort real insects from look-alikes, put life cycles in order and meet the pollinators that feed the world.';
+// shared skeleton injected into both games
+const $=id=>document.getElementById(id);
+const cv=$('c'),cx=cv.getContext('2d');let W=0,H=0,DPR=1;
+let save={mute:false,stars:{},unlocked:1};
+try{const s=JSON.parse(localStorage.getItem(SAVEKEY)||'null');if(s)save=Object.assign(save,s)}catch(e){}
+function persist(){try{localStorage.setItem(SAVEKEY,JSON.stringify(save))}catch(e){}}
+let AC=null;function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(AC&&AC.state==='suspended')AC.resume();return AC}
+function tone(f,d=0.12,t='sine',v=0.15,dl=0){if(save.mute)return;const a=ac();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type=t;o.frequency.value=f;const s=a.currentTime+dl;g.gain.setValueAtTime(v,s);g.gain.exponentialRampToValueAtTime(0.001,s+d);o.connect(g);g.connect(a.destination);o.start(s);o.stop(s+d+0.02)}
+const sfx={ok(){tone(660,.1,'triangle');tone(990,.15,'triangle',.15,.08)},bad(){tone(200,.25,'sawtooth',.08)},tap(){tone(500,.05,'square',.05)},win(){[523,659,784,1046].forEach((f,i)=>tone(f,.2,'triangle',.15,i*.12))}};
+function resize(){DPR=window.devicePixelRatio||1;W=innerWidth;H=innerHeight-40;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);cv.style.width=W+'px';cv.style.height=H+'px';cx.setTransform(DPR,0,0,DPR,0,0)}
+function rr(x,y,w,h,r){cx.beginPath();cx.roundRect?cx.roundRect(x,y,w,h,r):cx.rect(x,y,w,h)}
+function txt(s,x,y,sz,col='#fff',al='center',wt='700'){cx.font=wt+' '+sz+'px system-ui,Segoe UI,Roboto,sans-serif';cx.fillStyle=col;cx.textAlign=al;cx.textBaseline='middle';cx.fillText(s,x,y)}
+function fit(s,maxw,sz){cx.font='700 '+sz+'px system-ui';while(sz>9&&cx.measureText(s).width>maxw){sz--;cx.font='700 '+sz+'px system-ui'}return sz}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function pick(a){return a[Math.random()*a.length|0]}
+let paused=false,btns=[];
+function hit(x,y){for(let i=btns.length-1;i>=0;i--){const b=btns[i];if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){b.f();return true}}return false}
+function ptr(e){ac();if(paused||$('ov').style.display==='flex')return;const r=cv.getBoundingClientRect();const p=e.changedTouches?e.changedTouches[0]:e;onTap(p.clientX-r.left,p.clientY-r.top)}
+cv.addEventListener('pointerdown',e=>{e.preventDefault();ptr(e)});
+function ov(html){$('ovc').innerHTML=html;$('ov').style.display=html?'flex':'none'}
+function setPause(p){if($('ov').style.display==='flex'&&!paused)return;paused=p;$('pB').textContent=p?'▶':'⏸';ov(p?'<h2>⏸ Paused</h2><p>Press P or tap to resume. R restarts the level.</p><button class="btn" onclick="setPause(false)">▶ Resume</button> <button class="btn" onclick="setPause(false);restart()">↻ Restart</button>':'')}
+$('pB').onclick=()=>setPause(!paused);
+$('mu').textContent=save.mute?'🔇':'🔊';$('mu').onclick=()=>{save.mute=!save.mute;$('mu').textContent=save.mute?'🔇':'🔊';persist()};
+$('lvB').onclick=()=>{paused=false;showLevels()};
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n)}
+function showLevels(){let h='<h2>'+TITLE+'</h2><p>'+INTRO+'</p>';LV.forEach((L,i)=>{const ok=i<save.unlocked;h+='<span class="lv'+(ok?'':' lock')+'" data-lv="'+i+'" '+(ok?'onclick="startLevel('+i+')"':'')+'>'+(ok?'':'🔒 ')+(i+1)+'. '+L.name+'<br><small>'+starStr(save.stars[i]||0)+'</small></span>'});h+='<p><small>Keys: 1-4 choose · P pause · R restart · M mute</small></p>';ov(h)}
+function finishLevel(stars){sfx.win();const i=cur;save.stars[i]=Math.max(save.stars[i]||0,stars);save.unlocked=Math.max(save.unlocked,Math.min(LV.length,i+2));persist();
+ ov('<h2>Level complete!</h2><div class="stars">'+starStr(stars)+'</div><p>'+LV[i].name+'</p>'+(i+1<LV.length?'<button class="btn" id="nextB" onclick="startLevel('+(i+1)+')">Next level ▶</button> ':'')+'<button class="btn" onclick="restart()">↻ Replay</button> <button class="btn" onclick="showLevels()">Levels</button>')}
+function restart(){ov('');startLevel(cur)}
+addEventListener('keydown',e=>{const k=e.key;if(k==='p'||k==='P'){setPause(!paused);return}if(paused)return;if($('ov').style.display==='flex'){if(k==='Enter'&&$('nextB'))$('nextB').click();return}
+ if(keyTyping()&&k.length===1&&k!=='p'&&k!=='P'){onKey(e);return}
+ if(k==='r'||k==='R'){restart();return}if(k==='m'||k==='M'){$('mu').click();return}onKey(e)});
+addEventListener('resize',()=>{resize();draw()});
+function ri(a,b){return a+Math.floor(Math.random()*(b-a+1))}
+const PARTS=[['head','Head','has the eyes, mouth parts and antennae'],['thorax','Thorax','the middle part — legs and wings attach here'],['abdomen','Abdomen','the back part — digestion and breathing holes'],['antenna','Antennae','feelers for smelling and touching'],['legs','Legs','insects always have 6 legs'],['wings','Wings','most adult insects have 1 or 2 pairs'],['eye','Compound eye','made of hundreds of tiny lenses']];
+const CRIT=[['🐜','Ant',1,'6 legs, 3 body parts'],['🐝','Bee',1,'6 legs, 3 body parts, 4 wings'],['🦋','Butterfly',1,'6 legs, 3 body parts'],['🐞','Ladybug',1,'a beetle — 6 legs'],['🦗','Grasshopper',1,'6 legs, jumps with big back legs'],['🪲','Beetle',1,'hard wing covers, 6 legs'],['🪰','Fly',1,'only 2 wings but still an insect'],['🦟','Mosquito',1,'6 legs, 3 body parts'],['🪳','Cockroach',1,'6 legs, very old insect group'],['🕷️','Spider',0,'8 legs and 2 body parts — an arachnid'],['🦂','Scorpion',0,'8 legs — an arachnid'],['🐛','Caterpillar',1,'a young (larva) butterfly or moth — still an insect!'],['🪱','Earthworm',0,'no legs at all — an annelid worm'],['🐌','Snail',0,'a mollusc with a shell'],['🦀','Crab',0,'10 legs — a crustacean'],['🦐','Shrimp',0,'a crustacean'],['🐙','Octopus',0,'8 arms — a mollusc'],['🦎','Lizard',0,'a reptile with a backbone'],['🐸','Frog',0,'an amphibian with a backbone'],['🦇','Bat',0,'a flying mammal, not an insect'],['🐦','Bird',0,'has feathers and a backbone'],['🧲','Woodlouse',0,'14 legs — a crustacean (pill bug)'],['🐉','Dragonfly',1,'6 legs, 4 wings — an insect'],['🦠','Tick',0,'8 legs — an arachnid']];
+CRIT.forEach(c=>{if(c[1]==='Woodlouse')c[0]='🪨';if(c[1]==='Dragonfly')c[0]='🪽';if(c[1]==='Tick')c[0]='🕷'});
+const CYC=[['Butterfly',1,['🥚 Egg','🐛 Larva (caterpillar)','🫘 Pupa (chrysalis)','🦋 Adult butterfly']],['Ladybug',1,['🥚 Egg','🐛 Larva','🫘 Pupa','🐞 Adult ladybug']],['Honeybee',1,['🥚 Egg','🐛 Larva','🫘 Pupa (in a wax cell)','🐝 Adult bee']],['Mosquito',1,['🥚 Egg (on water)','🐛 Larva (wriggler)','🫘 Pupa (tumbler)','🦟 Adult mosquito']],['Grasshopper',0,['🥚 Egg','🦗 Nymph (small, no wings)','🦗 Adult with wings']],['Dragonfly',0,['🥚 Egg','💧 Nymph (lives underwater)','🪽 Adult dragonfly']],['Cockroach',0,['🥚 Egg case','🪳 Nymph','🪳 Adult cockroach']]];
+const QZ={meta:[['Complete metamorphosis has how many stages?','4',['3','2','6'],'Egg → larva → pupa → adult.'],['Incomplete metamorphosis has how many stages?','3',['4','2','5'],'Egg → nymph → adult. No pupa!'],['A young insect that looks like a small adult is a…','Nymph',['Pupa','Larva','Egg'],'Nymphs (like baby grasshoppers) look like tiny wingless adults.'],['During which stage does a caterpillar turn into a butterfly?','Pupa',['Egg','Nymph','Larva'],'Inside the chrysalis (pupa) its body is completely rebuilt.'],['Which insect has INCOMPLETE metamorphosis?','Grasshopper',['Butterfly','Bee','Ladybug'],'Grasshoppers hatch as nymphs and moult until adult.'],['Why do nymphs moult (shed their skin)?','Their hard outer skeleton can\'t stretch',['To change colour','To make silk','To stay cool'],'Insects have an exoskeleton, so they must moult to grow.']],
+pol:[['What do pollinators carry from flower to flower?','Pollen',['Water','Seeds','Leaves'],'Pollen lets flowers make seeds and fruit.'],['Which is the most important pollinator for crops?','Bees',['Ants','Spiders','Mosquitoes'],'Bees pollinate a huge share of the fruit and vegetables we eat.'],['What do bees get from flowers in return?','Nectar and pollen for food',['Shelter from rain','Nothing','Water to swim'],'Nectar gives energy; pollen gives protein.'],['Which of these is also a pollinator?','Butterflies, moths and hoverflies',['Earthworms','Snails','Woodlice'],'Many insects, plus some birds and bats, pollinate.'],['How can you help pollinators?','Plant flowers and avoid pesticides',['Cut all the flowers','Spray bug spray','Pave the garden'],'Wildflowers, bee hotels and fewer chemicals help a lot.'],['Bees tell each other where flowers are by…','Doing a waggle dance',['Singing','Writing','Flashing lights'],'The angle and length of the dance shows direction and distance.'],['Which fruit would we lose without pollinators?','Apples, cherries and blueberries',['Salt','Rice only','Nothing'],'About 3 out of every 4 kinds of food crops need pollinators.'],['A bat that pollinates is helping a…','Agave plant (used for food)',['Rock','Spider','Cloud'],'Bats pollinate night-blooming plants like agave and bananas.']],
+body:[['How many legs does every insect have?','6',['8','4','10'],'Six legs, all on the thorax.'],['How many main body parts does an insect have?','3',['2','4','5'],'Head, thorax, abdomen.'],['Insects breathe through tiny holes called…','Spiracles',['Gills','Nostrils','Pores'],'Spiracles run along the sides of the abdomen.'],['An insect\'s skeleton is…','On the outside (exoskeleton)',['Made of bone','Inside like ours','Missing'],'A tough exoskeleton protects the body.'],['What do antennae help insects do?','Smell and feel',['Fly','Eat','Hear only'],'Antennae pick up scents and touch.'],['Which body part do the wings attach to?','Thorax',['Head','Abdomen','Antennae'],'Both the legs and wings are on the thorax.']]};
+const LV=[
+{name:'Parts of an insect',m:'label',n:7},
+{name:'Insect body facts',m:'quiz',k:'body'},
+{name:'Insect or not? (easy)',m:'sort',easy:1},
+{name:'Label the bug again',m:'label',n:8,hard:1},
+{name:'Tricky look-alikes',m:'sort'},
+{name:'Butterfly life cycle',m:'order',only:'Butterfly'},
+{name:'Complete metamorphosis',m:'order',type:1},
+{name:'Incomplete metamorphosis',m:'order',type:0},
+{name:'Metamorphosis quiz',m:'quiz',k:'meta'},
+{name:'Complete or incomplete?',m:'cc'},
+{name:'Meet the pollinators',m:'quiz',k:'pol'},
+{name:'Why is it (not) an insect?',m:'why'},
+{name:'Life cycle mix',m:'order'},
+{name:'Bug Lab master',m:'mix'}];
+let cur=0,qi=0,miss=0,Q=null,msg='',msgCol='#fff',lock=false;
+const NQ=()=>{const L=LV[cur];return L.n||(L.m==='order'?4:L.m==='quiz'?6:8)};
+function mo(ans,pool){return shuffle([ans,...shuffle([...new Set(pool)].filter(x=>x!==ans)).slice(0,3)])}
+function makeQ(){const L=LV[cur];let m=L.m;if(m==='mix')m=pick(['label','sort','order','quiz','cc']);const q={m,used:(Q&&Q.used)||[]};
+ if(m==='label'){const p=pick(PARTS);q.part=p[0];q.text=L.hard?'Which part is glowing? (careful!)':'What is the glowing part called?';q.opts=mo(p[1],PARTS.map(x=>x[1]));q.ans=p[1];q.why=p[1]+': '+p[2]+'.'}
+ else if(m==='sort'||m==='why'){let pool=L.easy?CRIT.filter(c=>['Ant','Bee','Butterfly','Ladybug','Spider','Earthworm','Snail','Bird','Frog','Fly'].includes(c[1])):CRIT;let left=pool.filter(c=>!q.used.includes(c[1]));const c=pick(left.length?left:pool);q.used=q.used.concat(c[1]);q.cr=c;
+  if(m==='sort'){q.text='Is a '+c[1].toLowerCase()+' an insect?';q.opts=['Insect','Not an insect'];q.ans=c[2]?'Insect':'Not an insect'}else{q.text='Why is a '+c[1].toLowerCase()+(c[2]?' an insect?':' NOT an insect?');const R=['6 legs and 3 body parts','8 legs (arachnid)','No legs (worm)','Has a backbone','Crustacean (many legs)','Mollusc (soft body)'];const a=c[2]?R[0]:/arachnid/.test(c[3])?R[1]:/worm/.test(c[3])?R[2]:/backbone|mammal|feathers/.test(c[3])?R[3]:/crustacean/.test(c[3])?R[4]:R[5];q.opts=mo(a,R);q.ans=a}q.why=c[1]+': '+c[3]+'.'}
+ else if(m==='order'){let pool=CYC;if(L.only)pool=CYC.filter(c=>c[0]===L.only);else if(L.type!=null)pool=CYC.filter(c=>c[1]===L.type);const c=pick(pool);q.cy=c;q.stages=shuffle(c[2].map((s,i)=>({s,i})));q.next=0;q.text='Tap the '+c[0].toLowerCase()+' life cycle stages IN ORDER, starting with the first.'}
+ else if(m==='cc'){const c=pick(CYC);q.cy=c;q.text='Does a '+c[0].toLowerCase()+' have COMPLETE or INCOMPLETE metamorphosis?';q.opts=['Complete (4 stages)','Incomplete (3 stages)'];q.ans=c[1]?q.opts[0]:q.opts[1];q.why=c[0]+': '+c[2].join(' → ')+'.'}
+ else{const k=L.k||pick(['body','meta','pol']);const B=QZ[k];let left=B.filter(f=>!q.used.includes(f[0]));const f=pick(left.length?left:B);q.used=q.used.concat(f[0]);q.text=f[0];q.opts=shuffle([f[1],...f[2]]);q.ans=f[1];q.why=f[3]}
+ return q}
+const TIPS={0:'Every insect has 3 body parts (head, thorax, abdomen), 6 legs and 2 antennae.',2:'Insects have 6 legs. Spiders have 8 — they are arachnids, not insects!',5:'Some insects totally change shape: egg → larva → pupa → adult. That is COMPLETE metamorphosis.',7:'Other insects grow in 3 stages: egg → nymph → adult. The nymph looks like a small adult. That is INCOMPLETE metamorphosis.',10:'Pollinators carry pollen between flowers so plants can make seeds and fruit.'};
+function startLevel(i){ov('');paused=false;cur=i;qi=0;miss=0;msg='';lock=false;Q=null;Q=makeQ();draw();if(TIPS[i]&&!save['tip'+i]){save['tip'+i]=1;persist();ov('<h2>🐞 '+LV[i].name+'</h2><p>'+TIPS[i]+'</p><button class="btn" onclick="ov(\'\')">Let\'s go ▶</button>')}}
+function keyTyping(){return false}
+function card(x,y,w,h,col,stroke){cx.fillStyle=col;rr(x,y,w,h,12);cx.fill();if(stroke){cx.strokeStyle=stroke;cx.lineWidth=3;cx.stroke()}}
+function wrapC(s,x,y,w,sz,col){cx.font='700 '+sz+'px system-ui';const ws=s.split(' ');let lines=[],l='';for(const wd of ws){const t=l?l+' '+wd:wd;if(cx.measureText(t).width>w&&l){lines.push(l);l=wd}else l=t}lines.push(l);if(lines.length>3&&sz>10)return wrapC(s,x,y,w,sz-1,col);lines.forEach((ln,i)=>txt(ln,x,y+(i-(lines.length-1)/2)*(sz+3),sz,col))}
+function insect(x,y,s,hl){const t=performance.now()/1000,glow=p=>hl===p?'#ffd54a':null;const ell=(ex,ey,rx,ry,col,p)=>{cx.fillStyle=glow(p)||col;cx.beginPath();cx.ellipse(ex,ey,rx,ry,0,0,7);cx.fill();if(glow(p)){cx.strokeStyle='#fff';cx.lineWidth=3;cx.stroke()}};
+ cx.lineCap='round';cx.strokeStyle=glow('legs')||'#3b2a1a';cx.lineWidth=hl==='legs'?5:3;[-1,0,1].forEach(k=>{[-1,1].forEach(sd=>{cx.beginPath();cx.moveTo(x+k*s*.22,y);cx.lineTo(x+k*s*.32,y+sd*s*.35);cx.lineTo(x+k*s*.45,y+sd*s*.55);cx.stroke()})});
+ cx.globalAlpha=.75;ell(x-s*.05,y-s*.32,s*.35,s*.16,'#bde0fe','wings');ell(x-s*.05,y+s*.32,s*.35,s*.16,'#bde0fe','wings');cx.globalAlpha=1;
+ ell(x-s*.62,y,s*.42,s*.24,'#8d5524','abdomen');ell(x,y,s*.22,s*.2,'#6b3e1c','thorax');ell(x+s*.36,y,s*.16,s*.15,'#4a2a12','head');ell(x+s*.42,y-s*.08,s*.05,s*.05,'#111','eye');
+ cx.strokeStyle=glow('antenna')||'#3b2a1a';cx.lineWidth=hl==='antenna'?5:2.5;[-1,1].forEach(sd=>{cx.beginPath();cx.moveTo(x+s*.46,y+sd*s*.05);cx.quadraticCurveTo(x+s*.7,y+sd*s*.15,x+s*.78,y+sd*s*.4);cx.stroke()})}
+function draw(){btns=[];cx.clearRect(0,0,W,H);const g=cx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#1f4d2b');g.addColorStop(1,'#12301c');cx.fillStyle=g;cx.fillRect(0,0,W,H);if(!Q)return;const q=Q;
+ $('st').textContent='Lv '+(cur+1)+' · '+Math.min(qi+1,NQ())+'/'+NQ()+' · ✗'+miss;txt(LV[cur].name,W/2,14,13,'#ffcf5a');
+ const lx=W*.25,px=W*.5,pw=W-px-14;
+ if(q.m==='order'){wrapC(q.text,W/2,40,W-40,16,'#fff');const n=q.stages.length,bw=Math.min(190,(W-40-10*(n-1))/n),x0=(W-(n*bw+10*(n-1)))/2;
+  for(let i=0;i<n;i++){const x=x0+i*(bw+10);card(x,70,bw,34,'#0004');txt(i<q.next?q.cy[2][i]:(i+1)+'. ?',x+bw/2,87,fit(i<q.next?q.cy[2][i]:'?',bw-8,13),i<q.next?'#7f7':'#9ab')}
+  q.stages.forEach((st,i)=>{const x=x0+i*(bw+10),y=130,done=st.i<q.next;card(x,y,bw,110,done?'#2a5a3a':'#fdf6e3',st.bad?'#e74c3c':null);const [em,...rest]=st.s.split(' ');txt(em,x+bw/2,y+38,34);wrapC(rest.join(' '),x+bw/2,y+82,bw-12,14,done?'#cfc':'#2b1d0e');if(!done)btns.push({x,y,w:bw,h:110,f:()=>pickStage(st)})});
+  txt('Keys 1-'+n+' pick a card',W/2,252,11,'#9ab');if(msg)wrapC(msg,W/2,H-30,W-40,14,msgCol);return}
+ if(q.m==='label')insect(lx+30,H/2,Math.min(150,H*.42),q.part);
+ else if(q.cr){txt(q.cr[0],lx,H/2-10,Math.min(110,H*.32));txt(q.cr[1],lx,H/2+70,20,'#ffcf5a')}
+ else if(q.cy){txt(q.cy[2][q.cy[2].length-1].split(' ')[0],lx,H/2,100)}
+ else{txt(LV[cur].k==='pol'||/pollen|bee|flower/i.test(q.text)?'🌼🐝':'🔬🐜',lx,H/2,80)}
+ wrapC(q.text,px+pw/2,50,pw,16,'#fff');const two=q.opts.length===2;const bw=two?pw:(pw-10)/2,bh=44;
+ q.opts.forEach((o,i)=>{const bx=px+(two?0:(i%2)*(bw+10)),by=90+(two?i:Math.floor(i/2))*(bh+10);let col='#283070';if(q.picked!=null){if(o===q.ans)col='#2a8a3a';else if(o===q.picked)col='#a33'}card(bx,by,bw,bh,col);const s=(i+1)+'  '+o;txt(s,bx+bw/2,by+bh/2,fit(s,bw-10,16));btns.push({x:bx,y:by,w:bw,h:bh,f:()=>choose(o)})});
+ if(msg)wrapC(msg,px+pw/2,H-40,pw,13,msgCol)}
+function pickStage(st){if(lock)return;const q=Q;if(st.i===q.next){q.next++;st.bad=0;sfx.ok();if(q.next>=q.stages.length){lock=true;msg='✔ '+q.cy[0]+': '+q.cy[2].join(' → ')+(q.cy[1]?'  (complete metamorphosis)':'  (incomplete metamorphosis)');msgCol='#7f7';draw();setTimeout(next,2000);return}msg='✔ Yes, next!';msgCol='#7f7'}else{sfx.bad();miss++;st.bad=1;msg='✘ Not that one yet. What comes after '+(q.next?q.cy[2][q.next-1]:'the start')+'?';msgCol='#f99'}draw()}
+function choose(v){if(lock)return;Q.picked=v;lock=true;const ok=v===Q.ans;if(ok)sfx.ok();else{sfx.bad();miss++}msg=(ok?'✔ Correct! ':'✘ ')+(Q.why||'');msgCol=ok?'#7f7':'#f99';draw();setTimeout(next,ok?1500:3000)}
+function next(){msg='';lock=false;qi++;if(qi>=NQ()){finishLevel(miss===0?3:miss<=2?2:1);return}Q=makeQ();draw()}
+function onTap(x,y){hit(x,y)}
+function onKey(e){const k=e.key,q=Q;if(!q||lock)return;const n=+k;if(q.opts){if(n>=1&&n<=q.opts.length)choose(q.opts[n-1]);return}if(q.stages&&n>=1&&n<=q.stages.length&&q.stages[n-1].i>=q.next)pickStage(q.stages[n-1])}
+window.G={get Q(){return Q},LV};
+resize();cur=0;Q=makeQ();draw();showLevels();
+
+</script></body></html>

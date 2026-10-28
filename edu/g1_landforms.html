@@ -95,7 +95,7 @@ lake:{e:'💧',hit:[50,165,70,30],d:'a body of water surrounded by land'},
 peninsula:{e:'👉',hit:[336,118,70,32],d:'land with water on three sides'},
 bay:{e:'🌊',hit:[340,160,40,30],d:'part of the sea that curves into the land'},
 valley:{e:'⛰️',hit:[78,70,30,60],d:'low land between hills or mountains'},
-plateau:{e:'🟫',at:[180,95],hit:[160,58,110,58],d:'high, flat land with steep sides'},
+plateau:{e:'🟫',at:[245,72],hit:[160,58,110,58],d:'high, flat land with steep sides'},
 mountain:{e:'🏔️',at:[45,95],hit:[10,20,150,110],d:'a very high, steep landform with a peak'},
 plains:{e:'🌾',hit:[0,130,290,100],d:'wide, flat, low land'},
 ocean:{e:'🌊',at:[420,225],hit:[330,0,110,260],d:'a huge body of salt water'}};
@@ -114,7 +114,7 @@ function drawScene(g,t,found){g.fillStyle='#bde3ff';g.fillRect(0,0,440,260);
  g.fillStyle='#d9b26f';g.beginPath();g.moveTo(296,198);g.lineTo(336,226);g.lineTo(336,190);g.fill();g.strokeStyle='#3d8fd6';g.lineWidth=2;for(const dy of[-12,0,12]){g.beginPath();g.moveTo(300,204);g.lineTo(334,208+dy);g.stroke()}// delta
  g.fillStyle='#3d8fd6';g.beginPath();g.ellipse(85,180,32,12,0,0,7);g.fill();// lake
  g.fillStyle='#fff8';for(let k=0;k<3;k++){g.beginPath();g.arc((t*12+k*160)%480-40,15+k*6,10,0,7);g.arc((t*12+k*160)%480-26,12+k*6,13,0,7);g.fill()}
- g.font='bold 11px sans-serif';for(const k of found){const[x,y,w,h]=LF[k].hit;g.fillStyle='#000a';const tw=g.measureText(k).width+8;g.fillRect(x+w/2-tw/2,y+h/2-8,tw,16);g.fillStyle='#ffd34d';g.fillText(k,x+w/2-tw/2+4,y+h/2+4)}}
+ g.font='bold 11px sans-serif';const placed=[];for(const k of found){const[x,y,w,h]=LF[k].hit;const c=LF[k].at||[x+w/2,y+h/2];const tw=g.measureText(k).width+8;let lx=Math.max(2,Math.min(438-tw,c[0]-tw/2)),ly=Math.max(2,Math.min(242,c[1]-8));for(let n=0;n<12&&placed.some(b=>lx<b[0]+b[2]+2&&lx+tw+2>b[0]&&ly<b[1]+18&&ly+18>b[1]);n++){ly=ly+18>242?ly-36:ly+18}placed.push([lx,ly,tw]);g.fillStyle='#000c';g.fillRect(lx,ly,tw,16);g.fillStyle='#ffd34d';g.fillText(k,lx+4,ly+12)}}
 function hitLF(x,y){for(const k in LF){const[a,b,w,h]=LF[k].hit;if(x>=a&&x<=a+w&&y>=b&&y<=b+h)return k}return null}
 function findLevel(L,i,free){const targets=shuffle(L.find);let n=0,miss=0,found=[];
  app.innerHTML=(free?`<div class="card"><div class="row"><h2 style="flex:1;margin:0">🗺️ Explore the land</h2><button class="btn alt" id="bk">Menu</button></div>`:lvHead(L,i))+`<p><b>${L.goal}</b></p><h3 id="fq" style="text-align:center"></h3><canvas id="sc" width="440" height="260" style="${CVS};cursor:crosshair"></canvas><div class="fb" id="fb"></div></div>`;$('#bk').onclick=free?menu:levels;

@@ -72,10 +72,10 @@ const LV=[
 {n:'Split and rejoin',l:[[0,3,'R',7]],t:[[6,3,6]],w:[[2,0]],inv:{prism:1,mirror:2},tip:'Green + blue = cyan. Can you bring two colors back together?'},
 {n:'Half mirror',l:[[0,3,'R',1]],t:[[8,3,1],[4,0,1]],w:[],inv:{split:1},tip:'A beam splitter (half-silvered mirror) lets some light through and reflects the rest.'},
 {n:'Make white',l:[[0,1,'R',1],[0,3,'R',2],[0,5,'R',4]],t:[[6,3,7]],w:[],inv:{mirror:2},tip:'Red + green + blue light together make white light. Screens use this trick!'},
-{n:'Shadow maze',l:[[0,2,'R',1],[0,4,'R',2]],t:[[4,6,3],[8,2,0],[8,4,0]],w:[],inv:{mirror:3}},
-{n:'Red only',l:[[0,3,'R',7]],t:[[8,0,1],[8,3,0]],w:[[5,1],[6,1],[7,1],[8,1]],inv:{prism:1,mirror:1,block:1}},
-{n:'Double magenta',l:[[0,3,'R',1],[4,6,'U',4]],t:[[8,3,5],[4,0,5]],w:[],inv:{split:1}},
-{n:'Grand finale',l:[[0,3,'R',7]],t:[[8,3,2],[8,0,1],[8,6,4]],w:[[5,2],[5,4]],inv:{prism:1,mirror:2}}];
+{n:'Shadow maze',l:[[0,2,'R',1],[0,4,'R',2]],t:[[4,6,3],[8,2,0],[8,4,0]],w:[],inv:{mirror:3},tip:'Light the target yellow with red + green, but keep both dark sensors (⚫) in shadow.'},
+{n:'Red only',l:[[0,3,'R',7]],t:[[8,0,1],[8,3,0]],w:[[5,1],[6,1],[7,1],[8,1]],inv:{prism:1,mirror:1,block:1},tip:'Split white light with the prism, steer only the red to its target, and keep the ⚫ sensor dark.'},
+{n:'Double magenta',l:[[0,3,'R',1],[4,6,'U',4]],t:[[8,3,5],[4,0,5]],w:[],inv:{split:1},tip:'A beam splitter sends light two ways at once. Mix red and blue so BOTH targets turn magenta.'},
+{n:'Grand finale',l:[[0,3,'R',7]],t:[[8,3,2],[8,0,1],[8,6,4]],w:[[5,2],[5,4]],inv:{prism:1,mirror:2},tip:'Split white light with the prism, then steer each colour to the target that matches it.'}];
 LV.forEach((l,i)=>l.id='L'+i);
 const PIECES={mirror:{n:'Mirror',ic:'╱',rot:['/','\\']},split:{n:'Beam splitter',ic:'⧄',rot:['/','\\']},prism:{n:'Prism',ic:'△',rot:[0]},block:{n:'Block',ic:'⬛',rot:[0]},fR:{n:'Red filter',ic:'🟥',rot:[0],c:1},fG:{n:'Green filter',ic:'🟩',rot:[0],c:2},fB:{n:'Blue filter',ic:'🟦',rot:[0],c:4}};
 function trace(L,placed){// placed: map "x,y"->{k,o}

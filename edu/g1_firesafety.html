@@ -103,7 +103,7 @@ function escapeGame(L,i){const{g,p}=parseMap(L.map),H=g.length,W=g[0].length,opt
   pos={x,y};moves++;SFX.pick();upd();draw();
   if(c=='M'){done=true;const st=slips==0&&moves<=opt+2?3:slips<=1?2:1;winLevel(i,st,`You got out and went to your meeting place in ${moves} moves (best: ${opt}).<div class="fact">💡 ${L.fact}</div>`)}}
  function upd(){$('#mv').textContent=moves;$('#sl').textContent=slips}
- const key=e=>{if(!$('#mz')){removeEventListener('keydown',key);return}const d={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0]}[e.key];if(d){e.preventDefault();tryMove(pos.x+d[0],pos.y+d[1])}else if(e.key==' '){e.preventDefault();cr.onclick()}};addEventListener('keydown',key);
+ const MZ=$('#mz');const key=e=>{if(!MZ.isConnected){removeEventListener('keydown',key);return}const d={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0]}[e.key];if(d){e.preventDefault();tryMove(pos.x+d[0],pos.y+d[1])}else if(e.key==' '){e.preventDefault();cr.onclick()}};addEventListener('keydown',key);
  window.__esc={g,get pos(){return pos},tryMove,crawl:v=>{if(crawl!=v)cr.onclick()}};draw()}
 const LV=[
 {n:'Get out!',em:'🏠',k:'esc',goal:'The smoke alarm is beeping! Get outside to the meeting place 🌳.',map:['########','#P.....#','#####..#','#......#','#.######','#.....E#','######M#'],fact:'Get out fast and stay out. Never stop to grab toys or pets.'},

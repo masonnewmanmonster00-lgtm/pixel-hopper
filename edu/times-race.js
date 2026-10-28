@@ -102,7 +102,7 @@
           api.beep("no");
           api.status(problem.a + " × " + problem.b + " = " + problem.answer, "bad");
           pad.shake();
-          Edu.later(flag, ask, 700);
+          Edu.later(flag, ask, 1400);
         }
       }
     });

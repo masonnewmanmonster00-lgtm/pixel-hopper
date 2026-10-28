@@ -32,10 +32,10 @@
       { emoji: "🍌", name: "Banana peel", bin: "compost", fact: "Fruit peels belong in compost, not in the paper or plastic bin." },
       { emoji: "🍎", name: "Apple core", bin: "compost", fact: "Apple cores are food scraps. Compost them if you can." },
       { emoji: "🍂", name: "Dry leaves", bin: "compost", fact: "Dry leaves are yard waste. They go to compost, not recycling." },
-      { emoji: "🛍️", name: "Plastic shopping bag", bin: "trash", fact: "Plastic bags tangle sorting machines. Many towns say trash, or a store drop-off, not the curbside bin." },
+      { emoji: "🛍️", name: "Plastic shopping bag", bin: "trash", fact: "Keep plastic bags out of the curbside bin. They tangle the sorting machines, so this sorter uses trash. Some grocery stores collect bags in a separate drop-off." },
       { emoji: "🍕", name: "Greasy pizza box", bin: "trash", fact: "Grease soaks into the cardboard and spoils paper recycling. A clean lid can be paper. A greasy box is trash." },
       { emoji: "🥃", name: "Drinking glass", bin: "trash", fact: "A drinking glass is not bottle glass. It melts differently and can spoil a batch, so it usually goes in the trash." },
-      { emoji: "🧻", name: "Used paper napkin", bin: "trash", fact: "Soiled paper is not recyclable. Compost it only if your local program accepts napkins. Otherwise use the trash." },
+      { emoji: "🧻", name: "Used paper napkin", bin: "trash", fact: "A used napkin is not recyclable paper, so this sorter uses trash. Compost it only when your own town says paper napkins are allowed." },
       { emoji: "🥈", name: "Clean aluminum foil", bin: "metal", fact: "Clean foil is aluminum, so it is metal. Foil covered in food is usually trash." }
     ],
     hard: [

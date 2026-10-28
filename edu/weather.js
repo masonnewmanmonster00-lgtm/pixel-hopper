@@ -49,7 +49,7 @@
     {
       ask: "In the Northern Hemisphere, which season is December in?",
       answer: "Winter",
-      fact: "North of the equator, including the United States and Europe, December is in winter."
+      fact: "North of the equator, including Canada, the United States, and Europe, December is in winter."
     },
     {
       ask: "In the Southern Hemisphere, which season is December in?",

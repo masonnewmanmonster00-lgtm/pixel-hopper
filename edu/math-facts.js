@@ -150,7 +150,7 @@
           api.status(streak > 1 ? "Yes! Streak of " + streak + "." : "Yes!", "good");
         }
         index += 1;
-        Edu.later(flag, show, 750);
+        Edu.later(flag, show, ok ? 750 : 1400);
       });
       function onKey(e) {
         if (flag.stopped || locked) return;
@@ -176,7 +176,7 @@
         api.beep("no");
         api.status("Time is up. The answer is " + item.answer + ".", "bad");
         index += 1;
-        Edu.later(flag, show, 800);
+        Edu.later(flag, show, 1400);
       }, 1000);
 
       const prevStop = flag.extraStop;

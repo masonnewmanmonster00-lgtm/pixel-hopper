@@ -169,7 +169,7 @@
           title: "Nice work",
           score: api.score,
           best: api.best,
-          note: "You explored 8 organs.",
+          note: "You found the organs 8 times.",
           win: true,
           onAgain: function () { start(api.level, api); }
         });

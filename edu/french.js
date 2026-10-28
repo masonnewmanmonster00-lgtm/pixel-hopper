@@ -8,7 +8,7 @@
   };
 
   const GREETINGS = [
-    { fr: "Bonjour", en: "Hello", emoji: "👋", fact: "Bonjour means hello. People use it in the daytime, the way English uses good morning." },
+    { fr: "Bonjour", en: "Hello", emoji: "👋", fact: "Bonjour means hello, or good day. People use it through the daytime, until evening. Good evening is bonsoir." },
     { fr: "Bonsoir", en: "Good evening", emoji: "🌆", fact: "Bonsoir means good evening." },
     { fr: "Salut", en: "Hi", emoji: "🙋", fact: "Salut means hi. It is informal, for friends and family." },
     { fr: "Merci", en: "Thank you", emoji: "🙏", fact: "Merci means thank you." },

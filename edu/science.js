@@ -35,7 +35,7 @@
       ["Lightning is electricity.", true, "A lightning bolt is a huge electric spark."],
       ["Every planet has bright rings like Saturn.", false, "Saturn's rings are the famous bright ones."],
       ["Water is made of hydrogen and oxygen.", true, "A water molecule is H2O."],
-      ["A year is about 365 days.", true, "That is about how long Earth takes to orbit the Sun."],
+      ["A year is about 365 days.", true, "Earth's trip around the Sun takes about 365 days. A leap year has 366."],
       ["A magnet has a north pole and a south pole.", true, "Every magnet has two poles."],
       ["Tyrannosaurus rex still roams the forests.", false, "That dinosaur died out long ago."],
       ["Sound can move through air.", true, "Air carries the vibrations we hear."],

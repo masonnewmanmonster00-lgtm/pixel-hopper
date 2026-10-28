@@ -2,7 +2,7 @@
   "use strict";
 
   const HELP = {
-    easy: "MyPlate has five groups: fruit, vegetable, grain, protein, and dairy. Pick the group for each food.",
+    easy: "This round uses the United States MyPlate: fruit, vegetable, grain, protein, and dairy. Canada's food guide puts milk with protein foods and uses water as the everyday drink.",
     medium: "Fill every spot on the plate, then press Serve. A treat does not fill a spot. A second food from the same group replaces the first.",
     hard: "Pick the food that fits an everyday plate. Treats can still be sometimes foods."
   };

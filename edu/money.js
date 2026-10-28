@@ -4,12 +4,12 @@
   const HELP = {
     easy: "Pennies and nickels. How many cents are in the tray?",
     medium: "Add pennies, nickels, dimes, and quarters.",
-    hard: "Coins plus $1 and $5 bills. Answer in cents. A dollar is 100 cents."
+    hard: "Coins plus dollars. A dollar is 100 cents: usually a loonie in Canada, and often a $1 bill in the United States. A $5 bill is 500 cents."
   };
   const VALUES = { penny: 1, nickel: 5, dime: 10, quarter: 25, one: 100, five: 500 };
-  const NAMES = { penny: "penny", nickel: "nickel", dime: "dime", quarter: "quarter", one: "one-dollar bill", five: "five-dollar bill" };
+  const NAMES = { penny: "penny", nickel: "nickel", dime: "dime", quarter: "quarter", one: "dollar", five: "five-dollar bill" };
   const FACE = { penny: "1¢", nickel: "5¢", dime: "10¢", quarter: "25¢", one: "$1", five: "$5" };
-  const PLURAL = { penny: "pennies", nickel: "nickels", dime: "dimes", quarter: "quarters", one: "one-dollar bills", five: "five-dollar bills" };
+  const PLURAL = { penny: "pennies", nickel: "nickels", dime: "dimes", quarter: "quarters", one: "dollars", five: "five-dollar bills" };
   const ORDER = ["five", "one", "quarter", "dime", "nickel", "penny"];
   const TOTAL = 8;
   let session = null;
@@ -42,7 +42,7 @@
   function legendFor(level) {
     const bits = ["Penny 1¢", "Nickel 5¢"];
     if (level !== "easy") bits.push("Dime 10¢", "Quarter 25¢");
-    if (level === "hard") bits.push("$1 = 100¢", "$5 = 500¢");
+    if (level === "hard") bits.push("$1 = 100¢", "$5 bill = 500¢");
     return bits.join(" · ");
   }
 

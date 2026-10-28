@@ -96,7 +96,7 @@ function iso(H,W,D,opt){opt=opt||{};const s=opt.s||34,cx=s*0.866;let maxH=1;H.fo
  return out+'</svg>'}
 const box=(l,w,h)=>Array.from({length:w},()=>Array(l).fill(h));
 const sumH=H=>H.flat().reduce((a,b)=>a+b,0);
-const randH=(W,D,m)=>{let H;do{H=Array.from({length:D},()=>Array.from({length:W},()=>rnd(0,m)))}while(sumH(H)<3);return H};
+const randH=(W,D,m)=>{let H;do{H=Array.from({length:D},()=>Array.from({length:W},()=>rnd(0,m)));H=H.map(r=>r.sort((p,q)=>q-p));for(let x=0;x<W;x++){const c=H.map(r=>r[x]).sort((p,q)=>q-p);c.forEach((v,y)=>H[y][x]=v)}}while(sumH(H)<3);return H};
 const G_match=(W,D,m)=>()=>{const H=randH(W,D,m);return {type:'cubes',W,D,th:H,kind:'🧱 Copy the model',q:`Build a copy of this model. (Volume = ${sumH(H)} cubes)`,svg:iso(H,W,D,{mh:22,s:26}),a:0,why:`Floor plan heights (back to front): ${H.map(r=>r.join(' ')).join(' / ')}. Total volume <b>${sumH(H)}</b> cubic units.`}};
 const G_vol=()=>{const n=rnd(5,14);return {type:'cubes',W:3,D:3,vol:n,kind:'🔢 Any shape',q:`Build <b>any</b> shape with a volume of exactly <span class="hl">${n}</span> cubic units.`,a:0,why:`Volume is the number of unit cubes: you need exactly <b>${n}</b>. Different shapes can have the same volume!`}};
 const G_box=()=>{const l=rnd(2,4),w=rnd(1,3),h=rnd(1,3);return {type:'cubes',W:4,D:3,th:(()=>{const H=Array.from({length:3},()=>Array(4).fill(0));for(let y=0;y<w;y++)for(let x=0;x<l;x++)H[y][x]=h;return H})(),kind:'📦 Build a box',q:`Build a box <b>${l} long</b>, <b>${w} wide</b> and <b>${h} tall</b>, starting at the back-left corner.`,a:0,why:`${l} × ${w} = ${l*w} cubes per layer, × ${h} layers = <b>${l*w*h}</b> cubic units.`}};

@@ -27,6 +27,18 @@ a.back:focus-visible{outline:2px solid #ffe14d;outline-offset:2px}
 #touch button{min-width:72px;min-height:64px;margin:0;font-size:22px;touch-action:none}
 #menu .diff{min-height:48px}
 #menu .diff.on{outline:3px solid #fff}
+#dry{z-index:60}
+#dry .panel{width:min(520px,calc(100vw - 24px));padding:18px 16px 16px;box-sizing:border-box}
+#dry h2{letter-spacing:1px}
+#dry .q{margin:0 0 8px;font:800 clamp(28px,7vw,40px)/1.2 Segoe UI,Arial,sans-serif}
+#dry .entry{min-height:40px;margin:0;font:700 32px ui-monospace,monospace;letter-spacing:2px}
+#dry .choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+#dry .choice{min-height:56px;margin:0;width:100%;font-size:22px}
+#dry .choice.good{background:#1f7a45}
+#dry .choice.bad{background:#a33b24}
+#dry .fb{min-height:1.3em;margin:8px 0 0;font-weight:700}
+#dry .fb.good{color:#8ee6a8}
+#dry .fb.bad{color:#ffb0a4}
 @media (max-width:800px),(pointer:coarse){
  #touch{display:flex}
  #math{top:auto;bottom:92px}
@@ -37,11 +49,12 @@ a.back:focus-visible{outline:2px solid #ffe14d;outline-offset:2px}
 <div class="ov" id="pause"><div class="panel"><h2>PAUSED</h2><button id="resume">Resume</button><button id="restart">Restart</button>
 <div class="small">W/↑ throttle · S/↓ brake/reverse · A/D steer · Space handbrake<br>C camera · R reset car · M mute · P/Esc pause</div></div></div>
 <div class="ov" id="menu" style="display:flex"><div class="panel"><h2>MATH CIRCUIT</h2>
-<p class="small">Fuel burns as you drive. Low fuel slows the car. Empty fuel stops it. A correct answer refuels you. Fast streaks add a boost. A wrong answer gives no fuel.</p>
+<p class="small">Fuel burns as you drive. Low fuel slows the car. An empty tank pauses the race until you answer. A correct answer refuels you. Fast streaks add a boost. A wrong answer gives no fuel.</p>
 <div><button type="button" class="diff on" data-diff="easy">Easy · add and subtract</button><button type="button" class="diff" data-diff="medium">Medium · times tables</button><button type="button" class="diff" data-diff="hard">Hard · mixed, with division</button></div>
 <button type="button" id="start">Start</button>
 <p class="small">Steer with A and D or the arrow keys. Brake with S. On a phone, hold the arrow buttons. Type a number and press Enter, or tap an answer.</p></div></div>
 <div id="math" hidden><p class="q" id="qtext"></p><p class="entry" id="entry" aria-live="polite"></p><p class="fuelcap" id="fuelCap">Fuel</p><div class="fuelrow" aria-hidden="true"><i id="fuelBar"></i></div><div class="choices" id="choices"></div><p class="fb" id="feedback" role="status"></p></div>
+<div class="ov" id="dry" role="dialog" aria-modal="true" aria-labelledby="dryTitle"><div class="panel"><h2 id="dryTitle">Out of fuel!</h2><p class="small">The race is paused. Answer to refuel.</p><p class="q" id="dryQ"></p><p class="entry" id="dryEntry" aria-live="polite"></p><div class="choices" id="dryChoices"></div><p class="fb" id="dryFb" role="status"></p></div></div>
 <div id="touch"><button type="button" id="steerL" aria-label="Steer left">◀</button><button type="button" id="brake" aria-label="Brake">Brake</button><button type="button" id="steerR" aria-label="Steer right">▶</button></div>
 <script>
 'use strict';
@@ -201,12 +214,14 @@ const GR=[3.25,2.3,1.75,1.4,1.15,.96],FD=3.6,RW=.34,MASS=1250;
 const NAMES=['YOU','Vega','Kato','Moreau','Lind'],COLS=[[.85,.08,.06],[.08,.3,.85],[.95,.75,.08],[.1,.65,.3],[.92,.92,.95]];
 let cars,player,state,countT,raceT,paused=false,camMode=0,timeScale=1,finishOrder=[],bestLap=null,lastLap=null,msg='',msgT=0;
 let difficulty='easy',streak=0,typed='',qLock=false,question=null,qTime=0,feedback='',feedbackKind='';
-let touchSteer=0,touchBrake=0;
+let touchSteer=0,touchBrake=0,fuelHold=false,resumeSplash=false,nextQ=null;
 function newCar(k,slot){const row=slot,i=(N-8-row*5)%N,l=(slot%2?-1:1)*2.8;const c={id:k,name:NAMES[k],col:COLS[k],x:TX[i]+SX[i]*l,z:TZ[i]+SZ[i]*l,h:Math.atan2(TZ[(i+1)%N]-TZ[i]?0:0,1),vx:0,vz:0,vF:0,yaw:0,gear:0,rpm:900,spin:0,steerA:0,
  ti:i,lat:l,lap:0,half:true,lapStart:0,laps:[],fin:false,finT:0,stuck:0,ai:k>0,auto:false,skill:.86+k*.025+rnd()*.03,bias:(rnd()-.5)*2,inp:{thr:0,brk:0,steer:0,hb:0},y:.06};
  c.h=Math.atan2(TX[(i+1)%N]-TX[i],TZ[(i+1)%N]-TZ[i]);c.fuel=k===0?80:100;return c;}
 function reset(){cars=[];const slots=[3,0,1,2,4];for(let k=0;k<5;k++)cars.push(newCar(k,slots[k]));player=cars[0];if(location.hash=='#autopilot')player.auto=true;
- state='count';countT=3.6;raceT=0;finishOrder=[];lastLap=null;camPos=null;}
+ state='count';countT=3.6;raceT=0;finishOrder=[];lastLap=null;camPos=null;fuelHold=false;resumeSplash=false;
+ if(nextQ){clearTimeout(nextQ);nextQ=null;}
+ const dry=document.getElementById('dry');if(dry)dry.style.display='none';}
 function locate(c,full){let best=1e18,bi=c.ti;if(full){for(let i=0;i<N;i++){const dx=c.x-TX[i],dz=c.z-TZ[i],d=dx*dx+dz*dz;if(d<best){best=d;bi=i}}}
  else for(let k=-10;k<=26;k++){const i=(c.ti+k+N)%N,dx=c.x-TX[i],dz=c.z-TZ[i],d=dx*dx+dz*dz;if(d<best){best=d;bi=i}}
  if(!full&&best>900)return locate(c,true);
@@ -261,9 +276,10 @@ function playerInput(dt){const p=player;if(p.auto){aiInput(p);return}
  p.inp.thr=thr;p.inp.brk=brk;p.inp.hb=keys.Space?1:0;st=clamp(st,-1,1);
  p.inp.steer+=(st-p.inp.steer)*Math.min(1,dt*(st?9:12));}
 const STEP=1/120;
-function stepSim(dt){if(state=='count'){countT-=dt;if(countT<=0){state='race';raceT=0;msg='GO!';msgT=1.2;}}
+function stepSim(dt){if(state=='count'){countT-=dt;if(countT<=0){state='race';if(resumeSplash)resumeSplash=false;else raceT=0;msg='GO!';msgT=1.2;}}
  if(state!='count')raceT+=dt;if(msgT>0)msgT-=dt;
- playerInput(dt);for(const c of cars){if(c.ai)aiInput(c);physics(c,dt,state=='count');}carCollide();shake*=Math.exp(-dt*6);}
+ playerInput(dt);for(const c of cars){if(c.ai)aiInput(c);physics(c,dt,state=='count');}carCollide();shake*=Math.exp(-dt*6);
+ if(state==='race'&&player&&player.fuel<=0)dryStop();}
 function positions(){return cars.slice().sort((a,b)=>{if(a.fin&&b.fin)return a.finT-b.finT;if(a.fin)return -1;if(b.fin)return 1;return(b.lap*N+b.ti)-(a.lap*N+a.ti)});}
 
 // ================= render =================
@@ -309,7 +325,7 @@ function drawHUD(){const x=hx,p=player;x.clearRect(0,0,W,H);
  const pos=positions(),me=pos.indexOf(p)+1;x.textAlign='left';x.fillStyle='rgba(8,12,20,.65)';x.fillRect(16,64,230,128);
  x.fillStyle='#ffcf4a';x.font='bold 40px sans-serif';x.fillText(me,28,108);x.font='bold 16px sans-serif';x.fillText(`/${cars.length}`,28+x.measureText(me).width*2.6,60);
  x.fillStyle='#fff';x.font='bold 18px sans-serif';x.fillText(`LAP ${clamp(p.lap,1,TOTAL_LAPS)}/${TOTAL_LAPS}`,120,96);
- x.font='14px monospace';x.fillStyle='#dde';const cur=state=='race'&&p.lap>=1&&!p.fin?raceT-p.lapStart:null;
+ x.font='14px monospace';x.fillStyle='#dde';const timing=(state=='race'||fuelHold||resumeSplash)&&p.lap>=1&&!p.fin;const cur=timing?raceT-p.lapStart:null;
  x.fillText(`TIME ${fmt(cur)}`,28,136);x.fillText(`LAST ${fmt(lastLap)}`,28,156);x.fillStyle='#7f7';x.fillText(`BEST ${fmt(bestLap)}`,28,176);
  x.fillStyle='rgba(8,12,20,.55)';x.fillRect(16,198,150,18+cars.length*18);x.font='13px sans-serif';pos.forEach((c,k)=>{x.fillStyle=`rgb(${c.col.map(v=>v*255|0)})`;x.fillRect(24,208+k*18,10,10);x.fillStyle=c===p?'#ffcf4a':'#eee';x.fillText(`${k+1}. ${c.name}${c.fin?' ✔':''}`,40,218+k*18);});
  // minimap
@@ -337,7 +353,7 @@ let AC=null,eng=null,muted=false;
 function audioStart(){if(AC)return;try{AC=new(window.AudioContext||window.webkitAudioContext)();const o1=AC.createOscillator(),o2=AC.createOscillator(),o3=AC.createOscillator(),f=AC.createBiquadFilter(),g=AC.createGain();
  o1.type='sawtooth';o2.type='square';o3.type='triangle';f.type='lowpass';f.Q.value=4;g.gain.value=0;const g2=AC.createGain();g2.gain.value=.35;o2.connect(g2);g2.connect(f);o1.connect(f);o3.connect(f);f.connect(g);g.connect(AC.destination);o1.start();o2.start();o3.start();eng={o1,o2,o3,f,g};}catch(e){eng=null}}
 function audioUpdate(){if(!eng)return;const r=player.rpm,t=AC.currentTime,fr=r/60*2;eng.o1.frequency.setTargetAtTime(fr,t,.02);eng.o2.frequency.setTargetAtTime(fr*.5,t,.02);eng.o3.frequency.setTargetAtTime(fr*1.5,t,.02);
- eng.f.frequency.setTargetAtTime(400+r*.22+player.inp.thr*900,t,.05);eng.g.gain.setTargetAtTime(muted||paused?0:.045+player.inp.thr*.05,t,.05);}
+ eng.f.frequency.setTargetAtTime(400+r*.22+player.inp.thr*900,t,.05);eng.g.gain.setTargetAtTime(muted||paused||fuelHold?0:.045+player.inp.thr*.05,t,.05);}
 
 // ================= input / loop =================
 function setPause(v){paused=v;document.getElementById('pause').style.display=v?'flex':'none';}
@@ -349,22 +365,43 @@ function makeQuestion(){const r=(a,b)=>a+Math.floor(Math.random()*(b-a+1));let t
  const opts=new Set([answer]);const near=[answer+1,answer-1,answer+2,answer-2,answer+10,answer+5];
  for(const n of near){if(n>=0&&n!==answer)opts.add(n);if(opts.size===4)break;}
  let extra=answer+3;while(opts.size<4){if(extra>=0&&extra!==answer)opts.add(extra);extra++;}
- question={text,answer,choices:shuffle([...opts])};qTime=performance.now();typed='';qLock=false;feedback='';feedbackKind='';paintMath();}
-function paintMath(){const box=document.getElementById('math');if(!box)return;const menu=document.getElementById('menu');const menuOpen=menu&&menu.style.display!=='none';const show=(state==='count'||state==='race'||state==='done')&&!menuOpen;box.hidden=!show;
- const q=document.getElementById('qtext');if(q)q.textContent=question?question.text+' = ?':'';
- const en=document.getElementById('entry');if(en)en.textContent=typed||' ';
- const fb=document.getElementById('feedback');if(fb){fb.textContent=feedback;fb.className='fb '+(feedbackKind||'');}
- const bar=document.getElementById('fuelBar');const cap=document.getElementById('fuelCap');if(bar&&player){const f=Math.max(0,Math.min(100,player.fuel||0));bar.style.width=f+'%';bar.style.background=f<24?'#e23b2f':'#3cba5a';if(cap)cap.textContent=f<=0?'Fuel empty':f<24?'Fuel low · '+Math.ceil(f):'Fuel '+Math.ceil(f);}
- const hold=document.getElementById('choices');if(!hold||!question)return;
- if(hold.dataset.sig===question.text+question.choices.join(','))return;hold.dataset.sig=question.text+question.choices.join(',');hold.innerHTML='';
+ question={text,answer,choices:shuffle([...opts])};qTime=performance.now();typed='';qLock=false;feedback='';feedbackKind='';
+ const raceHold=document.getElementById('choices');const dryHold=document.getElementById('dryChoices');
+ if(raceHold)raceHold.dataset.sig='';if(dryHold)dryHold.dataset.sig='';
+ paintMath();}
+function fillChoices(hold){if(!hold)return;if(!question){hold.innerHTML='';hold.dataset.sig='';return;}
+ const sig=question.text+'|'+question.choices.join(',');if(hold.dataset.sig===sig)return;hold.dataset.sig=sig;hold.innerHTML='';
  question.choices.forEach(function(n){const b=document.createElement('button');b.type='button';b.className='choice';b.textContent=String(n);b.setAttribute('data-value',String(n));b.addEventListener('click',function(){submitAnswer(n);});hold.appendChild(b);});}
-function submitAnswer(n){if(qLock||!question||paused||state==='menu')return;if(document.getElementById('menu').style.display==='flex')return;qLock=true;typed='';
- if(Number(n)===question.answer){streak+=1;const fast=(performance.now()-qTime)<4000;const kick=5+Math.min(streak,6)*2+(fast?5:0);
+function markChoices(id,picked,right){document.querySelectorAll('#'+id+' .choice').forEach(function(b){b.disabled=true;const v=Number(b.getAttribute('data-value'));if(v===question.answer)b.classList.add('good');else if(v===Number(picked))b.classList.add('bad');});if(!right)void right;}
+function queueQuestion(ms){if(nextQ)clearTimeout(nextQ);nextQ=setTimeout(function(){nextQ=null;if(state!=='menu')makeQuestion();},ms);}
+function dryStop(){if(fuelHold||!player||state!=='race')return;fuelHold=true;player.fuel=0;player.vF=0;player.vx=0;player.vz=0;player.yaw=0;player.inp.thr=0;player.inp.brk=0;player.inp.hb=0;
+ if(nextQ){clearTimeout(nextQ);nextQ=null;}qLock=false;makeQuestion();}
+function paintMath(){const box=document.getElementById('math');if(!box)return;const menu=document.getElementById('menu');const menuOpen=menu&&menu.style.display!=='none';
+ const show=(state==='count'||state==='race'||state==='done')&&!menuOpen&&!fuelHold&&!resumeSplash;box.hidden=!show;
+ const dry=document.getElementById('dry');if(dry)dry.style.display=fuelHold?'flex':'none';
+ const label=question?question.text+' = ?':'';
+ const q=document.getElementById('qtext');if(q)q.textContent=label;
+ const dq=document.getElementById('dryQ');if(dq)dq.textContent=label;
+ const shown=typed||' ';
+ const en=document.getElementById('entry');if(en)en.textContent=shown;
+ const de=document.getElementById('dryEntry');if(de)de.textContent=shown;
+ const fb=document.getElementById('feedback');if(fb){fb.textContent=fuelHold?'':feedback;fb.className='fb '+(feedbackKind||'');}
+ const df=document.getElementById('dryFb');if(df){df.textContent=fuelHold?feedback:'';df.className='fb '+(feedbackKind||'');}
+ const bar=document.getElementById('fuelBar');const cap=document.getElementById('fuelCap');if(bar&&player){const f=Math.max(0,Math.min(100,player.fuel||0));bar.style.width=f+'%';bar.style.background=f<24?'#e23b2f':'#3cba5a';if(cap)cap.textContent=f<=0?'Fuel empty':f<24?'Fuel low · '+Math.ceil(f):'Fuel '+Math.ceil(f);}
+ if(qLock)return;fillChoices(document.getElementById(fuelHold?'dryChoices':'choices'));}
+function submitAnswer(n){if(qLock||!question||state==='menu')return;if(document.getElementById('menu').style.display==='flex')return;if(paused&&!fuelHold)return;qLock=true;typed='';
+ const right=Number(n)===question.answer;
+ if(fuelHold){markChoices('dryChoices',n,right);
+  if(right){streak+=1;player.fuel=Math.min(100,70+Math.min(streak,5)*6);feedback='Yes! Refueled.';feedbackKind='good';paintMath();
+   setTimeout(function(){if(!fuelHold)return;fuelHold=false;resumeSplash=true;state='count';countT=3.6;msg='';msgT=0;makeQuestion();},500);}
+  else{streak=0;feedback='The answer is '+question.answer+'.';feedbackKind='bad';paintMath();queueQuestion(1200);}
+  return;}
+ if(right){streak+=1;const fast=(performance.now()-qTime)<4000;const kick=5+Math.min(streak,6)*2+(fast?5:0);
   player.fuel=Math.min(100,player.fuel+38+Math.min(streak,5)*3);
   const f=[Math.sin(player.h),Math.cos(player.h)];player.vF=Math.min(46,Math.max(0,player.vF)+kick);player.vx+=f[0]*kick;player.vz+=f[1]*kick;
   feedback=fast?'Yes! Boost streak '+streak+'.':'Yes! Fueled.';feedbackKind='good';}
  else{streak=0;feedback='Not quite. No fuel.';feedbackKind='bad';}
- paintMath();setTimeout(function(){if(state!=='menu')makeQuestion();},700);}
+ paintMath();queueQuestion(right?700:1100);}
 function loadBestTime(){bestLap=null;try{const b=localStorage.getItem('edu-mathcircuit-best-'+difficulty);if(b)bestLap=+b;}catch(e){}}
 function holdBtn(id,down,up){const el=document.getElementById(id);const start=function(e){e.preventDefault();e.stopPropagation();down();};const end=function(e){e.preventDefault();up();};
  ['pointerdown'].forEach(function(ev){el.addEventListener(ev,start);});['pointerup','pointerleave','pointercancel'].forEach(function(ev){el.addEventListener(ev,end);});}
@@ -374,8 +411,8 @@ addEventListener('keydown',e=>{keys[e.code]=true;audioStart();if(AC&&AC.state=='
  if(e.repeat)return;
  if(/^[0-9]$/.test(e.key)){typed=(typed+e.key).slice(0,4);paintMath();e.preventDefault();}
  if(e.code==='Enter'||e.code==='NumpadEnter'){if(state==='done'){reset();return;}if(typed!=='')submitAnswer(Number(typed));return;}
- if(e.code=='KeyC')camMode^=1;if(e.code=='KeyM')muted=!muted;if(e.code=='KeyP'||e.code=='Escape'){if(document.getElementById('menu').style.display==='flex')return;setPause(!paused);}
- if(e.code=='KeyR'&&!paused&&state!='count')resetCar(player);});
+ if(e.code=='KeyC'&&!fuelHold)camMode^=1;if(e.code=='KeyM')muted=!muted;if(e.code=='KeyP'||e.code=='Escape'){if(fuelHold||document.getElementById('menu').style.display==='flex')return;setPause(!paused);}
+ if(e.code=='KeyR'&&!paused&&!fuelHold&&state!='count')resetCar(player);});
 addEventListener('keyup',e=>{keys[e.code]=false});addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
 document.getElementById('resume').onclick=()=>setPause(false);document.getElementById('restart').onclick=()=>{reset();makeQuestion();setPause(false);};
 document.querySelectorAll('.diff').forEach(function(btn){btn.addEventListener('click',function(){difficulty=btn.getAttribute('data-diff');document.querySelectorAll('.diff').forEach(function(b){b.classList.toggle('on',b===btn);});});});
@@ -384,7 +421,7 @@ holdBtn('steerL',function(){touchSteer=-1;},function(){if(touchSteer<0)touchStee
 holdBtn('brake',function(){touchBrake=1;},function(){touchBrake=0;});
 holdBtn('steerR',function(){touchSteer=1;},function(){if(touchSteer>0)touchSteer=0;});
 reset();paused=true;let last=performance.now(),acc=0;
-function frame(now){const dt=Math.min(.1,(now-last)/1000);last=now;if(!paused){acc+=dt*timeScale;let n=0;while(acc>=STEP&&n<60){stepSim(STEP);acc-=STEP;n++;}if(n>=60)acc=0;}
- render(dt);drawHUD();paintMath();audioUpdate();requestAnimationFrame(frame);}
+function frame(now){const dt=Math.min(.1,(now-last)/1000);last=now;if(!paused&&!fuelHold){acc+=dt*timeScale;let n=0;while(acc>=STEP&&n<60&&!fuelHold){stepSim(STEP);acc-=STEP;n++;}if(fuelHold)acc=0;if(n>=60)acc=0;}
+ render(paused||fuelHold?0:dt);drawHUD();paintMath();audioUpdate();requestAnimationFrame(frame);}
 requestAnimationFrame(frame);
 </script></body></html>
